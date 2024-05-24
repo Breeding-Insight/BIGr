@@ -15,8 +15,13 @@ library("BIGr")
 
 ## Contributors
 Alex Sandercock
+
 Josue Chinchilla Vargas
+
 Dongyan Zhao
+
 Meng Lin
+
 Manoj Sapkota
+
 Shufen Chen

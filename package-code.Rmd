@@ -22,7 +22,7 @@ library(devtools)
 
 ```{r}
 #Create framework of the R package
-#devtools::create("BIGr")
+devtools::create("BIGr")
 
 #Will need to edit the DESCRIPTION file with the correct information
 ```
@@ -39,6 +39,9 @@ library(devtools)
 #Testing the R functions
 #https://r-pkgs.org/testing-basics.html
 devtools::load_all()
+```
+```{r}
+
 ```
 
 
@@ -66,6 +69,3 @@ devtools::build_manual()
 devtools::install_github("alex-sandercock/BIGr")
 ```
 
-```{r}
-calculateMAF()
-```

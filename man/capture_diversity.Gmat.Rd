@@ -42,5 +42,5 @@ This function was adapted from a previously developed Python method (Sandercock 
 (https://github.com/alex-sandercock/Capturing_genomic_diversity/)
 }
 \references{
-\insertRef{BIGr:sandercock2023road}{BIGr}
+Sandercock, A. M., Westbrook, J. W., Zhang, Q., & Holliday, J. A. (2023). The road to restoration: Identifying and conserving the adaptive legacy of American chestnut. bioRxiv, 2023-05.
 }

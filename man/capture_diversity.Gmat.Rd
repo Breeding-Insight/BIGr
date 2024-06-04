@@ -38,9 +38,9 @@ This function can be used to estimate the number of individuals to sample from a
 in order to capture a desired percentage of the genomic diversity.
 It assumes that the samples are the columns, and the genomic markers are in rows. Missing data should
 be set as NA, which will then be ignored for the calculations. All samples must have the same ploidy.
-This function was adapted from a previously developed Python method \insertCite{sandercock2023road}{BIGr}
+This function was adapted from a previously developed Python method (Sandercock et al., 2023)
 (https://github.com/alex-sandercock/Capturing_genomic_diversity/)
 }
 \references{
-\insertAllCited{}
+\insertRef{BIGr:sandercock2023road}{BIGr}
 }

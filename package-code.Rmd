@@ -22,7 +22,7 @@ library(devtools)
 
 ```{r}
 #Create framework of the R package
-devtools::create("BIGr")
+#devtools::create("BIGr")
 
 #Will need to edit the DESCRIPTION file with the correct information
 ```
@@ -39,9 +39,6 @@ devtools::create("BIGr")
 #Testing the R functions
 #https://r-pkgs.org/testing-basics.html
 devtools::load_all()
-```
-```{r}
-
 ```
 
 
@@ -65,7 +62,48 @@ devtools::build_manual()
 ```
 
 ```{r}
+#Adding needed packages to description
+usethis::use_package("dplyr") # Default is "Imports"
+usethis::use_package("foreach")
+usethis::use_package("doParallel")
+
+#If wanting to add specific minimum versions
+# exact version
+usethis::use_package("Rdpack", min_version = "0.7")
+
+# min version = currently installed version
+usethis::use_package("dplyr", min_version = TRUE)
+```
+
+
+```{r}
 #Test install
 devtools::install_github("alex-sandercock/BIGr")
+```
+
+```{r}
+library(readr)
+test_geno <- read_csv("~/Library/CloudStorage/Box-Box/AS_Projects/Pipelines/test_files/example_500samples_500markers_4ploidy_geno.csv")
+test_geno <- as.data.frame(test_geno)
+row.names(test_geno) <- test_geno[[1]]
+test_geno <- test_geno[,2:length(colnames(test_geno))]
+
+```
+
+
+
+```{r}
+##Make the output a dataframe with each relevant info in a separate column...but save it as the text format
+#Double check that the CI formula is correct
+#Correctly implement the parallel option, and calculate the time difference between parallel and non-parallel
+#Correctly add the necessary packages to the BIGr dependency install
+
+library("foreach")
+library("doParallel")
+
+k <- capture_diversity.Gmat(test_geno, ploidy=4, parallel=FALSE, iterations = 5, r2_threshold = 0.05, save.result = TRUE)
+
+#test <- data.frame(matrix(ncol = 0, nrow = nrow(test_geno)))
+#rownames(test) <- rownames(test_geno)
 ```
 

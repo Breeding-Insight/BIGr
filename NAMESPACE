@@ -2,6 +2,11 @@
 
 export(calculate_Het)
 export(calculate_MAF)
+export(capture_diversity.Gmat)
 export(dosage_ratios)
 export(flip_dosage)
 export(get_countsMADC)
+import(doParallel)
+import(dplyr)
+import(foreach)
+importFrom(Rdpack,reprompt)

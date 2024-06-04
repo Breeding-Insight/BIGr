@@ -15,4 +15,3 @@ Imports:
     dplyr,
     foreach,
     Rdpack (>= 0.7)
-RdMacros: Rdpack

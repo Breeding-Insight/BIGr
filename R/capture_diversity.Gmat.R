@@ -4,7 +4,7 @@
 #' in order to capture a desired percentage of the genomic diversity.
 #' It assumes that the samples are the columns, and the genomic markers are in rows. Missing data should
 #' be set as NA, which will then be ignored for the calculations. All samples must have the same ploidy.
-#' This function was adapted from a previously developed Python method \insertCite{sandercock2023road}{BIGr}
+#' This function was adapted from a previously developed Python method (Sandercock et al., 2023)
 #' (https://github.com/alex-sandercock/Capturing_genomic_diversity/)
 #'
 #' @param df Genotype matrix or data.frame with the count of alternate alleles (0=homozygous reference, 1 = heterozygous, 2 = homozygous alternate)
@@ -20,7 +20,7 @@
 #' @import dplyr
 #' @importFrom Rdpack reprompt
 #' @references
-#' \insertAllCited{}
+#' Sandercock, A. M., Westbrook, J. W., Zhang, Q., & Holliday, J. A. (2023). The road to restoration: Identifying and conserving the adaptive legacy of American chestnut. bioRxiv, 2023-05.
 #' @export
 capture_diversity.Gmat <- function(df, ploidy, r2_threshold=0.9, iterations = 10, sample_list = NULL, parallel=FALSE, batch=1, save.result=TRUE) {
 ##Need to make sure these two packages are loaded with BIGr (vcfR and dplyr,"foreach","doParallel"

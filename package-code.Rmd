@@ -66,6 +66,7 @@ devtools::build_manual()
 usethis::use_package("dplyr") # Default is "Imports"
 usethis::use_package("foreach")
 usethis::use_package("doParallel")
+usethis::use_package("kinship2", min_version = "1.9.6.1")
 
 #If wanting to add specific minimum versions
 # exact version
@@ -93,17 +94,7 @@ test_geno <- test_geno[,2:length(colnames(test_geno))]
 
 
 ```{r}
-##Make the output a dataframe with each relevant info in a separate column...but save it as the text format
-#Double check that the CI formula is correct
-#Correctly implement the parallel option, and calculate the time difference between parallel and non-parallel
-#Correctly add the necessary packages to the BIGr dependency install
-
-library("foreach")
-library("doParallel")
-
-k <- capture_diversity.Gmat(test_geno, ploidy=4, parallel=FALSE, iterations = 5, r2_threshold = 0.05, save.result = TRUE)
-
-#test <- data.frame(matrix(ncol = 0, nrow = nrow(test_geno)))
-#rownames(test) <- rownames(test_geno)
+getwd()
+k <- clean_pedigree(input_ped = "/Users/ams866/Downloads/hop_helium.txt")
 ```
 

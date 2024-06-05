@@ -1,9 +1,12 @@
 Package: BIGr
 Title: (B)reeding (I)nsight (G)enomics Functions for Polypoid and Diploid Species
-Version: 0.0.2
+Version: 0.0.3
 Authors@R: 
-    person("Alexander", "Sandercock", , "ams866@cornell.edu", role = c("aut", "cre"),
-           comment = c(ORCID = "https://orcid.org/0000-0001-6897-1856"))
+	c(person("Alexander", "Sandercock", , "ams866@cornell.edu", role = c("aut", "cre"),
+           comment = c(ORCID = "https://orcid.org/0000-0001-6897-1856")),
+	  person(given = "Josue",
+		 family = "Chinchilla Vargas",
+		 role = "aut"))
 Description: This package contains the functions developed to analyze polyploid and diploid species within Breeding Insight.
 License: `use_apache_license()`
 Encoding: UTF-8
@@ -14,5 +17,6 @@ Imports:
     doParallel,
     dplyr,
     foreach,
+    kinship2 (>= 1.9.6.1),
     Rdpack (>= 0.7)
 RdMacros: Rdpack

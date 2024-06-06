@@ -6,8 +6,13 @@
 #' an id is its own sire or dam.
 #'
 #' This function also looks for any sires or dams that
-#' are not included in the pedigree in the id column and adds them with unknown parents.
+#' are not included in the pedigree in the id column and adds them with unknown parents. 
 #'
+#' This function provides three outputs in the terminal for QC: 
+#'      1)"IDs appearing as sire and dam" providing a list of ids that appear in both the sire and dam column.
+#'      2)"IDs appearing more than once in the id column.
+#'      3)"Circular dependencies"
+#'  
 #' @param input_ped path to pedigree text file
 #' @param save.result save the cleaned pedigree file (True/False) (default = TRUE)
 #' @return A cleaned pedigree .txt file
@@ -50,13 +55,13 @@ clean_pedigree <- function(input_ped, save.result = TRUE) {
 
   double_ids <- n_occur[n_occur$freq > 1,] # Print ids with more than 1 occurrence
 
-  print("IDs that appear more than once in the id column")
+  print("IDs appearing more than once in the id column")
   print(double_ids)
 
   # Create new dataframe without doubled ids (all instances are removed to avoid data errors)
   nodup_ped <- parents_fixed_ped[!parents_fixed_ped$id %in% double_ids$id, ]
 
-  # Check for individuals that appear as offspring and sire or offspring and dam of themselves
+  # Check for individuals appearing as offspring and sire or offspring and dam of themselves
   circ_deps <- nodup_ped %>%
     mutate(id = as.character(id),
            sire = as.character(sire),

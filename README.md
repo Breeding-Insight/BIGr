@@ -6,7 +6,7 @@ To install package:
 ```
 install.packages("devtools") #If not already installed
 library(devtools)
-devtools::install_github("alex-sandercock/BIGr")
+devtools::install_github("Breeding-Insight/BIGr")
 library("BIGr")
 ```
 

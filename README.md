@@ -1,5 +1,4 @@
 # BIGr
-Alex Sandercock
 
 'description of app'
 

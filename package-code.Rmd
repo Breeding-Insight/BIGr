@@ -73,7 +73,7 @@ usethis::use_package("kinship2", min_version = "1.9.6.1")
 usethis::use_package("Rdpack", min_version = "0.7")
 
 # min version = currently installed version
-usethis::use_package("dplyr", min_version = TRUE)
+usethis::use_package("tidyr", min_version = TRUE)
 ```
 
 

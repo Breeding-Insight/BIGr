@@ -66,7 +66,7 @@ devtools::build_manual()
 usethis::use_package("dplyr") # Default is "Imports"
 usethis::use_package("foreach")
 usethis::use_package("doParallel")
-usethis::use_package("kinship2", min_version = "1.9.6.1")
+#usethis::use_package("kinship2", min_version = "1.9.6.1")
 
 #If wanting to add specific minimum versions
 # exact version

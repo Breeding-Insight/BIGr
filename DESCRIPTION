@@ -1,6 +1,6 @@
 Package: BIGr
 Title: (B)reeding (I)nsight (G)enomics Functions for Polypoid and Diploid Species
-Version: 0.1.0
+Version: 0.1.1
 Authors@R: 
 	c(person("Alexander", "Sandercock", , "ams866@cornell.edu", role = c("aut", "cre"),
            comment = c(ORCID = "https://orcid.org/0000-0001-6897-1856")),

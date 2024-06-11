@@ -7,18 +7,26 @@
 check_ped(ped.file)
 }
 \arguments{
-\item{ped.file}{path to pedigree text file}
+\item{ped.file}{path to pedigree text file. The pedigree file is a
+3-column pedigree tab separated file with columns labeled as id sire dam in any order}
 }
 \value{
-A cleaned pedigree .txt file
+A list of dataframes of error types
 }
 \description{
-clean_pedigree takes a 3-column pedigree tab separated file with columns labeled as id sire
-dam in any order and checks for ids that appear more than once in the id
-column, ids that appear as both sire and dam, and circular dependencies where
-an id is its own sire or dam.
+Check a pedigree file for accuracy and output suspected errors
 }
 \details{
-This function also looks for any sires or dams that
-are not included in the pedigree in the id column and adds them with unknown parents.
+check_ped takes a 3-column pedigree tab separated file with columns labeled as id sire dam in any order and checks for:
+\itemize{
+\item Ids that appear more than once in the id column
+\item Ids that appear in both sire and dam columns
+\item Direct (e.g. parent is a offspring of his own daughter) and indirect (e.g. a great grandparent is son of its granchild) dependencies within the pedigree.
+\item Individuals included in the pedigree as sire or dam but not on the id column and reports them back with unknown parents (0).
+}
+
+When using check_ped, do a first run to check for repeated ids and parents that appear as sire and dam.
+Once these errors are cleaned run the function again to check for dependencies as this will provide the most accurate report.
+
+Note: This function does not change the input file but prints any errors found in the console.
 }

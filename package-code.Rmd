@@ -95,6 +95,6 @@ test_geno <- test_geno[,2:length(colnames(test_geno))]
 
 ```{r}
 getwd()
-k <- clean_pedigree(input_ped = "/Users/ams866/Downloads/hop_helium.txt")
+k <- check_ped(ped.file = "/Users/ams866/Downloads/hop_helium.txt")
 ```
 

@@ -120,11 +120,11 @@ check_ped <- function(ped.file) {
       errors <- append(errors, paste("Cycle detected involving nodes:", paste(cycle_ids, collapse = " -> ")))
     }
   }
-  results <- list(missing_parents = missing_parents, errors = errors, repeated_ids = repeated_ids, messy_parents = messy_parents)
+  results <- list(missing_parents = missing_parents, dependencies = errors, repeated_ids = repeated_ids, messy_parents = messy_parents)
   repeated_ids <- results$repeated_ids
   missing_parents <- results$missing_parents
   messy_parents <- results$messy_parents
-  errors <- results$errors
+  errors <- results$dependencies
   #### Print errors and cycles ####
   # Print repeated ids if any
   if (nrow(repeated_ids) > 0) {

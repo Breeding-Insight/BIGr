@@ -15,7 +15,17 @@
 #'
 #' @param ped.file path to pedigree text file. The pedigree file is a
 #' 3-column pedigree tab separated file with columns labeled as id sire dam in any order
-#' @return A list of dataframes of error types
+#' @return A list of dataframes of error types, and the output printed to the console
+#' @examples
+#' ##Get list with a dataframe for each error type
+#' ped_errors <- check_ped(ped.file = "example_ped.txt")
+#'
+#' ##Access the "messy parents" dataframe result
+#' ped_errors$messy_parents
+#'
+#' ##Get list of sample IDs with messy parents error
+#' messy_parent_ids <- ped_errors$messy_parents$id
+#' print(messy_parent_ids)
 #' @import dplyr
 #' @export
 #### Function to check for hierarchical errors missing parents and repeated ids ####

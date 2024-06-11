@@ -11,7 +11,7 @@ check_ped(ped.file)
 3-column pedigree tab separated file with columns labeled as id sire dam in any order}
 }
 \value{
-A list of dataframes of error types
+A list of dataframes of error types, and the output printed to the console
 }
 \description{
 Check a pedigree file for accuracy and output suspected errors
@@ -29,4 +29,15 @@ When using check_ped, do a first run to check for repeated ids and parents that 
 Once these errors are cleaned run the function again to check for dependencies as this will provide the most accurate report.
 
 Note: This function does not change the input file but prints any errors found in the console.
+}
+\examples{
+##Get list with a dataframe for each error type
+ped_errors <- check_ped(ped.file = "example_ped.txt")
+
+##Access the "messy parents" dataframe result
+ped_errors$messy_parents
+
+##Get list of sample IDs with messy parents error
+messy_parent_ids <- ped_errors$messy_parents$id
+print(messy_parent_ids)
 }

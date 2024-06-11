@@ -23,6 +23,12 @@ check_ped <- function(ped.file) {
   set.seed(101919)
   #### read in data ####
   data = read.table(ped.file, header = T)
+  data <- data %>%
+    mutate(
+      id = as.character(id),
+      sire = as.character(sire),
+      dam = as.character(dam)
+      )
   #Missing parents dataframe initialize
   missing_parents <- data.frame(id = character(), sire = character(), dam = character(), stringsAsFactors = FALSE)
   errors <- list()

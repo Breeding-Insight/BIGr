@@ -95,6 +95,7 @@ test_geno <- test_geno[,2:length(colnames(test_geno))]
 
 ```{r}
 getwd()
-k <- check_ped(ped.file = "/Users/ams866/Downloads/hop_helium.txt")
+library(BIGr)
+check_ped(ped.file = "/Users/ams866/Downloads/hop_helium.txt")
 ```
 

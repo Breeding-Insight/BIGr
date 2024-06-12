@@ -63,7 +63,7 @@ check_ped <- function(ped.file) {
       missing_parents <- rbind(missing_parents, data.frame(id = dam, sire = "0", dam = "0", stringsAsFactors = FALSE))
     }
     if (sire == id || dam == id) {
-      errors <- append(errors, paste("Error: Individual", id, "cannot be its own parent"))
+      errors <- append(errors, paste("Dependency: Individual", id, "cannot be its own parent"))
     }
   }
   # Remove duplicates

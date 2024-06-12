@@ -74,6 +74,7 @@ usethis::use_package("Rdpack", min_version = "0.7")
 
 # min version = currently installed version
 usethis::use_package("tidyr", min_version = TRUE)
+usethis::use_package("readr", min_version = TRUE)
 ```
 
 
@@ -96,6 +97,7 @@ test_geno <- test_geno[,2:length(colnames(test_geno))]
 ```{r}
 getwd()
 library(BIGr)
-check_ped(ped.file = "/Users/ams866/Downloads/hop_helium.txt")
+k <- check_ped(ped.file = "/Users/ams866/Downloads/hop_helium.txt")
+k$dependencies
 ```
 

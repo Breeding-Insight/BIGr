@@ -1,6 +1,6 @@
 # BIGr
 
-'description of app'
+This R package contains the functions developed within Breeding Insight to analyze diploid and polyploid breeding and genetic data.
 
 To install package:
 ```

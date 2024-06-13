@@ -88,6 +88,9 @@ dosage2vcf <- function(dart.report, dart.counts, ploidy, output.file) {
   alt_counts <- counts[!is.na(counts$Variant), ]
   row.names(alt_counts) <- alt_counts$MarkerName
 
+  #unload counts file
+  rm(counts)
+
   #Get the Ref and Alt allele from the alt_counts file
   ##Note sometimes there are multiple nucleotides, I am assuming this file also includes indels, but make sure this is not an error
   alleles_df <- alt_counts %>%
@@ -226,6 +229,15 @@ dosage2vcf <- function(dart.report, dart.counts, ploidy, output.file) {
   suppressWarnings(
     write.table(vcf_df, file = output.file, sep = "\t", quote = FALSE, row.names = FALSE, col.names = TRUE, append = TRUE)
   )
+  #Unload all items from memory
+  rm(dosage)
+  rm(alt_counts)
+  rm(ref_counts)
+  rm(geno_df)
+  rm(vcf_df)
+  rm(alleles_df)
+  #Clean memory
+  gc()
 
   message("Complete!")
 }

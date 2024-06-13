@@ -84,20 +84,10 @@ devtools::install_github("alex-sandercock/BIGr")
 ```
 
 ```{r}
-library(readr)
-test_geno <- read_csv("~/Library/CloudStorage/Box-Box/AS_Projects/Pipelines/test_files/example_500samples_500markers_4ploidy_geno.csv")
-test_geno <- as.data.frame(test_geno)
-row.names(test_geno) <- test_geno[[1]]
-test_geno <- test_geno[,2:length(colnames(test_geno))]
+#library(BIGr)
 
+dosage2vcf(dart.report = "/Users/ams866/Library/CloudStorage/Box-Box/AS_Projects/Strawberry/Report_DSt21-8501/DSt23-8501_Allele_Dose_Report.csv",
+           dart.counts = "/Users/ams866/Library/CloudStorage/Box-Box/AS_Projects/Strawberry/Report_DSt21-8501/Report_DSt23-8501_Counts.csv",
+           ploidy=2,
+           output.file = "Test")
 ```
-
-
-
-```{r}
-getwd()
-library(BIGr)
-k <- check_ped(ped.file = "/Users/ams866/Downloads/hop_helium.txt")
-k$dependencies
-```
-

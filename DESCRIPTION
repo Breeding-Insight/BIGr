@@ -7,7 +7,7 @@ Authors@R:
 	  person(given = "Josue",
 		 family = "Chinchilla Vargas",
 		 role = "aut"))
-Description: This package contains the functions developed to analyze polyploid and diploid species within Breeding Insight.
+Description: This package contains the functions developed within Breeding Insight to analyze diploid and polyploid breeding and genetic data.
 License: `use_apache_license()`
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

@@ -10,8 +10,6 @@ devtools::install_github("Breeding-Insight/BIGr")
 library("BIGr")
 ```
 
-### Vignettes
-
 ## Contributors
 Alex Sandercock
 

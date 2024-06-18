@@ -19,12 +19,16 @@
 #' @import doParallel
 #' @import dplyr
 #' @importFrom Rdpack reprompt
+#' @importFrom stats lm qt sd
+#' @importFrom utils write.table
 #' @references
 #' Sandercock, A. M., Westbrook, J. W., Zhang, Q., & Holliday, J. A. (2024). The road to restoration: Identifying and conserving the adaptive legacy of American chestnut. PNAS (in press).
 #' @export
-capture_diversity.Gmat <- function(df, ploidy, r2_threshold=0.9, iterations = 10, sample_list = NULL, parallel=FALSE, batch=1, save.result=TRUE) {
+capture_diversity.Gmat <- function(df, ploidy, r2_threshold=0.9, iterations = 10, sample_list = NULL, parallel=FALSE, save.result=TRUE) {
 ##Need to make sure these two packages are loaded with BIGr (vcfR and dplyr,"foreach","doParallel"
 
+  #Add batch
+  batch=1
 
   # This  will subset it based on the user-supplied list
   if (!is.null(sample_list)) {
@@ -46,7 +50,7 @@ capture_diversity.Gmat <- function(df, ploidy, r2_threshold=0.9, iterations = 10
       df_merged <- cbind(df_merged, sampled)
       af_df <- calculate_MAF(df_merged, ploidy)
       af_values <- af_df$AF
-      lm_model <- lm(target_values ~ af_values)
+      lm_model <- stats::lm(target_values ~ af_values)
       r2 <- summary(lm_model)$r.squared
 
       if (r2 >= r2_threshold) {
@@ -63,8 +67,8 @@ capture_diversity.Gmat <- function(df, ploidy, r2_threshold=0.9, iterations = 10
     # Convert sampling rounds to number of individuals
     sampling_round_list <- lapply(sampling_round_list, function(x) x * as.numeric(batch))
     mean_ind <- mean(unlist(sampling_round_list))
-    stand_dev <- sd(unlist(sampling_round_list))
-    CI <- qt(0.975, df = length(sampling_round_list) - 1) * (stand_dev / sqrt(length(sampling_round_list)))
+    stand_dev <- stats::sd(unlist(sampling_round_list))
+    CI <- stats::qt(0.975, df = length(sampling_round_list) - 1) * (stand_dev / sqrt(length(sampling_round_list)))
     CI_lower <- mean_ind - CI
     CI_upper <- mean_ind + CI
     #Add results to dataframe
@@ -89,27 +93,27 @@ capture_diversity.Gmat <- function(df, ploidy, r2_threshold=0.9, iterations = 10
     ###Parallel script
     # Detect the number of available cores and subtract 1
     #Need to make sure num_cores is 1 if that is all that is available..
-    num_cores <- detectCores() - 1
+    num_cores <- parallel::detectCores() - 1
     if (num_cores == 0) {
       num_cores = 1
     }
 
     # Set up parallel backend
-    cl <- makeCluster(num_cores)
+    cl <- parallel::makeCluster(num_cores)
     registerDoParallel(cl)
     # Perform boostrap sampling over user input or default iterations
     sample_round_list <- foreach(i = 1:iterations, .combine = c) %dopar% {
       bootstrap_batch_sample_regression(df, batch, target_AF_values, r2_threshold)
     }
     # Stop the parallel backend
-    stopCluster(cl)
+    parallel::stopCluster(cl)
   }
 
   final_df <- calculate_statistics(sample_round_list, batch)
 
   #Save results to a .txt file
   if (save.result){
-    write.table(final_df, file= "capture_diversity_output.txt", row.names=FALSE)
+    utils::write.table(final_df, file= "capture_diversity_output.txt", row.names=FALSE)
   }else{
     cat("Number of individuals to sample =", final_df$Individuals, "\n95% Confidence Intervals =", final_df$CI_Lower, "-", final_df$CI_Upper, "\nIterations performed =", final_df$Iterations, "\n")
   }

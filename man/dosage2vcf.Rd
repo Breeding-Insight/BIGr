@@ -30,7 +30,8 @@ The VCF format is v4.3
 \examples{
 ## Use file paths for each file on the local system
 
-#The files are directly from DArT for a given sequencing project. The are labeled with Dosage_Report or Counts in the file names.
+#The files are directly from DArT for a given sequencing project.
+#The are labeled with Dosage_Report or Counts in the file names.
 
 #dosage2vcf(dart.report = "example_dart_Dosage_Report.csv",
  #          dart.counts = "example_dart_Counts.csv",

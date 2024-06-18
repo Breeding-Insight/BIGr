@@ -4,12 +4,12 @@
 \alias{dosage_ratios}
 \title{Calculate the Percentage of Each Dosage Value}
 \usage{
-dosage_ratios(matrix_data, ploidy)
+dosage_ratios(data, ploidy)
 }
 \arguments{
-\item{ploidy}{The ploidy of the species being analyzed}
+\item{data}{Genotype matrix or data.frame}
 
-\item{df}{Genotype matrix or data.frame}
+\item{ploidy}{The ploidy of the species being analyzed}
 }
 \value{
 A data.frame with percentages of dosage values in the genotype matrix

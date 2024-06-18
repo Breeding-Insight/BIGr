@@ -11,7 +11,6 @@ capture_diversity.Gmat(
   iterations = 10,
   sample_list = NULL,
   parallel = FALSE,
-  batch = 1,
   save.result = TRUE
 )
 }

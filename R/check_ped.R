@@ -27,12 +27,14 @@
 #' #messy_parent_ids <- ped_errors$messy_parents$id
 #' #print(messy_parent_ids)
 #' @import dplyr
+#' @importFrom stats setNames
+#' @importFrom utils read.table
 #' @export
 #### Function to check for hierarchical errors missing parents and repeated ids ####
 check_ped <- function(ped.file) {
   set.seed(101919)
   #### read in data ####
-  data = read.table(ped.file, header = T)
+  data = utils::read.table(ped.file, header = T)
   data <- data %>%
     mutate(
       id = as.character(id),
@@ -97,8 +99,8 @@ check_ped <- function(ped.file) {
       return(cycles)
     }
     # Initialize visited and recursion stack
-    visited <- setNames(rep(FALSE, length(adj_list)), names(adj_list))
-    rec_stack <- setNames(rep(FALSE, length(adj_list)), names(adj_list))
+    visited <- stats::setNames(rep(FALSE, length(adj_list)), names(adj_list))
+    rec_stack <- stats::setNames(rep(FALSE, length(adj_list)), names(adj_list))
     all_cycles <- list()
     # Check for cycles in the graph and return the nodes involved
     for (node in names(adj_list)) {

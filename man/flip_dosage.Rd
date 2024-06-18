@@ -4,12 +4,14 @@
 \alias{flip_dosage}
 \title{Switch Dosage Values from a Genotype Matrix}
 \usage{
-flip_dosage(df, ploidy, is_reference = TRUE)
+flip_dosage(df, ploidy, is.reference = TRUE)
 }
 \arguments{
 \item{df}{Genotype matrix or data.frame}
 
 \item{ploidy}{The ploidy of the species being analyzed}
+
+\item{is.reference}{The dosage calls value is based on the count of reference alleles (TRUE/FALSE)}
 }
 \value{
 A genotype matrix

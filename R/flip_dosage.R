@@ -7,10 +7,11 @@
 #'
 #' @param df Genotype matrix or data.frame
 #' @param ploidy The ploidy of the species being analyzed
+#' @param is.reference The dosage calls value is based on the count of reference alleles (TRUE/FALSE)
 #' @return A genotype matrix
 #' @export
-flip_dosage <- function(df, ploidy, is_reference = TRUE) {
-  if (is_reference) {
+flip_dosage <- function(df, ploidy, is.reference = TRUE) {
+  if (is.reference) {
     # Convert from reference to alternate alleles
     return(abs(df - ploidy))
   } else {

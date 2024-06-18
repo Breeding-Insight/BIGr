@@ -21,10 +21,10 @@
 #'
 #' #The files are directly from DArT for a given sequencing project. The are labeled with Dosage_Report or Counts in the file names.
 #'
-#' dosage2vcf(dart.report = "example_dart_Dosage_Report.csv",
-#'            dart.counts = "example_dart_Counts.csv",
-#'            ploidy = 2,
-#'            output.file = "name_for_vcf")
+#' #dosage2vcf(dart.report = "example_dart_Dosage_Report.csv",
+#'  #          dart.counts = "example_dart_Counts.csv",
+#'  #          ploidy = 2,
+#'  #          output.file = "name_for_vcf")
 #'
 #' ##The function will output the converted VCF using information from the DArT files
 #'

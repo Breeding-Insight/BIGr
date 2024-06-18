@@ -32,12 +32,12 @@ Note: This function does not change the input file but prints any errors found i
 }
 \examples{
 ##Get list with a dataframe for each error type
-ped_errors <- check_ped(ped.file = "example_ped.txt")
+#ped_errors <- check_ped(ped.file = "example_ped.txt")
 
 ##Access the "messy parents" dataframe result
-ped_errors$messy_parents
+#ped_errors$messy_parents
 
 ##Get list of sample IDs with messy parents error
-messy_parent_ids <- ped_errors$messy_parents$id
-print(messy_parent_ids)
+#messy_parent_ids <- ped_errors$messy_parents$id
+#print(messy_parent_ids)
 }

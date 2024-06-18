@@ -1,14 +1,10 @@
 Package: BIGr
 Title: (B)reeding (I)nsight (G)enomics Functions for Polypoid and Diploid Species
 Version: 0.2.0
-Authors@R: 
-	c(person("Alexander", "Sandercock", , "ams866@cornell.edu", role = c("aut", "cre"),
-           comment = c(ORCID = "https://orcid.org/0000-0001-6897-1856")),
-	  person(given = "Josue",
-		 family = "Chinchilla Vargas",
-		 role = "aut"))
+Author: Alexander M. Sandercock, Josue Chinchilla Vargas, Meng Lin, Manoj Sapkota, Shufen Chen, Dongyan Zhao, and Breeding Insight Team
+Maintainer: Alexander M. Sandercock <ams866@cornell.edu>
 Description: This package contains the functions developed within Breeding Insight to analyze diploid and polyploid breeding and genetic data.
-License: `use_apache_license()`
+License: Apache License 2.0
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.1

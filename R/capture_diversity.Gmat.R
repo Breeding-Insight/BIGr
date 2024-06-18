@@ -20,7 +20,7 @@
 #' @import dplyr
 #' @importFrom Rdpack reprompt
 #' @references
-#' Sandercock, A. M., Westbrook, J. W., Zhang, Q., & Holliday, J. A. (2023). The road to restoration: Identifying and conserving the adaptive legacy of American chestnut. bioRxiv, 2023-05.
+#' Sandercock, A. M., Westbrook, J. W., Zhang, Q., & Holliday, J. A. (2024). The road to restoration: Identifying and conserving the adaptive legacy of American chestnut. PNAS (in press).
 #' @export
 capture_diversity.Gmat <- function(df, ploidy, r2_threshold=0.9, iterations = 10, sample_list = NULL, parallel=FALSE, batch=1, save.result=TRUE) {
 ##Need to make sure these two packages are loaded with BIGr (vcfR and dplyr,"foreach","doParallel"

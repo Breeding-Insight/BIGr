@@ -1,0 +1,23 @@
+bibentry(
+  bibtype  = "Manual",
+  title    = "BIGr: Breeding Insight Genomics functions for polyploid and diploid species",
+  author   = c(
+              person(c("Alexander", "M."), "Sandercock",
+                    role = c("aut","cre"),
+                    email = "ams866@cornell.edu"),
+              person("Josue", "Chinchilla Vargas",
+                    role = "aut"),
+              person("Meng", "Lin",
+                    role = "aut"),
+              person("Manoj", "Sapkota",
+                    role = "aut"),
+              person("Shufen", "Chen",
+                    role = "aut"),
+              person("Dongyan", "Zhao",
+                    role = "aut"),
+              person("Breeding Insight Team",
+                    role = "aut")),
+  year     = "2024",
+  note     = "R package version 0.2.0",
+  url      = "https://github.com/Breeding-Insight/BIGr"
+)

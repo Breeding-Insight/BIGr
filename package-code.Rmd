@@ -47,6 +47,10 @@ setwd("/Users/ams866/Library/CloudStorage/Box-Box/AS_Projects/Pipelines/R_packge
 #Each time you add new documentation to your R function, you need to run devtools::document() again to re-generate the .Rd files.
 devtools::document()
 ```
+```{r}
+#Making the citation file
+usethis::use_citation()
+```
 
 
 ```{r}
@@ -91,3 +95,10 @@ dosage2vcf(dart.report = "/Users/ams866/Library/CloudStorage/Box-Box/AS_Projects
            ploidy=2,
            output.file = "Test")
 ```
+```{r}
+install.packages("devtools") #If not already installed
+library(devtools)
+devtools::install_github("Breeding-Insight/BIGr")
+library("BIGr")
+```
+

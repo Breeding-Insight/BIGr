@@ -1,6 +1,6 @@
 Package: BIGr
 Title: (B)reeding (I)nsight (G)enomics Functions for Polypoid and Diploid Species
-Version: 0.2.0
+Version: 0.3.0
 Author: Alexander M. Sandercock, Josue Chinchilla Vargas, Shufen Chen, Manoj Sapkota, Meng Lin, Dongyan Zhao, and Breeding Insight Team
 Maintainer: Alexander M. Sandercock <ams866@cornell.edu>
 Description: This package contains the functions developed within Breeding Insight to analyze diploid and polyploid breeding and genetic data.
@@ -16,5 +16,6 @@ Imports:
     Rdpack (>= 0.7),
     readr (>= 2.1.5),
     reshape2 (>= 1.4.4),
-    tidyr (>= 1.3.1)
+    tidyr (>= 1.3.1),
+    vcfR (>= 1.15.0)
 RdMacros: Rdpack

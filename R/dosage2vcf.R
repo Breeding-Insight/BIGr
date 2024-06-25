@@ -52,7 +52,7 @@ dosage2vcf <- function(dart.report, dart.counts, ploidy, output.file) {
     '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype, where 1 is the count of alternate alleles">',
     '##FORMAT=<ID=UD,Number=1,Type=Integer,Description="Dosage count of reference alleles from updog, where 0 = homozygous reference">',
     '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read depth">',
-    '##FORMAT=<ID=RA,Number=1,Type=String,Description="Reference allele read depth">',
+    '##FORMAT=<ID=RA,Number=1,Type=Integer,Description="Reference allele read depth">',
     '##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">',
     '##FORMAT=<ID=MPP,Number=1,Type=Float,Description="Maximum posterior probability for that dosage call from updog">'
   )

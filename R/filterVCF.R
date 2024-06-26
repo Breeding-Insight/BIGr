@@ -94,7 +94,7 @@ filterVCF <- function(vcf.file,
     mpp <- extract.gt(vcf, element = "MPP", as.numeric = TRUE)
     # Identify cells to modify based on the DP threshold
     threshold <- as.numeric(filter.MPP) #Need to make a variable for user to enter
-    to_modify <- mpp > threshold
+    to_modify <- mpp < threshold
     # Replace cells in the vcf@gt matrix with NA format string where to_modify is TRUE
     vcf@gt[, -1][to_modify] <- na_format
     #remove extra matrices

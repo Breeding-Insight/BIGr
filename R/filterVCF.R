@@ -53,6 +53,9 @@ filterVCF <- function(vcf.file,
   # Import VCF (can be .vcf or .vcf.gz)
   if (class(vcf.file) != "vcfR"){
     vcf <- read.vcfR(vcf.file)
+  } else {
+    vcf <- vcf.file
+    rm(vcf.file)
   }
 
   #Getting starting number of SNPs and Samples

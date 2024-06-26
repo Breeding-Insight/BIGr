@@ -261,12 +261,10 @@ filterVCF <- function(vcf.file,
   ### Export the modified VCF file (this exports as a .vcf.gz, so make sure to have the name end in .vcf.gz)
   cat("Exporting VCF\n")
   if (!class(vcf.file) == "vcfR"){
-    base_name <- basename(vcf.file)
-    output_name <- paste0("filtered_",base_name,".vcf.gz")
+    output_name <- paste0(vcf.file,"_filtered.vcf.gz")
     vcfR::write.vcf(vcf, file = output_name)
   }else{
-    base_name <- output.file
-    output_name <- paste0("filtered_",base_name,".vcf.gz")
+    output_name <- paste0(output.file,"_filtered.vcf.gz")
     vcfR::write.vcf(vcf, file = output_name)
   }
 

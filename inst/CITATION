@@ -5,7 +5,7 @@ bibentry(
               person(c("Alexander", "M."), "Sandercock",
                     role = c("aut","cre"),
                     email = "ams866@cornell.edu"),
-              person("Josue", "Chinchilla Vargas",
+              person("Josue", "Chinchilla-Vargas",
                     role = "aut"),
               person("Shufen", "Chen",
                     role = "aut"),

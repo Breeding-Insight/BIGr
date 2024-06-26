@@ -55,7 +55,7 @@ filterVCF <- function(vcf.file,
     vcf <- read.vcfR(vcf.file)
   } else {
     vcf <- vcf.file
-    rm(vcf.file)
+    #rm(vcf.file)
   }
 
   #Getting starting number of SNPs and Samples

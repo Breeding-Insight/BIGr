@@ -16,7 +16,7 @@ filterVCF(
   filter.SAMPLE.miss = NULL,
   filter.SNP.miss = NULL,
   ploidy,
-  output.file
+  output.file = NULL
 )
 }
 \arguments{
@@ -42,7 +42,7 @@ filterVCF(
 
 \item{ploidy}{The ploidy of the species being analyzed}
 
-\item{output.file}{output file name}
+\item{output.file}{output file name (optional). If no output.file name provided, then a vcfR object will be returned.}
 }
 \value{
 A gzipped vcf file

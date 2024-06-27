@@ -17,7 +17,7 @@
 #' @param filter.SAMPLE.miss Sample missing data filter
 #' @param filter.SNP.miss SNP missing data filter
 #' @param ploidy The ploidy of the species being analyzed
-#' @param output.file output file name
+#' @param output.file output file name (optional). If no output.file name provided, then a vcfR object will be returned.
 #' @return A gzipped vcf file
 #' @importFrom vcfR read.vcfR
 #' @importFrom vcfR write.vcf
@@ -46,7 +46,7 @@ filterVCF <- function(vcf.file,
                        filter.SAMPLE.miss = NULL,
                        filter.SNP.miss = NULL,
                        ploidy,
-                       output.file) {
+                       output.file = NULL) {
 
   #Should allow for any INFO field to be entered to be filtered
 
@@ -103,8 +103,17 @@ filterVCF <- function(vcf.file,
   }
 
   ## Filter based on INFO column (example: DP > 10)
-  #Get INFO column
-  info <- vcf@fix[, "INFO"]
+
+  # Get INFO column
+  info <- vcf@fix[, "INFO"] #Need to get after each filter..
+
+  # Function to extract a specific INFO field value
+  extract_info_value <- function(info, field) {
+    pattern <- paste0(".*", field, "=([0-9.]+).*")
+    values <- as.numeric(sub(pattern, "\\1", info))
+    return(values)
+  }
+
   # Function to extract INFO IDs from a single INFO string
   extract_info_ids <- function(info_string) {
     # Split the INFO string by ';'
@@ -117,37 +126,50 @@ filterVCF <- function(vcf.file,
   # Apply the function to the first INFO string
   info_ids <- extract_info_ids(info[1])
 
-  ##Filter by the INFO fields if present (maybe make small internal function)
-  #DP
-  #if ("DP" %in% info_ids) {
-  #  dp_values <- as.numeric(sub(".*DP=([0-9]+);.*", "\\1", info))
-  #  vcf <- vcf[dp_values > 1000, ]
-  #}
-
-  #OD
+  # Filtering by OD
   if ("OD" %in% info_ids && !is.null(filter.OD)) {
+    info <- vcf@fix[, "INFO"] #Need to get after each filter..
     cat("Filtering by OD\n")
-    od_values <- as.numeric(sub(".*OD=([0-9]+);.*", "\\1", info))
-    vcf <- vcf[od_values < as.numeric(filter.OD), ]
-    snps_removed <- starting_snps - nrow(vcf)
+    od_values <- extract_info_value(info, "OD")
+    # Ensure no NA values before filtering
+    if (!all(is.na(od_values))) {
+      vcf <- vcf[od_values < as.numeric(filter.OD), ]
+    } else {
+      cat("No valid OD values found.\n")
+    }
   }
 
-  #BIAS (need to add user variables)
+  info <- vcf@fix[, "INFO"] #Need to get after each filter..
+
+  # Filtering by BIAS
   if ("BIAS" %in% info_ids && !is.null(filter.BIAS.min) && !is.null(filter.BIAS.max)) {
+    info <- vcf@fix[, "INFO"] #Need to get after each filter..
     cat("Filtering by BIAS\n")
-    bias_values <- as.numeric(sub(".*BIAS=([0-9]+);.*", "\\1", info))
-    vcf <- vcf[bias_values > as.numeric(filter.BIAS.min) & bias_values < as.numeric(filter.BIAS.max), ]
+    bias_values <- extract_info_value(info, "BIAS")
+    # Ensure no NA values before filtering
+    if (!all(is.na(bias_values))) {
+      vcf <- vcf[bias_values > as.numeric(filter.BIAS.min) & bias_values < as.numeric(filter.BIAS.max), ]
+    } else {
+      cat("No valid BIAS values found.\n")
+    }
   }
 
-  #PMC (need to add user variables)
+  # Filtering by PMC
   if ("PMC" %in% info_ids && !is.null(filter.PMC)) {
+    info <- vcf@fix[, "INFO"] #Need to get after each filter..
     cat("Filtering by PMC\n")
-    pmc_values <- as.numeric(sub(".*PMC=([0-9]+);.*", "\\1", info))
-    vcf <- vcf[pmc_values < as.numeric(filter.PMC), ]
+    pmc_values <- extract_info_value(info, "PMC")
+    # Ensure no NA values before filtering
+    if (!all(is.na(pmc_values))) {
+      vcf <- vcf[pmc_values < as.numeric(filter.PMC), ]
+    } else {
+      cat("No valid PMC values found.\n")
+    }
   }
 
   # Example: Filter based on missing data for samples and SNPs
   if (!is.null(filter.SAMPLE.miss) || !is.null(filter.SNP.miss)){
+    info <- vcf@fix[, "INFO"] #Need to get after each filter..
     gt_matrix <- extract.gt(vcf, element = "GT", as.numeric = FALSE)#as.matrix(vcfR2genlight(vcf))
 
     if (!is.null(filter.SNP.miss)) {
@@ -261,11 +283,19 @@ filterVCF <- function(vcf.file,
   ### Export the modified VCF file (this exports as a .vcf.gz, so make sure to have the name end in .vcf.gz)
   cat("Exporting VCF\n")
   if (!class(vcf.file) == "vcfR"){
-    output_name <- paste0(vcf.file,"_filtered.vcf.gz")
-    vcfR::write.vcf(vcf, file = output_name)
+    if (!is.null(output.file)){
+      output_name <- paste0(vcf.file,"_filtered.vcf.gz")
+      vcfR::write.vcf(vcf, file = output_name)
+    }else{
+      return(vcf)
+    }
   }else{
-    output_name <- paste0(output.file,"_filtered.vcf.gz")
-    vcfR::write.vcf(vcf, file = output_name)
+    if (!is.null(output.file)){
+      output_name <- paste0(output.file,"_filtered.vcf.gz")
+      vcfR::write.vcf(vcf, file = output_name)
+    }else{
+      return(vcf)
+    }
   }
 
   #Message that includes the output vcf stats

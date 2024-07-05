@@ -284,7 +284,7 @@ filterVCF <- function(vcf.file,
   cat("Exporting VCF\n")
   if (!class(vcf.file) == "vcfR"){
     if (!is.null(output.file)){
-      output_name <- paste0(vcf.file,"_filtered.vcf.gz")
+      output_name <- paste0(output.file,".vcf.gz")
       vcfR::write.vcf(vcf, file = output_name)
     }else{
       return(vcf)

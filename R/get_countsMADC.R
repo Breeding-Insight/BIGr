@@ -12,7 +12,7 @@ get_countsMADC <- function(madc_file) {
   # This function takes the MADC file as input and generates a Ref and Alt counts dataframe as output
 
   # Read the madc file
-  madc_df <- read.csv(madc_file, sep = ',', skip = 7)
+  madc_df <- read.csv(madc_file, sep = ',', skip = 7, check.names = FALSE)
 
   # Retain only the Ref and Alt haplotypes
   filtered_df <- madc_df[grep("\\|Ref$|\\|Alt$", madc_df$AlleleID), ]

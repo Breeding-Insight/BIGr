@@ -7,8 +7,9 @@
 #' used to filter low quality and low confident dosage calls.
 #'
 #' @param multidog.object updog output object with class "multidog" from dosage calling
-#' @param ploidy The ploidy of the species being analyzed
 #' @param output.file output file name and path
+#' @param updog_version character defining updog package version used to generate the multidog object
+#' @param compress logical. If TRUE returns a vcf.gz file
 #' @return A vcf file
 #' @import dplyr
 #' @import tidyr
@@ -16,12 +17,23 @@
 #' @references
 #' Updog R package
 #' @export
-updog2vcf <- function(multidog.object, ploidy, output.file) {
+updog2vcf <- function(multidog.object, output.file, updog_version = NULL, compress = TRUE) {
   #Making the VCF (This is highly dependent on snps being in a format where the SNP IDs are the CHR_POS)
 
   mout <- multidog.object
-  ploidy <- as.numeric(ploidy)
-  output.file <- paste0(output.file,".vcf") #Make sure it ends with the vcf file extension
+  ploidy <- as.numeric(unique(multidog.object$snpdf$ploidy))
+  if(!grepl(".vcf", output.file)) output.file <- paste0(output.file,".vcf") #Make sure it ends with the vcf file extension
+  model_selected <- unique(multidog.object$snpdf$model)
+
+  updog_meta <- paste0('##UpdogCommandLine.multidog=<ID=Multidog,Version="',
+                       updog_version, '",CommandLine="> multidog(refmat = matrices$ref_matrix, sizemat = matrices$size_matrix, ploidy = ',ploidy,
+                       ', model = "',model_select,'")>')
+
+  bigr_meta <- paste0('##BIGrCommandLine.updog2vcf=<ID=updog2vcf,Version"',
+                      packageVersion("BIGr"), '",Data="',
+                      Sys.time(),'", CommandLine="> updog2vcf(',deparse(substitute(multidog.object)),',',
+                      deparse(substitute(output.file)), ',',
+                      deparse(substitute(updog_version)),')>')
 
   #Make a header separate from the dataframe
   vcf_header <- c(
@@ -38,7 +50,9 @@ updog2vcf <- function(multidog.object, ploidy, output.file) {
     '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read depth">',
     '##FORMAT=<ID=RA,Number=1,Type=Integer,Description="Reference allele read depth">',
     '##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">',
-    '##FORMAT=<ID=MPP,Number=1,Type=Float,Description="Maximum posterior probability for that dosage call from updog">'
+    '##FORMAT=<ID=MPP,Number=1,Type=Float,Description="Maximum posterior probability for that dosage call from updog">',
+    updog_meta,
+    bigr_meta
   )
 
   #Get the total depth and total ref and total alt depths for each SNP across all samples for the VCF
@@ -124,12 +138,22 @@ updog2vcf <- function(multidog.object, ploidy, output.file) {
   # Add # to the CHROM column name
   colnames(vcf_df)[1] <- "#CHROM"
 
-  # Write the header to the file
-  writeLines(vcf_header, con = output.file)
+  if(!compress){
+    # Write the header to the file
+    writeLines(vcf_header, con = output.file)
 
-  # Append the dataframe to the file in tab-separated format
-  suppressWarnings(
-    write.table(vcf_df, file = output.file, sep = "\t", quote = FALSE, row.names = FALSE, col.names = TRUE, append = TRUE)
-  )
+    # Append the dataframe to the file in tab-separated format
+    suppressWarnings(
+      write.table(vcf_df, file = output.file, sep = "\t", quote = FALSE, row.names = FALSE, col.names = TRUE, append = TRUE)
+    )
+  } else {
 
+    gz <- gzfile(paste0(output.file, ".gz"), "w")
+    write(vcf_header, gz)
+    header <- colnames(vcf_df)
+    header <- paste(header, collapse="\t")
+    write(header, gz)
+    close(gz)
+    vcfR:::.write_vcf_body(fix = as.matrix(vcf_df[,1:8]), gt = as.matrix(vcf_df[,9:ncol(vcf_df)]), filename = paste0(output.file, ".gz"))
+  }
 }

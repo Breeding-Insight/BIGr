@@ -27,7 +27,7 @@ updog2vcf <- function(multidog.object, output.file, updog_version = NULL, compre
 
   updog_meta <- paste0('##UpdogCommandLine.multidog=<ID=Multidog,Version="',
                        updog_version, '",CommandLine="> multidog(refmat = matrices$ref_matrix, sizemat = matrices$size_matrix, ploidy = ',ploidy,
-                       ', model = "',model_select,'")>')
+                       ', model = "',model_selected,'")>')
 
   bigr_meta <- paste0('##BIGrCommandLine.updog2vcf=<ID=updog2vcf,Version"',
                       packageVersion("BIGr"), '",Data="',

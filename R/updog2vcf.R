@@ -27,13 +27,13 @@ updog2vcf <- function(multidog.object, output.file, updog_version = NULL, compre
 
   updog_meta <- paste0('##UpdogCommandLine.multidog=<ID=Multidog,Version="',
                        updog_version, '",CommandLine="> multidog(refmat = matrices$ref_matrix, sizemat = matrices$size_matrix, ploidy = ',ploidy,
-                       ', model = "',model_selected,'")>')
+                       ', model = ',model_selected,')">')
 
-  bigr_meta <- paste0('##BIGrCommandLine.updog2vcf=<ID=updog2vcf,Version"',
+  bigr_meta <- paste0('##BIGrCommandLine.updog2vcf=<ID=updog2vcf,Version="',
                       packageVersion("BIGr"), '",Data="',
                       Sys.time(),'", CommandLine="> updog2vcf(',deparse(substitute(multidog.object)),',',
-                      deparse(substitute(output.file)), ',',
-                      deparse(substitute(updog_version)),')>')
+                      output.file, ',',
+                      updog_version,')">')
 
   #Make a header separate from the dataframe
   vcf_header <- c(

@@ -24,16 +24,30 @@ get_countsMADC <- function(madc_file) {
   alt_df <- subset(filtered_df, grepl("Alt$", AlleleID))
 
   #Ensure that each has the same SNPs and that they are in the same order
-  identical(alt_df$CloneID,ref_df$CloneID)
+  same <- identical(alt_df$CloneID,ref_df$CloneID)
 
   ###Convert the ref and alt counts into matrices with the CloneID as the index
   #Set SNP names as index
   row.names(ref_df) <- ref_df$CloneID
   row.names(alt_df) <- alt_df$CloneID
 
+  #Retain only the rows in common if they are not identical and provide warning
+  if (same == FALSE) {
+    warning("Mismatch between Ref and Alt Markers. MADC likely altered. Markers without a Ref or Alt match removed.")
+    # Find the common CloneIDs between the two dataframes
+    common_ids <- intersect(rownames(ref_df), rownames(alt_df))
+    # Subset both dataframes to retain only the common rows
+    ref_df <- ref_df[common_ids, ]
+    alt_df <- alt_df[common_ids, ]
+  }
+
   #Remove unwanted columns and convert to matrix
   ref_matrix <- as.matrix(ref_df[, -c(1:16)])
   alt_matrix <- as.matrix(alt_df[, -c(1:16)])
+
+  #Convert elements to numeric
+  class(ref_matrix) <- "numeric"
+  class(alt_matrix) <- "numeric"
 
   #Make the size matrix by combining the two matrices
   size_matrix <- (ref_matrix + alt_matrix)

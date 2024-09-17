@@ -19,7 +19,7 @@ dosage_ratios <- function(data, ploidy) {
   # Calculate percentages for genotype matrices
   percentages_df <- as.data.frame(t(percentages))
   percentages_df$Data <- "Dosages"
-  melted_data <- percentages1_df %>%
+  melted_data <- percentages_df %>%
     pivot_longer(cols = -(Data),names_to = "Dosage", values_to = "Percentage")
 
   return(melted_data)

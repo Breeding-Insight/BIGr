@@ -87,7 +87,7 @@ updog2vcf <- function(multidog.object, output.file, updog_version = NULL, compre
     inddf$ref <- as.numeric(inddf$ref)
     inddf$size <- as.numeric(inddf$size)
   } else {
-    inddf <- mout$inddf[,c(1,7,2,3,4)]
+    inddf <- mout$inddf[,c(1,7,2,3,4,5)]
   }
 
   #Get the total depth and total ref and total alt depths for each SNP across all samples for the VCF

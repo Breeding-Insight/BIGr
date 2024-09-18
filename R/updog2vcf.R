@@ -55,8 +55,43 @@ updog2vcf <- function(multidog.object, output.file, updog_version = NULL, compre
     bigr_meta
   )
 
+  # Include parents information if f1 or s1 models are selected
+  if(any(model_selected %in% c("f1", "f1pp", "s1", "s1pp"))){
+    mout$snpdf$maxpostprob <- apply(mout$snpdf[,grep("Pr_", colnames(mout$snpdf))], 1, max)
+    if(model_selected == "f1" | model_selected == "f1pp"){
+      sele_col <- c("snp", "p1ref", "p1size", "p2ref", "p2size", "p1geno", "p2geno", "maxpostprob")
+      parents <- pivot_longer(mout$snpdf[,sele_col], cols = c("p1geno", "p2geno"), names_to = "ind", values_to = "geno")
+
+      parents.depth <- apply(parents, 1, function(x) {
+        if(grepl("p1", x[7]))
+          return(data.frame(ref = x[2], size = x[3]))
+        else if(grepl("p2", x[7]))
+          return(data.frame(ref = x[4], size = x[5]))
+        else return(data.frame(ref = NA, size = NA))
+      })
+      parents.depth <- do.call(rbind,parents.depth)
+      parents <- cbind(parents[,c(1,6:8)], parents.depth)
+      parents$ind <- gsub("p1geno", "parent1", parents$ind)
+      parents$ind <- gsub("p2geno", "parent2", parents$ind)
+
+
+    } else {
+      sele_col <- c("snp", "maxpostprob", "pgeno", "p1ref", "p1size")
+      parents <- data.frame(mout$snpdf[,sele_col[1:2]], ind = "parent", mout$snpdf[,sele_col[3:5]])
+      colnames(parents)[4:6] <- c("geno", "ref", "size")
+    }
+
+    inddf <- mout$inddf[,c(1,7,2,3,4,5)]
+    inddf <- rbind(parents, inddf)
+
+    inddf$ref <- as.numeric(inddf$ref)
+    inddf$size <- as.numeric(inddf$size)
+  } else {
+    inddf <- mout$inddf[,c(1,7,2,3,4)]
+  }
+
   #Get the total depth and total ref and total alt depths for each SNP across all samples for the VCF
-  depth_df <- mout$inddf %>%
+  depth_df <- inddf %>%
     group_by(snp) %>%
     summarize(
       total_ref = sum(ref),
@@ -114,19 +149,19 @@ updog2vcf <- function(multidog.object, output.file, updog_version = NULL, compre
   }
 
   #creating a temporary df for the converted genotypes
-  geno_df <- mout$inddf[,c("snp","geno")] %>%
+  geno_df <- inddf[,c("snp","geno")] %>%
     mutate(genotype = sapply(geno, convert_dosage_to_genotype, ploidy = as.numeric(ploidy)))
 
   #Format the mout FORMAT info
   format_df <- data.frame(
-    snp = mout$inddf$snp,
-    ind = mout$inddf$ind,
+    snp = inddf$snp,
+    ind = inddf$ind,
     format = paste0(geno_df$genotype,":",
-                    mout$inddf$geno,":",
-                    mout$inddf$size,":",
-                    mout$inddf$ref,":",
-                    mout$inddf$ref,",",(mout$inddf$size-mout$inddf$ref),":",
-                    mout$inddf$maxpostprob)
+                    inddf$geno,":",
+                    inddf$size,":",
+                    inddf$ref,":",
+                    inddf$ref,",",(inddf$size-inddf$ref),":",
+                    inddf$maxpostprob)
   )
   #Make sample the columns
   format_wide <- format_df %>%

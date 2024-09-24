@@ -42,6 +42,7 @@ dosage2vcf <- function(dart.report, dart.counts, ploidy, output.file) {
   #Make a header separate from the dataframe
   vcf_header <- c(
     "##fileformat=VCFv4.3",
+    paste0("##BIGr_Dosage2VCF=",packageVersion("BIGr")),
     "##reference=NA",
     "##contig=<ID=NA,length=NA>",
     '##INFO=<ID=DP,Number=1,Type=Integer,Description="Total Depth">',

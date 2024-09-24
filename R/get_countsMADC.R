@@ -11,17 +11,30 @@
 get_countsMADC <- function(madc_file) {
   # This function takes the MADC file as input and generates a Ref and Alt counts dataframe as output
 
-  # Read the madc file
-  madc_df <- read.csv(madc_file, sep = ',', skip = 7, check.names = FALSE)
+  get_counts <- function(madc_file) {
+    # This function takes the MADC file as input and generates a Ref and Alt counts dataframe as output
+    # Note: This assumes that the first 7 rows are not useful here like in the Strawberry DSt23-8501_MADC file
 
-  # Retain only the Ref and Alt haplotypes
-  filtered_df <- madc_df[grep("\\|Ref$|\\|Alt$", madc_df$AlleleID), ]
+    # Read the madc file
+    madc_df <- read.csv(madc_file, sep = ',', skip = 7, check.names = FALSE)
+
+    # Retain only the Ref and Alt haplotypes
+    filtered_df <- madc_df[!grepl("\\|AltMatch|\\|RefMatch", madc_df$AlleleID), ]
+
+    #Remove extra text after Ref and Alt (_001 or _002)
+    filtered_df$AlleleID <- sub("\\|Ref.*", "|Ref", filtered_df$AlleleID)
+    filtered_df$AlleleID <- sub("\\|Alt.*", "|Alt", filtered_df$AlleleID)
+
+    return(filtered_df)
+  }
+
+  update_df <- get_counts(madc_file)
 
   # Filter rows where 'AlleleID' ends with 'Ref'
-  ref_df <- subset(filtered_df, grepl("Ref$", AlleleID))
+  ref_df <- subset(update_df, grepl("Ref$", AlleleID))
 
   # Filter rows where 'AlleleID' ends with 'Alt'
-  alt_df <- subset(filtered_df, grepl("Alt$", AlleleID))
+  alt_df <- subset(update_df, grepl("Alt$", AlleleID))
 
   #Ensure that each has the same SNPs and that they are in the same order
   same <- identical(alt_df$CloneID,ref_df$CloneID)
@@ -61,6 +74,8 @@ get_countsMADC <- function(madc_file) {
   cat("Ratio of missing data =", ratio_missing_data, "\n")
 
   # Return the ref and alt matrices as a list
-  matrices_list <- list(ref_matrix = ref_matrix, alt_matrix = alt_matrix, size_matrix = size_matrix)
+  matrices_list <- list(ref_matrix = ref_matrix, size_matrix = size_matrix)
+
   return(matrices_list)
+
 }

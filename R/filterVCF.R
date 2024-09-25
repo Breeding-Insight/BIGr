@@ -58,6 +58,27 @@ filterVCF <- function(vcf.file,
     #rm(vcf.file)
   }
 
+  #Update header based on user filtering parameters
+  param_list <- list(
+    filter.OD = filter.OD,
+    filter.BIAS.min = filter.BIAS.min,
+    filter.BIAS.max = filter.BIAS.max,
+    filter.DP = filter.DP,
+    filter.MPP = filter.MPP,
+    filter.PMC = filter.PMC,
+    filter.MAF = filter.MAF,
+    filter.SAMPLE.miss = filter.SAMPLE.miss,
+    filter.SNP.miss = filter.SNP.miss,
+    ploidy = ploidy
+  )
+
+  # Filter out NULL values
+  param_list <- param_list[!sapply(param_list, is.null)]
+
+  #Update header lines and append
+  header_line <- paste0('##BIGr_filterVCFparameters, ', paste(names(param_list), unlist(param_list), sep="=", collapse=", "),"; ",Sys.time())
+  vcf@meta <- c(vcf@meta, paste0('##BIGr_filterVCF=', packageVersion("BIGr")), header_line)
+
   #Getting starting number of SNPs and Samples
   starting_snps <- nrow(vcf)
   starting_samples <- ncol(vcf@gt)-1 #subtract 1 to not include the FORMAT column

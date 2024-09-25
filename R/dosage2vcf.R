@@ -42,6 +42,7 @@ dosage2vcf <- function(dart.report, dart.counts, ploidy, output.file) {
   #Make a header separate from the dataframe
   vcf_header <- c(
     "##fileformat=VCFv4.3",
+    paste0("##BIGr_Dosage2VCF=",packageVersion("BIGr")),
     "##reference=NA",
     "##contig=<ID=NA,length=NA>",
     '##INFO=<ID=DP,Number=1,Type=Integer,Description="Total Depth">',
@@ -69,51 +70,90 @@ dosage2vcf <- function(dart.report, dart.counts, ploidy, output.file) {
 
   counts <- suppressMessages(readr::read_csv(counts_file,
                                       skip = 6,show_col_types = FALSE))
-  colnames(counts)[1:15] <- counts[1,1:15]
-  counts <- counts[-1, ]
-  counts <- as.data.frame(counts)
 
   #Check that the counts file is in the 2 row format
   #if (anyDuplicated(counts$MarkerName) > 0) { #I am going to just check if there are 2x rows in counts as dosage report
-  if (nrow(counts) == nrow(dosage)*2) {
+  if (nrow(counts) >= nrow(dosage)*2) {
     message("Note: Counts file is in the 2 row format for Ref and Alt alleles")
   } else {
     stop("Counts file is in single row format. Only two row format (row for ref and alt allele) is currently supported.")
     return()
   }
 
-  #Get ref counts dataframe
-  ref_counts <- counts[is.na(counts$Variant), ]
-  row.names(ref_counts) <- ref_counts$MarkerName
-  #Get alt counts dataframe
-  alt_counts <- counts[!is.na(counts$Variant), ]
-  row.names(alt_counts) <- alt_counts$MarkerName
+  #Parse counts file depending on if its the collapsed format or not
+  if (all(c("MarkerName", "Variant") %in% counts[1, 1:15])) {
+    message("Counts file contains the counts for the target loci only")
 
-  #unload counts file
-  rm(counts)
+    colnames(counts)[1:15] <- counts[1,1:15]
+    counts <- counts[-1, ]
+    counts <- as.data.frame(counts)
 
-  #Get the Ref and Alt allele from the alt_counts file
-  ##Note sometimes there are multiple nucleotides, I am assuming this file also includes indels, but make sure this is not an error
-  alleles_df <- alt_counts %>%
-    rowwise() %>%  # Apply operations to each row
-    mutate(Variant = gsub("-:", "",Variant),  # Remove "-:" prefix
-           REF = strsplit(Variant, ">")[[1]][1],
-           ALT = strsplit(Variant, ">")[[1]][2]) %>%
-    ungroup() %>%
-    select(MarkerName, REF, ALT)
+    #Get ref counts dataframe
+    ref_counts <- counts[is.na(counts$Variant), ]
+    row.names(ref_counts) <- ref_counts$MarkerName
+    #Get alt counts dataframe
+    alt_counts <- counts[!is.na(counts$Variant), ]
+    row.names(alt_counts) <- alt_counts$MarkerName
 
-  #Add the CHROM and POS information to the alleles_df from the dosage report
-  alleles_df <- merge(alleles_df, dosage[, c("MarkerName","Chrom", "ChromPos")], by = "MarkerName", all.x = TRUE)
-  #Add row name
-  row.names(alleles_df) <- alleles_df$MarkerName
+    #unload counts file
+    rm(counts)
+
+    #Get the Ref and Alt allele from the alt_counts file
+    ##Note sometimes there are multiple nucleotides, I am assuming this file also includes indels, but make sure this is not an error
+    alleles_df <- alt_counts %>%
+      rowwise() %>%  # Apply operations to each row
+      mutate(Variant = gsub("-:", "",Variant),  # Remove "-:" prefix
+             REF = strsplit(Variant, ">")[[1]][1],
+             ALT = strsplit(Variant, ">")[[1]][2]) %>%
+      ungroup() %>%
+      select(MarkerName, REF, ALT)
+
+    #Add the CHROM and POS information to the alleles_df from the dosage report
+    alleles_df <- merge(alleles_df, dosage[, c("MarkerName","Chrom", "ChromPos")], by = "MarkerName", all.x = TRUE)
+    #Add row name
+    row.names(alleles_df) <- alleles_df$MarkerName
+
+  }else{
+    message("Counts file contains the collapsed read counts across all microhaplotypes for the target loci")
+
+    colnames(counts)[1:5] <- counts[1,1:5]
+    counts <- counts[-1, ]
+    counts <- as.data.frame(counts)
+
+    #Get ref counts dataframe
+    ref_counts <- counts[grepl("Ref$", counts$AlleleID), ]
+    row.names(ref_counts) <- ref_counts$CloneID
+    #Get alt counts dataframe
+    alt_counts <- counts[grepl("Alt$", counts$AlleleID), ]
+    row.names(alt_counts) <- alt_counts$CloneID
+
+    #unload counts file
+    rm(counts)
+
+    #Get the Ref and Alt allele from the alt_counts file
+    ##Note sometimes there are multiple nucleotides, I am assuming this file also includes indels, but make sure this is not an error
+    alleles_df <- data.frame(MarkerName = alt_counts$CloneID,
+                             REF = "A",
+                             ALT = "B")
+
+    #Add the CHROM and POS information to the alleles_df from the dosage report
+    alleles_df <- merge(alleles_df, dosage[, c("MarkerName","Chrom", "ChromPos")], by = "MarkerName", all.x = TRUE)
+    #Add row name
+    row.names(alleles_df) <- alleles_df$MarkerName
+
+  }
 
   #Remove the unwanted information from the counts dataframes
   cols_to_remove <- c("MarkerName","AlleleSequence","Variant",
                       "CallRate","OneRatioRef","OneRatioSnp","FreqHomSnp",
                       "FreqHets","PICRef","PICSnp","AvgPIC","FreqHomRef",
-                      "AvgCountRef","AvgCountSnp","RatioAvgCountRefAvgCountSnp")
+                      "AvgCountRef","AvgCountSnp","RatioAvgCountRefAvgCountSnp",
+                      "AlleleID","CloneID")
   alt_counts <- alt_counts[, !(colnames(alt_counts) %in% cols_to_remove)]
   ref_counts <- ref_counts[, !(colnames(ref_counts) %in% cols_to_remove)]
+
+  #Ensure that they are in the same order
+  ref_counts <- ref_counts[row.names(alt_counts),]
 
   #Make the total counts dataframe
   total_counts <- alt_counts + ref_counts

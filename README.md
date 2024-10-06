@@ -14,6 +14,8 @@ library("BIGr")
 ## Contributors
 Alex Sandercock
 
+Christiane Taniguti
+
 Josue Chinchilla-Vargas
 
 Dongyan Zhao

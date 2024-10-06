@@ -1,4 +1,5 @@
-# BIGr
+# BIGr <img src="https://github.com/user-attachments/assets/2168c801-fcee-4999-b04e-f7b01fed9cfa" align="right" width="250"/>
+
 
 This R package contains the functions developed within Breeding Insight to analyze diploid and polyploid breeding and genetic data.
 

@@ -11,6 +11,7 @@ get_OffTargets(
   n.cores = 5,
   rm_multiallelic_SNP = FALSE,
   multiallelic_SNP_dp_thr = 0,
+  multiallelic_SNP_sample_thr = 0,
   out_vcf = NULL,
   verbose = TRUE
 )
@@ -26,7 +27,9 @@ get_OffTargets(
 
 \item{rm_multiallelic_SNP}{logical. If TRUE, SNP with more than one alternative base will be removed. If FALSE, check \code{multiallelic_SNP_dp_thr} specs}
 
-\item{multiallelic_SNP_dp_thr}{numerical. If \code{rm_multiallelic_SNP} is FALSE, set a total depth by tag threshold to eliminate low frequency SNP allele. If the threshold does not eliminate the multiallelic aspect of the marker, the marker is discarded. This is likely to happen to paralogous sites.}
+\item{multiallelic_SNP_dp_thr}{nnumerical. If \code{rm_multiallelic_SNP} is FALSE, set a minimum depth by tag threshold \code{multiallelic_SNP_dp_thr} combined with minimum number of samples \code{multiallelic_SNP_sample_thr} to eliminate low frequency SNP allele. If the threshold does not eliminate the multiallelic aspect of the marker, the marker is discarded. This is likely to happen to paralogous sites.}
+
+\item{multiallelic_SNP_sample_thr}{numerical. If \code{rm_multiallelic_SNP} is FALSE, set a minimum depth by tag threshold combined with minimum number of samples \code{multiallelic_SNP_sample_thr} to eliminate low frequency SNP allele. If the threshold does not eliminate the multiallelic aspect of the marker, the marker is discarded. This is likely to happen to paralogous sites.}
 
 \item{out_vcf}{output VCF file name}
 

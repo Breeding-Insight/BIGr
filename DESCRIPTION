@@ -21,6 +21,6 @@ Imports:
     Biostrings,
     pwalign
 Remotes:
-  bioc::release/Biostrings
+  bioc::release/Biostrings,
   bioc::release/pwalign
 RdMacros: Rdpack

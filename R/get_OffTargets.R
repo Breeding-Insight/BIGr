@@ -41,7 +41,8 @@ get_OffTargets <- function(madc = NULL,
   my_results_csv <- loop_though_dartag_report(report, botloci, hap_seq,
                                               n.cores=n.cores, verbose = verbose)
 
-  vcf_body <- create_VCF_body(csv = my_results_csv, n.cores = n.cores,
+  vcf_body <- create_VCF_body(csv = my_results_csv,
+                              n.cores = n.cores,
                               rm_multiallelic_SNP = rm_multiallelic_SNP,
                               multiallelic_SNP_dp_thr = multiallelic_SNP_dp_thr,
                               multiallelic_SNP_sample_thr = multiallelic_SNP_sample_thr,
@@ -105,7 +106,7 @@ loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, verbo
   }
 
   clust <- makeCluster(n.cores)
-  #clusterExport(clust, c("botloci","compare", "DNAString", "reverseComplement", "pairwiseAlignment", "nucleotideSubstitutionMatrix"))
+  #clusterExport(clust, c("botloci", "compare", "nucleotideSubstitutionMatrix", "pairwiseAlignment", "DNAString", "reverseComplement"))
   compare_results <- parLapply(clust, updated_by_cloneID, function(x) compare(x, botloci))
   stopCluster(clust)
 
@@ -327,14 +328,48 @@ create_VCF_body <- function(csv, rm_multiallelic_SNP = TRUE, multiallelic_SNP_dp
 
   if(verbose) print(paste("SNP removed because presented more than one allele:", sum(rm_mks)))
 
+  for(i in 1:length(vcf_tag_list1)) {
+    if(is.vector(vcf_tag_list1[[i]])) {
+      vcf_tag_list1[[i]] <- c(target = names(vcf_tag_list1)[i],vcf_tag_list1[[i]])
+    } else  vcf_tag_list1[[i]] <- cbind(target = names(vcf_tag_list1)[i],vcf_tag_list1[[i]])
+  }
+
   vcf_body <- do.call("rbind",vcf_tag_list1)
   vcf_body <- as.data.frame(vcf_body)
-  vcf_body$V2 <- as.numeric(vcf_body$V2)
-  vcf_body <- vcf_body[order(vcf_body[,1], vcf_body[,2]),]
+  vcf_body$V3 <- as.numeric(vcf_body$V3)
   rownames(vcf_body) <- NULL
-  colnames(vcf_body) <- c("#CHROM", "POS", "ID", "REF", "ALT","QUAL", "FILTER", "INFO","FORMAT", colnames(csv)[-c(1:7)])
 
-  return(vcf_body)
+  vcf_body$target <- paste0(sapply(strsplit(vcf_body$target, "_"),"[[", 1), "_",as.numeric(sapply(strsplit(vcf_body$target, "_"),"[[", 2)))
+
+  # Dealing with repeated positions
+  # discard the ones that are not the target and keep only the first if all are off-targets
+  if(length(which(duplicated(vcf_body[,3]))) > 0){
+    repeated <- vcf_body[which(duplicated(vcf_body[,3])), 4]
+
+    if(verbose) print(paste("Different primers pair capture same SNP positions in", length(repeated), "locations. The repeated were discarded."))
+
+    repeated_tab <- vcf_body[which(vcf_body[,4] %in% repeated),]
+    vcf_body_new <- vcf_body[-which(vcf_body[,4] %in% repeated),]
+
+    # discard the off-targets that overlap with the target position
+    repeated_tab_stay1 <- repeated_tab[which(repeated_tab$target == repeated_tab$V4),]
+    repeated_tab <- repeated_tab[-which(repeated_tab$V4 %in% repeated_tab_stay1$V4),]
+
+    # Keep only the first appearance of the repeated off-targets
+    repeated_tab <- repeated_tab[order(repeated_tab$target, repeated_tab$V4),]
+    repeated_tab_stay2 <- repeated_tab[-which(duplicated(repeated_tab$V4)),]
+
+    repeated_tab_stay <- rbind(repeated_tab_stay1, repeated_tab_stay2)
+
+    vcf_body_new <- rbind(vcf_body_new, repeated_tab_stay)
+  } else vcf_body_new <- vcf_body
+
+  vcf_body_new <- vcf_body_new[,-1]
+
+  colnames(vcf_body_new) <- c("#CHROM", "POS", "ID", "REF", "ALT","QUAL", "FILTER", "INFO","FORMAT", colnames(csv)[-c(1:7)])
+  vcf_body_new <- vcf_body_new[order(vcf_body_new[,1], vcf_body_new[,2]),]
+
+  return(vcf_body_new)
 }
 
 

@@ -4,14 +4,16 @@
 \alias{updog2vcf}
 \title{Export Updog Results as VCF}
 \usage{
-updog2vcf(multidog.object, ploidy, output.file)
+updog2vcf(multidog.object, output.file, updog_version = NULL, compress = TRUE)
 }
 \arguments{
 \item{multidog.object}{updog output object with class "multidog" from dosage calling}
 
-\item{ploidy}{The ploidy of the species being analyzed}
-
 \item{output.file}{output file name and path}
+
+\item{updog_version}{character defining updog package version used to generate the multidog object}
+
+\item{compress}{logical. If TRUE returns a vcf.gz file}
 }
 \value{
 A vcf file

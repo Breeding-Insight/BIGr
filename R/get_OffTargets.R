@@ -61,13 +61,13 @@ get_OffTargets <- function(madc = NULL,
     bigr_meta
   )
 
-  gz <- gzfile(paste0(out_vcf, ".gz"), "w")
-  write(vcf_header, gz)
-  header <- colnames(vcf_body)
-  header <- paste(header, collapse="\t")
-  write(header, gz)
-  close(gz)
-  vcfR:::.write_vcf_body(fix = as.matrix(vcf_body[,1:8]), gt = as.matrix(vcf_body[,9:ncol(vcf_body)]), filename = paste0(out_vcf, ".gz"))
+  vcf_term <- sapply(strsplit(out_vcf, "[.]"), function(x) x[length(x)])
+  if(length(vcf_term) != 0) if(vcf_term != "vcf") out_vcf <- paste0(out_vcf,".vcf")
+
+  writeLines(vcf_header, con = out_vcf)
+  suppressWarnings(
+    write.table(vcf_body, file = out_vcf, sep = "\t", quote = FALSE, row.names = FALSE, col.names = TRUE, append = TRUE)
+  )
 }
 
 #' Include SNP_position_in_Genome, Ref, and Alt information

@@ -92,6 +92,7 @@ loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, verbo
   by_cloneID <- split.data.frame(new.file, new.file$CloneID)
 
   clust <- makeCluster(n.cores)
+  clusterExport(clust, c("nsamples"))
   #clusterExport(clust, c("hap_seq","add_ref_alt"))
   add_ref_alt_results <- parLapply(clust, by_cloneID, function(x) add_ref_alt(x, hap_seq))
   stopCluster(clust)

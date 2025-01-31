@@ -111,6 +111,9 @@ madc2vcf <- function(madc_file, output.file) {
   # Add # to the CHROM column name
   colnames(vcf_df)[1] <- "#CHROM"
 
+  # Sort
+  vcf_df <- vcf_df[order(vcf_df[,1],as.numeric(as.character(vcf_df[,2]))),]
+
   # Write the header to the file
   writeLines(vcf_header, con = output.file)
 

@@ -25,6 +25,15 @@ madc2vcf <- function(madc_file, output.file) {
   alt_df <- data.frame(matrices[[2]]-matrices[[1]], check.names = FALSE)
   size_df <- data.frame(matrices[[2]], check.names = FALSE)
 
+  #Make the AD column with ref and alt counts
+  ad_df <- data.frame(
+    mapply(function(ref, alt) {
+      paste(ref, alt, sep = ",")
+    }, ref_df, alt_df),
+    check.names = FALSE
+  )
+  row.names(ad_df) <- row.names(ref_df)
+
   #Obtaining Chr and Pos information from the row_names
   new_df <- size_df %>%
     rownames_to_column(var = "row_name") %>%
@@ -103,7 +112,7 @@ madc2vcf <- function(madc_file, output.file) {
   }
 
   # Combine the matrices
-  geno_df <- make_vcf_format(as.matrix(size_df), as.matrix(ref_df), as.matrix(alt_df))
+  geno_df <- make_vcf_format(as.matrix(size_df), as.matrix(ref_df), as.matrix(ad_df))
 
   #Combine the dataframes together
   vcf_df <- cbind(vcf_df,geno_df)
@@ -126,8 +135,7 @@ madc2vcf <- function(madc_file, output.file) {
   rm(ref_df)
   rm(alt_df)
   rm(size_df)
+  rm(ad_df)
   rm(vcf_df)
   rm(geno_df)
-  #Clean memory
-  gc()
 }

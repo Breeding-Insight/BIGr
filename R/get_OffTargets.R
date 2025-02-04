@@ -38,8 +38,11 @@ get_OffTargets <- function(madc = NULL,
   botloci <- read.csv(botloci, header = F)
   hap_seq <- read.table(hap_seq, header = F)
 
-  my_results_csv <- loop_though_dartag_report(report, botloci, hap_seq,
-                                              n.cores=n.cores, verbose = verbose)
+  my_results_csv <- loop_though_dartag_report(report,
+                                              botloci,
+                                              hap_seq,
+                                              n.cores=n.cores,
+                                              verbose = verbose)
 
   vcf_body <- create_VCF_body(csv = my_results_csv,
                               n.cores = n.cores,
@@ -79,6 +82,8 @@ get_OffTargets <- function(madc = NULL,
 #' @param verbose print metrics on the console
 #'
 #' @import parallel
+#'
+#' @export
 loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, verbose = TRUE){
 
   hap_seq <- get_ref_alt_hap_seq(hap_seq)
@@ -93,7 +98,7 @@ loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, verbo
 
   clust <- makeCluster(n.cores)
   #clusterExport(clust, c("hap_seq","add_ref_alt"))
-  add_ref_alt_results <- parLapply(clust, by_cloneID, function(x) add_ref_alt(x, hap_seq))
+  add_ref_alt_results <- parLapply(clust, by_cloneID, function(x) add_ref_alt(x, hap_seq, nsamples))
   stopCluster(clust)
 
   updated_by_cloneID <- lapply(add_ref_alt_results, "[[",1)
@@ -107,6 +112,7 @@ loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, verbo
 
   clust <- makeCluster(n.cores)
   #clusterExport(clust, c("botloci", "compare", "nucleotideSubstitutionMatrix", "pairwiseAlignment", "DNAString", "reverseComplement"))
+  clusterExport(clust, c("botloci"))
   compare_results <- parLapply(clust, updated_by_cloneID, function(x) compare(x, botloci))
   stopCluster(clust)
 
@@ -131,8 +137,10 @@ loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, verbo
 #'
 #' @param one_tag madc file split by tag
 #' @param hap_seq haplotype DB
+#' @param nsamples number of samples
 #'
-add_ref_alt <- function(one_tag, hap_seq) {
+#' @export
+add_ref_alt <- function(one_tag, hap_seq, nsamples) {
 
   # Add ref and alt
   cloneID <- one_tag$CloneID[1]
@@ -148,7 +156,6 @@ add_ref_alt <- function(one_tag, hap_seq) {
 
   # Initialize a list to store potential new rows to add
   new_rows <- list()
-
   if (!ref %in% one_tag$AlleleID) {
     ref_index <- 1
     # Only extract the relevant sequence data once from hap_seq
@@ -166,7 +173,11 @@ add_ref_alt <- function(one_tag, hap_seq) {
 
   # Only rbind once if new rows were added
   if (length(new_rows) > 0) {
-    one_tag <- rbind(one_tag, do.call(rbind, new_rows))
+    if(length(new_rows) == 1) one_tag <- rbind(one_tag, new_rows[[1]]) else  {
+      new_matrix <- do.call(rbind, new_rows)
+      colnames(new_matrix) <- colnames(one_tag)
+      one_tag <- rbind(one_tag, new_matrix)
+    }
   }
 
   return(list(one_tag, ref_index, alt_index))
@@ -184,6 +195,7 @@ add_ref_alt <- function(one_tag, hap_seq) {
 #' @importFrom Biostrings DNAString reverseComplement
 #' @importFrom pwalign pairwiseAlignment nucleotideSubstitutionMatrix
 #'
+#' @export
 compare <- function(one_tag, botloci){
 
   cloneID <- one_tag$CloneID[1]
@@ -281,6 +293,7 @@ compare <- function(one_tag, botloci){
 #'
 #' @param hap_seq haplotype db
 #'
+#' @export
 get_ref_alt_hap_seq <- function(hap_seq){
   headers <- hap_seq$V1[grep(">",hap_seq$V1)]
   headers <- gsub(">", "", headers)
@@ -313,7 +326,17 @@ get_ref_alt_hap_seq <- function(hap_seq){
 #' @param verbose print metrics on the console
 #'
 #' @import parallel
-create_VCF_body <- function(csv, rm_multiallelic_SNP = TRUE, multiallelic_SNP_dp_thr = 2, multiallelic_SNP_sample_thr = 10, n.cores = 1, verbose = TRUE){
+#'
+#' @export
+create_VCF_body <- function(csv,
+                            rm_multiallelic_SNP = TRUE,
+                            multiallelic_SNP_dp_thr = 2,
+                            multiallelic_SNP_sample_thr = 10,
+                            n.cores = 1,
+                            verbose = TRUE){
+
+  # Make sure counts are numeric
+  csv[,-c(1:7)] <- apply(csv[,-c(1:7)], 2, as.numeric)
 
   #csv <- my_results_csv
   cloneID <- split.data.frame(csv, csv$CloneID)
@@ -380,6 +403,7 @@ create_VCF_body <- function(csv, rm_multiallelic_SNP = TRUE, multiallelic_SNP_dp
 #' @param multiallelic_SNP_dp_thr numerical. If `rm_multiallelic_SNP` is FALSE, set a minimum depth by tag threshold combined with minimum number of samples `multiallelic_SNP_sample_thr` to eliminate low frequency SNP allele. If the threshold does not eliminate the multiallelic aspect of the marker, the marker is discarded. This is likely to happen to paralogous sites.
 #' @param multiallelic_SNP_sample_thr numerical. If `rm_multiallelic_SNP` is FALSE, set a minimum depth by tag threshold `multiallelic_SNP_dp_thr` combined with minimum number of samples `multiallelic_SNP_sample_thr` to eliminate low frequency SNP allele. If the threshold does not eliminate the multiallelic aspect of the marker, the marker is discarded. This is likely to happen to paralogous sites.
 #'
+#' @export
 merge_counts <- function(cloneID_unit, rm_multiallelic_SNP = FALSE, multiallelic_SNP_dp_thr = 0,  multiallelic_SNP_sample_thr = 0){
 
   #Get counts for target SNP

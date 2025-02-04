@@ -4,12 +4,14 @@
 \alias{add_ref_alt}
 \title{Check if Ref_0001 and Alt_0002 tags are present, if not, add them from the hap_seq input. Function made for parallelization.}
 \usage{
-add_ref_alt(one_tag, hap_seq)
+add_ref_alt(one_tag, hap_seq, nsamples)
 }
 \arguments{
 \item{one_tag}{madc file split by tag}
 
 \item{hap_seq}{haplotype DB}
+
+\item{nsamples}{number of samples}
 }
 \description{
 Check if Ref_0001 and Alt_0002 tags are present, if not, add them from the hap_seq input. Function made for parallelization.

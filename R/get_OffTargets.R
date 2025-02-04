@@ -112,7 +112,7 @@ loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, verbo
 
   clust <- makeCluster(n.cores)
   #clusterExport(clust, c("botloci", "compare", "nucleotideSubstitutionMatrix", "pairwiseAlignment", "DNAString", "reverseComplement"))
-  clusterExport(clust, c("botloci"))
+  #clusterExport(clust, c("botloci"))
   compare_results <- parLapply(clust, updated_by_cloneID, function(x) compare(x, botloci))
   stopCluster(clust)
 

@@ -8,6 +8,7 @@
 ##' in the function.
 ##'
 ##' @param ... one or more MADC files path
+##' @param madc_list list containing path to MADC files to be merged
 ##' @param out_madc output merged MADC file path
 ##' @param run_ids vector of character defining the run ID for each file.
 ##' This ID will be added as a suffix in repeated sample ID in case they
@@ -16,11 +17,12 @@
 ##' @import dplyr
 ##'
 ##' @export
-merge_MADCs <- function(..., out_madc=NULL, run_ids=NULL){
+merge_MADCs <- function(..., madc_list=NULL, out_madc=NULL, run_ids=NULL){
 
   if(is.null(out_madc)) stop("Define output file name")
 
-  files <- lapply(list(...), read.csv)
+  if(!is.null(madc_list)) files <- lapply(madc_list, read.csv) else files <- lapply(list(...), read.csv)
+
   if(is.null(run_ids)) run_ids <- paste0("file",1:length(files)) else if(length(run_ids) != length(files))
     stop("run_ids vector should have some number of elements as the number of files listed as input.")
 

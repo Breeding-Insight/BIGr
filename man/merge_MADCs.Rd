@@ -4,12 +4,21 @@
 \alias{merge_MADCs}
 \title{Merge MADC files}
 \usage{
-merge_MADCs(..., out_madc = NULL)
+merge_MADCs(..., out_madc = NULL, run_ids = NULL)
 }
 \arguments{
 \item{...}{one or more MADC files path}
+
+\item{out_madc}{output merged MADC file path}
+
+\item{run_ids}{vector of character defining the run ID for each file.
+This ID will be added as a suffix in repeated sample ID in case they
+exist in different files.}
 }
 \description{
-If duplicated samples exist in different files, a extension (e.g."_file:1") will
-be added at the end of the sample name
+If duplicated samples exist in different files, a suffix will
+be added at the end of the sample name. If run_ids is defined,
+they are used as suffix, if not, files will be identified from
+1 to number of files, considering the order that was defined
+in the function.
 }

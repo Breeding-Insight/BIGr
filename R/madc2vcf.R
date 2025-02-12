@@ -70,6 +70,8 @@ madc2vcf <- function(madc_file, output.file) {
 
   if(length(ref_seq) != length(alt_seq)) {
     warning("There are missing reference or alternative sequence, the SNP bases could not be recovery.")
+    ref_base <- "."
+    alt_base <- "."
   } else {
     if(all(sort(ref_ord) == sort(alt_ord))){
       ref_seq <- ref_seq[order(ref_ord)]
@@ -84,6 +86,8 @@ madc2vcf <- function(madc_file, output.file) {
       }
     } else {
       warning("There are missing reference or alternative sequence, the SNP bases could not be recovery.")
+      ref_base <- "."
+      alt_base <- "."
     }
   }
 

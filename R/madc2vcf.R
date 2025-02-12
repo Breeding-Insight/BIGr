@@ -62,7 +62,7 @@ madc2vcf <- function(madc_file, output.file) {
   )
 
   # Get REF and ALT
-  csv <- read.csv(madc_file)
+  csv <- get_counts(madc_file)
   ref_seq <- csv$AlleleSequence[grep("\\|Ref.*", csv$AlleleID)]
   ref_ord <- csv$CloneID[grep("\\|Ref.*", csv$AlleleID)]
   alt_seq <- csv$AlleleSequence[grep("\\|Alt.*", csv$AlleleID)]
@@ -80,9 +80,14 @@ madc2vcf <- function(madc_file, output.file) {
       ref_base <- alt_base <- vector()
       for(i in 1:length(ref_seq)){
         temp_list <- strsplit(c(ref_seq[i], alt_seq[i]), "")
-        idx <- temp_list[[1]] != temp_list[[2]]
-        ref_base[i] <- temp_list[[1]][idx]
-        alt_base[i] <- temp_list[[2]][idx]
+        idx <- which(temp_list[[1]] != temp_list[[2]])
+        if(length(idx) >1) { # If finds more than one polymorphism between Ref and Alt sequences
+          ref_base[i] <- NA
+          alt_base[i] <- NA
+        } else {
+          ref_base[i] <- temp_list[[1]][idx]
+          alt_base[i] <- temp_list[[2]][idx]
+        }
       }
     } else {
       warning("There are missing reference or alternative sequence, the SNP bases could not be recovery.")
@@ -152,6 +157,11 @@ madc2vcf <- function(madc_file, output.file) {
 
   # Sort
   vcf_df <- vcf_df[order(vcf_df[,1],as.numeric(as.character(vcf_df[,2]))),]
+
+  if(sum(is.na(vcf_df$REF)) >1) {
+    warning(paste("Markers removed because of presence of more than one polymorphism between ref and alt sequences:",sum(is.na(vcf_df$REF))))
+    vcf_df <- vcf_df[-which(is.na(vcf_df$REF)),]
+  }
 
   # Write the header to the file
   writeLines(vcf_header, con = output.file)

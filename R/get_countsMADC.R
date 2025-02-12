@@ -11,46 +11,6 @@
 #' @export
 get_countsMADC <- function(madc_file) {
   # This function takes the MADC file as input and generates a Ref and Alt counts dataframe as output
-
-  get_counts <- function(madc_file) {
-    # Read the MADC file
-    #Read only the first column for the first seven rows
-    first_seven_rows <- read.csv(madc_file, header = FALSE, nrows = 7, colClasses = c(NA, "NULL"))
-
-    #Check if all entries in the first column are either blank or "*"
-    check_entries <- all(first_seven_rows[, 1] %in% c("", "*"))
-
-    #Check if the MADC file has the filler rows or is processed from updated fixed allele ID pipeline
-    if (check_entries) {
-      #Note: This assumes that the first 7 rows are placeholder info from DArT processing
-
-      #Read the madc file
-      madc_df <- read.csv(madc_file, sep = ',', skip = 7, check.names = FALSE)
-
-      #Retain only the Ref and Alt haplotypes
-      filtered_df <- madc_df[!grepl("\\|AltMatch|\\|RefMatch", madc_df$AlleleID), ]
-
-      #Remove extra text after Ref and Alt (_001 or _002)
-      filtered_df$AlleleID <- sub("\\|Ref.*", "|Ref", filtered_df$AlleleID)
-      filtered_df$AlleleID <- sub("\\|Alt.*", "|Alt", filtered_df$AlleleID)
-
-    } else {
-
-      #Read the madc file
-      madc_df <- read.csv(madc_file, sep = ',', check.names = FALSE)
-
-      # Retain only the Ref and Alt haplotypes
-      filtered_df <- madc_df[!grepl("\\|AltMatch|\\|RefMatch", madc_df$AlleleID), ]
-
-      #Remove extra text after Ref and Alt (_001 or _002)
-      filtered_df$AlleleID <- sub("\\|Ref.*", "|Ref", filtered_df$AlleleID)
-      filtered_df$AlleleID <- sub("\\|Alt.*", "|Alt", filtered_df$AlleleID)
-
-    }
-
-    return(filtered_df)
-  }
-
   update_df <- get_counts(madc_file)
 
   # Filter rows where 'AlleleID' ends with 'Ref'
@@ -110,4 +70,43 @@ get_countsMADC <- function(madc_file) {
 
   return(matrices_list)
 
+}
+
+get_counts <- function(madc_file) {
+  # Read the MADC file
+  #Read only the first column for the first seven rows
+  first_seven_rows <- read.csv(madc_file, header = FALSE, nrows = 7, colClasses = c(NA, "NULL"))
+
+  #Check if all entries in the first column are either blank or "*"
+  check_entries <- all(first_seven_rows[, 1] %in% c("", "*"))
+
+  #Check if the MADC file has the filler rows or is processed from updated fixed allele ID pipeline
+  if (check_entries) {
+    #Note: This assumes that the first 7 rows are placeholder info from DArT processing
+
+    #Read the madc file
+    madc_df <- read.csv(madc_file, sep = ',', skip = 7, check.names = FALSE)
+
+    #Retain only the Ref and Alt haplotypes
+    filtered_df <- madc_df[!grepl("\\|AltMatch|\\|RefMatch", madc_df$AlleleID), ]
+
+    #Remove extra text after Ref and Alt (_001 or _002)
+    filtered_df$AlleleID <- sub("\\|Ref.*", "|Ref", filtered_df$AlleleID)
+    filtered_df$AlleleID <- sub("\\|Alt.*", "|Alt", filtered_df$AlleleID)
+
+  } else {
+
+    #Read the madc file
+    madc_df <- read.csv(madc_file, sep = ',', check.names = FALSE)
+
+    # Retain only the Ref and Alt haplotypes
+    filtered_df <- madc_df[!grepl("\\|AltMatch|\\|RefMatch", madc_df$AlleleID), ]
+
+    #Remove extra text after Ref and Alt (_001 or _002)
+    filtered_df$AlleleID <- sub("\\|Ref.*", "|Ref", filtered_df$AlleleID)
+    filtered_df$AlleleID <- sub("\\|Alt.*", "|Alt", filtered_df$AlleleID)
+
+  }
+
+  return(filtered_df)
 }

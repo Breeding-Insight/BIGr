@@ -61,13 +61,39 @@ madc2vcf <- function(madc_file, output.file) {
     '##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
   )
 
+  # Get REF and ALT
+  csv <- read.csv(madc_file)
+  ref_seq <- csv$AlleleSequence[grep("\\|Ref.*", csv$AlleleID)]
+  ref_ord <- csv$CloneID[grep("\\|Ref.*", csv$AlleleID)]
+  alt_seq <- csv$AlleleSequence[grep("\\|Alt.*", csv$AlleleID)]
+  alt_ord <- csv$CloneID[grep("\\|Alt.*", csv$AlleleID)]
+
+  if(length(ref_seq) != length(alt_seq)) {
+    warning("There are missing reference or alternative sequence, the SNP bases could not be recovery.")
+  } else {
+    if(all(sort(ref_ord) == sort(alt_ord))){
+      ref_seq <- ref_seq[order(ref_ord)]
+      alt_seq <- alt_seq[order(alt_ord)]
+
+      ref_base <- alt_base <- vector()
+      for(i in 1:length(ref_seq)){
+        temp_list <- strsplit(c(ref_seq[i], alt_seq[i]), "")
+        idx <- temp_list[[1]] != temp_list[[2]]
+        ref_base[i] <- temp_list[[1]][idx]
+        alt_base[i] <- temp_list[[2]][idx]
+      }
+    } else {
+      warning("There are missing reference or alternative sequence, the SNP bases could not be recovery.")
+    }
+  }
+
   #Make the header#Make the VCF df
   vcf_df <- data.frame(
     CHROM = new_df$CHROM,
     POS = new_df$POS,
     ID = row.names(size_df),
-    REF = ".",
-    ALT = ".",
+    REF = ref_base,
+    ALT = alt_base,
     QUAL = ".",
     FILTER = ".",
     INFO = NA,

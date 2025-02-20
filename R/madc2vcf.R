@@ -8,6 +8,8 @@
 #'
 #' @param madc_file Path to MADC file
 #' @param output.file output file name and path
+#' @param get_REF_ALT if TRUE recovers the reference and alternative bases by comparing the sequences. If more than one polymorphism are found for a tag, it is discarded.
+#'
 #' @return A VCF file v4.3 with the target marker read count information
 #' @import dplyr
 #' @import tidyr
@@ -17,7 +19,7 @@
 #' @references
 #' Updog R package
 #' @export
-madc2vcf <- function(madc_file, output.file) {
+madc2vcf <- function(madc_file, output.file, get_REF_ALT = FALSE) {
   #Making the VCF (This is highly dependent on snps being in a format where the SNP IDs are the CHR_POS)
 
   matrices <- get_countsMADC(madc_file)
@@ -62,38 +64,43 @@ madc2vcf <- function(madc_file, output.file) {
   )
 
   # Get REF and ALT
-  csv <- get_counts(madc_file)
-  ref_seq <- csv$AlleleSequence[grep("\\|Ref.*", csv$AlleleID)]
-  ref_ord <- csv$CloneID[grep("\\|Ref.*", csv$AlleleID)]
-  alt_seq <- csv$AlleleSequence[grep("\\|Alt.*", csv$AlleleID)]
-  alt_ord <- csv$CloneID[grep("\\|Alt.*", csv$AlleleID)]
+  if(get_REF_ALT){
+    csv <- get_counts(madc_file)
+    ref_seq <- csv$AlleleSequence[grep("\\|Ref.*", csv$AlleleID)]
+    ref_ord <- csv$CloneID[grep("\\|Ref.*", csv$AlleleID)]
+    alt_seq <- csv$AlleleSequence[grep("\\|Alt.*", csv$AlleleID)]
+    alt_ord <- csv$CloneID[grep("\\|Alt.*", csv$AlleleID)]
 
-  if(length(ref_seq) != length(alt_seq)) {
-    warning("There are missing reference or alternative sequence, the SNP bases could not be recovery.")
-    ref_base <- "."
-    alt_base <- "."
-  } else {
-    if(all(sort(ref_ord) == sort(alt_ord))){
-      ref_seq <- ref_seq[order(ref_ord)]
-      alt_seq <- alt_seq[order(alt_ord)]
-
-      ref_base <- alt_base <- vector()
-      for(i in 1:length(ref_seq)){
-        temp_list <- strsplit(c(ref_seq[i], alt_seq[i]), "")
-        idx <- which(temp_list[[1]] != temp_list[[2]])
-        if(length(idx) >1) { # If finds more than one polymorphism between Ref and Alt sequences
-          ref_base[i] <- NA
-          alt_base[i] <- NA
-        } else {
-          ref_base[i] <- temp_list[[1]][idx]
-          alt_base[i] <- temp_list[[2]][idx]
-        }
-      }
-    } else {
+    if(length(ref_seq) != length(alt_seq)) {
       warning("There are missing reference or alternative sequence, the SNP bases could not be recovery.")
       ref_base <- "."
       alt_base <- "."
+    } else {
+      if(all(sort(ref_ord) == sort(alt_ord))){
+        ref_seq <- ref_seq[order(ref_ord)]
+        alt_seq <- alt_seq[order(alt_ord)]
+
+        ref_base <- alt_base <- vector()
+        for(i in 1:length(ref_seq)){
+          temp_list <- strsplit(c(ref_seq[i], alt_seq[i]), "")
+          idx <- which(temp_list[[1]] != temp_list[[2]])
+          if(length(idx) >1) { # If finds more than one polymorphism between Ref and Alt sequences
+            ref_base[i] <- NA
+            alt_base[i] <- NA
+          } else {
+            ref_base[i] <- temp_list[[1]][idx]
+            alt_base[i] <- temp_list[[2]][idx]
+          }
+        }
+      } else {
+        warning("There are missing reference or alternative sequence, the SNP bases could not be recovery.")
+        ref_base <- "."
+        alt_base <- "."
+      }
     }
+  } else {
+    ref_base <- "."
+    alt_base <- "."
   }
 
   #Make the header#Make the VCF df

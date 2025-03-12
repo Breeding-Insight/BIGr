@@ -8,12 +8,12 @@
 #' @param imputed_genos Genotype data.frame with rows as samples and columns as markers. Dosage recommended.
 #' @param missing_code Optional input to consider missing data to exclude in concordance calculation.
 #' @param snps_2_exclude Optional input to exclude specific markers from concordance calculation. Single column of marker ids.
-#' @param output_df_name Optional input to assign the output dataframe to a specific variable name. Default is "imputation_concordance"
+#' @param output Optional input to assign the output dataframe to a specific variable name. Default is "imputation_concordance"
 #' @import dplyr
 #' @return 2 outputs: 1) A data frame with sample IDs and concordance percentages. 2) A summary of concordance percentages.
 #' @export
 #'
-imputation_concordance <- function(reference_genos, imputed_genos, missing_code = NULL, snps_2_exclude = NULL, output_df_name = "imputation_concordance") {
+imputation_concordance <- function(reference_genos, imputed_genos, missing_code = NULL, snps_2_exclude = NULL, output = "imputation_concordance") {
 
   # Find common IDs
   common_ids <- intersect(imputed_genos$ID, reference_genos$ID)
@@ -49,7 +49,7 @@ imputation_concordance <- function(reference_genos, imputed_genos, missing_code 
   )
 
   # Assign the result dataframe to the output variable
-  assign(output_df_name, result_df, envir = .GlobalEnv)
+  assign(output, result_df, envir = .GlobalEnv)
 
   # Print mean concordance
   summary_concordance <- summary(percentage_match, na.rm = TRUE) * 100

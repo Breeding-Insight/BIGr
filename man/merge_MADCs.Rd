@@ -4,10 +4,12 @@
 \alias{merge_MADCs}
 \title{Merge MADC files}
 \usage{
-merge_MADCs(..., out_madc = NULL, run_ids = NULL)
+merge_MADCs(..., madc_list = NULL, out_madc = NULL, run_ids = NULL)
 }
 \arguments{
 \item{...}{one or more MADC files path}
+
+\item{madc_list}{list containing path to MADC files to be merged}
 
 \item{out_madc}{output merged MADC file path}
 

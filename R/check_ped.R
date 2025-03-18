@@ -27,6 +27,7 @@
 #' #messy_parent_ids <- ped_errors$messy_parents$id
 #' #print(messy_parent_ids)
 #' @import dplyr
+#' @import janitor
 #' @importFrom stats setNames
 #' @importFrom utils read.table
 #' @export
@@ -36,6 +37,7 @@ check_ped <- function(ped.file) {
   #### read in data ####
   data = utils::read.table(ped.file, header = T)
   data <- data %>%
+    janitor::clean_names() %>%
     mutate(
       id = as.character(id),
       sire = as.character(sire),

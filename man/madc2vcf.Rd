@@ -4,12 +4,14 @@
 \alias{madc2vcf}
 \title{Format MADC Target Loci Read Counts Into VCF}
 \usage{
-madc2vcf(madc_file, output.file)
+madc2vcf(madc_file, output.file, get_REF_ALT = FALSE)
 }
 \arguments{
 \item{madc_file}{Path to MADC file}
 
 \item{output.file}{output file name and path}
+
+\item{get_REF_ALT}{if TRUE recovers the reference and alternative bases by comparing the sequences. If more than one polymorphism are found for a tag, it is discarded.}
 }
 \value{
 A VCF file v4.3 with the target marker read count information

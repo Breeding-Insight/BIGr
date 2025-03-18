@@ -1,3 +1,12 @@
+<!-- badges: start -->
+![GitHub Release](https://img.shields.io/github/v/release/Breeding-Insight/BIGr)
+[![Development Status](https://img.shields.io/badge/development-active-blue.svg)](https://img.shields.io/badge/development-active-blue.svg)
+![GitHub License](https://img.shields.io/github/license/Breeding-Insight/BIGr)
+
+
+
+<!-- badges: end -->
+
 # BIGr <img src="https://github.com/user-attachments/assets/2168c801-fcee-4999-b04e-f7b01fed9cfa" align="right" width="250"/>
 
 

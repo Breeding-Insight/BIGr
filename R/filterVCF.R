@@ -17,7 +17,7 @@
 #' @param filter.SAMPLE.miss Sample missing data filter
 #' @param filter.SNP.miss SNP missing data filter
 #' @param ploidy The ploidy of the species being analyzed
-#' @param output.file output file name (optional). If no output.file name provided, then a vcfR object will be returned.
+#' @param output.file Output file name (optional). If no output.file name provided, then a vcfR object will be returned.
 #' @return A gzipped vcf file
 #' @importFrom vcfR read.vcfR
 #' @importFrom vcfR write.vcf
@@ -51,11 +51,10 @@ filterVCF <- function(vcf.file,
   #Should allow for any INFO field to be entered to be filtered
 
   # Import VCF (can be .vcf or .vcf.gz)
-  if (class(vcf.file) != "vcfR"){
+  if (!is(vcf.file,"vcfR")){
     vcf <- read.vcfR(vcf.file)
   } else {
     vcf <- vcf.file
-    #rm(vcf.file)
   }
 
   #Update header based on user filtering parameters
@@ -216,85 +215,6 @@ filterVCF <- function(vcf.file,
     rm(gt_matrix)
   }
 
-  ##Convert GT to dosage
-  #gt_matrix <- extract.gt(vcf, element = "GT", as.numeric = FALSE)#as.matrix(vcfR2genlight(vcf))
-
-  # Function to determine the ploidy level from a genotype string
-  #determine_ploidy <- function(gt) {
-  #  if (is.na(gt)) {
-  #    return(NA)
-  #  }
-  #  return(length(strsplit(gt, "[|/]")[[1]]))
-  #}
-
-  # Function to find a non-NA example genotype to determine ploidy
-  #find_example_gt <- function(matrix) {
-  #  for (i in seq_len(nrow(matrix))) {
-  #    for (j in seq_len(ncol(matrix))) {
-  #      if (!is.na(matrix[i, j])) {
-  #        return(matrix[i, j])
-  #      }
-  #    }
-  #  }
-  #  return(NA)  # Return NA if no non-NA genotype is found
-  #}
-
-  # Find a non-NA example genotype
-  #example_gt <- find_example_gt(gt_matrix)
-
-  # Determine the ploidy level
-  #if (!is.na(example_gt)) {
-  #  ploidy <- determine_ploidy(example_gt)
-  #} else {
-  #  stop("No non-NA genotype found to determine ploidy.")
-  #}
-
-  # Generate lookup table for genotypes to dosage conversion
-  #generate_lookup_table <- function(ploidy) {
-  #  possible_alleles <- 0:ploidy
-  #  genotypes <- expand.grid(rep(list(possible_alleles), ploidy))
-  #  genotypes <- apply(genotypes, 1, function(x) paste(x, collapse = "/"))
-  #  dosage_values <- rowSums(expand.grid(rep(list(possible_alleles), ploidy)))
-  #  lookup_table <- setNames(dosage_values, genotypes)
-  #  return(lookup_table)
-  #}
-
-  # Generate the lookup table
-  #lookup_table <- generate_lookup_table(ploidy)
-
-  # Function to convert genotype to dosage using the lookup table
-  #genotype_to_dosage <- function(gt, lookup_table) {
-  #  if (is.na(gt)) {
-  #    return(NA)
-  #  }
-  #  return(lookup_table[[gt]])
-  #}
-
-  # Function to convert genotype matrix to dosage matrix using vectorized operations
-  #convert_genotypes_to_dosage <- function(gt_matrix, lookup_table) {
-  #  unique_gts <- unique(gt_matrix)
-  #  gt_to_dosage <- setNames(rep(NA, length(unique_gts)), unique_gts)
-  #  valid_gts <- unique_gts[unique_gts %in% names(lookup_table)]
-  #  gt_to_dosage[valid_gts] <- lookup_table[valid_gts]
-  #  dosage_matrix <- gt_to_dosage[gt_matrix]
-  #colnames(dosage_matrix) <- colnames(gt_matrix)
-  #row.names(dosage_matrix) <- row.names(gt_matrix)
-  #  return(matrix(as.numeric(dosage_matrix), nrow = nrow(gt_matrix), ncol = ncol(gt_matrix)))
-  #}
-
-  # Convert the genotype matrix to dosage matrix
-  #dosage_matrix <- convert_genotypes_to_dosage(gt_matrix, lookup_table)
-
-  ##MAF filter
-  #Compare my lengthy process to estimate MAF with vcfR::maf() function
-  #The BIGr::calculate_MAF(dosage_matrix, ploidy) is the exact same as the vcfR::maf() calculations
-  #The step where I extract UD and calculate MAF is different...
-  #if ("UD" %in% format_fields) {
-  #  maf_df <- BIGr::calculate_MAF(extract.gt(vcf, element = "UD", as.numeric = TRUE), ploidy = ploidy)
-  #} else {
-  #convert genotypes to dosage and filter
-  #  maf_df <- BIGr::calculate_MAF(dosage_matrix, ploidy)
-  #}
   #Need to confirm that vcfR::maf will work with any ploidy...if not, use my code
   if (!is.null(filter.MAF)) {
     cat("Filtering by MAF\n")
@@ -303,7 +223,7 @@ filterVCF <- function(vcf.file,
   }
   ### Export the modified VCF file (this exports as a .vcf.gz, so make sure to have the name end in .vcf.gz)
   cat("Exporting VCF\n")
-  if (!class(vcf.file) == "vcfR"){
+  if (!is(vcf,"vcfR")){
     if (!is.null(output.file)){
       output_name <- paste0(output.file,".vcf.gz")
       vcfR::write.vcf(vcf, file = output_name)
@@ -329,81 +249,3 @@ filterVCF <- function(vcf.file,
   message("SNPs removed due to filtering: ",SNPs_removed)
   message("Complete!")
 }
-#This is not reliable, so no longer use this shortcut to get dosage matrix
-#test2 <- vcfR2genlight(vcf)
-
-
-#####Testing custom VCF reading function######
-# Open the gzipped VCF file
-#con <- gzfile("/Users/ams866/Desktop/output.vcf", "rt")
-
-# Read in the entire file
-#lines <- readLines(con)
-#close(con)
-# Read in the entire file
-#lines <- readLines("/Users/ams866/Desktop/output.vcf")
-# Filter out lines that start with ##
-#filtered_lines <- lines[!grepl("^##", lines)]
-# Create a temporary file to write the filtered lines
-#temp_file <- tempfile()
-#writeLines(filtered_lines, temp_file)
-# Read in the filtered data using read.table or read.csv
-#vcf_data <- read.table(temp_file, header = TRUE, sep = "\t", comment.char = "", check.names = FALSE)
-# Clean up the temporary file
-#unlink(temp_file)
-
-##Extract INFO column and Filter SNPs by those values
-#Update the filtering options by the items present in the INFO column?
-
-# Load required library
-#library(dplyr)
-
-# Split INFO column into key-value pairs
-#vcf_data_parsed <- vcf_data %>%
-#  mutate(INFO_PARSED = strsplit(INFO, ";")) %>%
-#  unnest(INFO_PARSED) %>%
-#  separate(INFO_PARSED, into = c("KEY", "VALUE"), sep = "=") %>%
-#  spread(KEY, VALUE)
-
-#Filter by DP
-#filtered_vcf_data <- vcf_data_parsed %>%
-#  filter(as.numeric(DP) > 10)
-
-# View the filtered dataframe
-#print(filtered_vcf_data)
-
-##Extracting and filtering by FORMAT column
-# Identify the columns that are not sample columns
-#non_sample_cols <- c("#CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER", "INFO", "FORMAT")
-# Identify the sample columns
-#sample_cols <- setdiff(names(vcf_data), non_sample_cols)
-# Extract FORMAT keys
-#format_keys <- strsplit(as.character(vcf_data$FORMAT[1]), ":")[[1]]
-# Split SAMPLE columns based on FORMAT
-#vcf_data_samples <- vcf_data %>%
-#  mutate(across(all_of(sample_cols), ~strsplit(as.character(.), ":"))) %>%
-#  mutate(across(all_of(sample_cols), ~map(., ~setNames(as.list(.), format_keys)))) %>%
-#  unnest_wider(all_of(sample_cols), names_sep = "_")
-
-# View the parsed dataframe
-#print(head(vcf_data_samples))
-
-# Create separate dataframes for each FORMAT variable
-#format_dfs <- lapply(format_keys, function(format_key) {
-#  vcf_data_samples %>%
-#    select(ID, ends_with(paste0("_", format_key))) %>%
-#    column_to_rownames("ID")
-#})
-
-# Assign names to the list elements
-#names(format_dfs) <- format_keys
-
-# Access the separate dataframes
-#gt_df <- format_dfs$GT  # Genotype dataframe
-#ad_df <- format_dfs$AD  # Allelic depths dataframe
-
-#*I think the above method is okay if you only need to filter at the INFO level,
-#*But I think if you want to filter for FORMAT, that vcfR is probably best,
-#*Will need to explore further if I can easily just filter for MPP by checking if it is above a
-#*threshold, and then converting the GT and UD values to NA if so...
-#*If that is efficient and works, then I will just use this custom VCF method...

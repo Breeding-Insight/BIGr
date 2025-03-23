@@ -1,4 +1,5 @@
 <!-- badges: start -->
+[![R-CMD-check](https://github.com/Breeding-Insight/BIGr/workflows/R-CMD-check/badge.svg)](https://github.com/Breeding-Insight/BIGr/actions)
 ![GitHub Release](https://img.shields.io/github/v/release/Breeding-Insight/BIGr)
 [![Development Status](https://img.shields.io/badge/development-active-blue.svg)](https://img.shields.io/badge/development-active-blue.svg)
 ![GitHub License](https://img.shields.io/github/license/Breeding-Insight/BIGr)

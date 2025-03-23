@@ -12,7 +12,7 @@ test_that("test updog conversion",{
   updog2vcf(
     multidog.object = mout,
     output.file = temp_file,
-    updog_version = packageVersion("updog"),
+    updog_version = "0.0.0",
     compress = TRUE
   )
 

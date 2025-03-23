@@ -23,6 +23,7 @@
 #' @importFrom vcfR write.vcf
 #' @importFrom vcfR maf
 #' @importFrom vcfR extract.gt
+#' @importFrom methods is
 #' @examples
 #' ## Use file paths for each file on the local system
 #'

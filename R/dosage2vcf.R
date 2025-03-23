@@ -16,6 +16,7 @@
 #' @importFrom readr read_csv
 #' @importFrom reshape2 melt
 #' @importFrom reshape2 dcast
+#' @importFrom utils packageVersion read.csv tail write.csv
 #' @examples
 #' ## Use file paths for each file on the local system
 #'

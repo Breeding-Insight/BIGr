@@ -14,7 +14,7 @@
 
 </div>
 
-BIGr is an R package developed by [Breeding Insight](https://www.breedinginsight.org/) that provides a robust set of functions for analyzing genomic and pedigree data in diploid and polyploid breeding programs. It's designed to streamline the analysis of breeding and genetic data, empowering researchers and breeders to make informed decisions.
+BIGr is an R package developed by [Breeding Insight](https://breedinginsight.org/) that provides a robust set of functions for analyzing genomic and pedigree data in diploid and polyploid breeding programs. It's designed to streamline the analysis of breeding and genetic data, empowering researchers and breeders to make informed decisions.
 
 ## Installation
 
@@ -29,7 +29,7 @@ library(BIGr)
 ```
 ## Funding
 
-BIGr development is supported by [Breeding Insight](https://www.breedinginsight.org/), a USDA-funded initiative based at Cornell University.
+BIGr development is supported by [Breeding Insight](https://breedinginsight.org/), a USDA-funded initiative based at Cornell University.
 
 ## Citation
 

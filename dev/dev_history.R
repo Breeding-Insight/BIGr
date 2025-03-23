@@ -6,7 +6,7 @@ attachment::att_amend_desc()
 
 # Check package coverage
 covr::package_coverage()
-covr::report()
+#covr::report()
 
 # Run tests
 devtools::test()

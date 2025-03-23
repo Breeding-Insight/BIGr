@@ -1,26 +1,39 @@
 Package: BIGr
-Title: (B)reeding (I)nsight (G)enomics Functions for Polypoid and Diploid Species
-Version: 0.4.3
-Author: Alexander M. Sandercock, Cristiane Taniguti, Josue Chinchilla-Vargas, Shufen Chen, Manoj Sapkota, Meng Lin, Dongyan Zhao, and Breeding Insight Team
+Title: (B)reeding (I)nsight (G)enomics Functions for Polypoid and Diploid
+    Species
+Version: 0.5.0
+Author: Alexander M. Sandercock, Cristiane Taniguti, Josue
+    Chinchilla-Vargas, Shufen Chen, Manoj Sapkota, Meng Lin, Dongyan Zhao,
+    and Breeding Insight Team
 Maintainer: Alexander M. Sandercock <ams866@cornell.edu>
-Description: This package contains the functions developed within Breeding Insight to analyze diploid and polyploid breeding and genetic data.
+Description: This package contains the functions developed within Breeding
+    Insight to analyze diploid and polyploid breeding and genetic data. 'BIGr' 
+    provides the ability to filter VCF files, extract SNPs from the DArT MADC file, 
+    and manipulate genotype data for both diploid and polyploid species. It also serves 
+    as the core dependency for the 'BIGapp' Shiny app, which provides a user-friendly interface for performing
+    routine genotype analysis tasks such as dosage calling, filtering, PCA, GWAS, and Genomic Prediction.
 License: Apache License 2.0
-Encoding: UTF-8
-Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2
-Depends: R (>= 4.4.0)
+Depends: 
+    R (>= 4.4.0)
 Imports: 
+    Biostrings,
     doParallel,
     dplyr,
     foreach,
+    janitor,
+    parallel,
+    pwalign,
     Rdpack (>= 0.7),
     readr (>= 2.1.5),
     reshape2 (>= 1.4.4),
-    tidyr (>= 1.3.1),
-    vcfR (>= 1.15.0),
-    janitor,
+    stats,
     tibble,
-    Biostrings,
-    pwalign
+    tidyr (>= 1.3.1),
+    utils,
+    vcfR (>= 1.15.0)
+RdMacros: 
+    Rdpack
 Remotes:
-RdMacros: Rdpack
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2

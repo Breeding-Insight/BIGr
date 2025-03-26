@@ -19,13 +19,14 @@ BIGr is an R package developed by [Breeding Insight](https://breedinginsight.org
 
 ## Installation
 
-To install BIGr, you'll need to have `devtools` installed.
+To install BIGr, you'll need to have `BiocManager` installed.
 
 ```R
-if (!requireNamespace("devtools", quietly = TRUE))
-    install.packages("devtools")
+if (!require("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+    install.packages("remotes")
 
-devtools::install_github("Breeding-Insight/BIGr")
+BiocManager::install("Breeding-Insight/BIGr", dependencies = TRUE)
 library(BIGr)
 ```
 ## Funding

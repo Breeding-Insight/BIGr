@@ -1,0 +1,16 @@
+id	sire	dam
+off1	sire1	dam1
+off2	sire2	dam2
+off3	sire3	dam3
+off4	sire4	dam4
+off5	sire5	dam5
+sire1	off1	grandmother1
+sire2	grandfather2	grandfather2
+sire3	grandfather3	grandfather3
+sire4	grandfather4	grandmother4
+sire5	grandfather5	grandmother5
+dam1	grandfather6	grandmother6
+dam2	grandfather7	grandmother7
+dam3	grandfather8	grandmother8
+dam4	0	0
+dam5	0	0

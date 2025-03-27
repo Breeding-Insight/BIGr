@@ -139,7 +139,7 @@ loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, verbo
 #' @param hap_seq haplotype DB
 #' @param nsamples number of samples
 #'
-#' @export
+#' @noRd
 add_ref_alt <- function(one_tag, hap_seq, nsamples) {
 
   # Add ref and alt
@@ -195,7 +195,7 @@ add_ref_alt <- function(one_tag, hap_seq, nsamples) {
 #' @importFrom Biostrings DNAString reverseComplement
 #' @importFrom pwalign pairwiseAlignment nucleotideSubstitutionMatrix
 #'
-#' @export
+#' @noRd
 compare <- function(one_tag, botloci){
 
   cloneID <- one_tag$CloneID[1]
@@ -293,7 +293,7 @@ compare <- function(one_tag, botloci){
 #'
 #' @param hap_seq haplotype db
 #'
-#' @export
+#' @noRd
 get_ref_alt_hap_seq <- function(hap_seq){
   headers <- hap_seq$V1[grep(">",hap_seq$V1)]
   headers <- gsub(">", "", headers)
@@ -327,7 +327,7 @@ get_ref_alt_hap_seq <- function(hap_seq){
 #'
 #' @import parallel
 #'
-#' @export
+#' @noRd
 create_VCF_body <- function(csv,
                             rm_multiallelic_SNP = TRUE,
                             multiallelic_SNP_dp_thr = 2,
@@ -403,7 +403,7 @@ create_VCF_body <- function(csv,
 #' @param multiallelic_SNP_dp_thr numerical. If `rm_multiallelic_SNP` is FALSE, set a minimum depth by tag threshold combined with minimum number of samples `multiallelic_SNP_sample_thr` to eliminate low frequency SNP allele. If the threshold does not eliminate the multiallelic aspect of the marker, the marker is discarded. This is likely to happen to paralogous sites.
 #' @param multiallelic_SNP_sample_thr numerical. If `rm_multiallelic_SNP` is FALSE, set a minimum depth by tag threshold `multiallelic_SNP_dp_thr` combined with minimum number of samples `multiallelic_SNP_sample_thr` to eliminate low frequency SNP allele. If the threshold does not eliminate the multiallelic aspect of the marker, the marker is discarded. This is likely to happen to paralogous sites.
 #'
-#' @export
+#' @noRd
 merge_counts <- function(cloneID_unit, rm_multiallelic_SNP = FALSE, multiallelic_SNP_dp_thr = 0,  multiallelic_SNP_sample_thr = 0){
 
   #Get counts for target SNP

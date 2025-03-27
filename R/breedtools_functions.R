@@ -7,6 +7,8 @@
 #' @param ploidy integer indicating the ploidy level (default is 2 for diploid)
 #' @return data.frame consisting of allele_frequencies for populations (columns) for
 #'  each SNP (rows)
+#' @references Funkhouser SA, Bates RO, Ernst CW, Newcom D, Steibel JP. Estimation of genome-wide and locus-specific breed composition in pigs. Transl Anim Sci. 2017 Feb 1;1(1):36-44. doi: 10.2527/tas2016.0003. PMID: 32704628; PMCID: PMC7235465
+#'
 #' @export
 allele_freq_poly <- function(geno, populations, ploidy = 2) {
 
@@ -37,16 +39,18 @@ allele_freq_poly <- function(geno, populations, ploidy = 2) {
 }
 
 
-# Performs whole genome breed composition prediction.
-#
-# @param Y numeric vector of genotypes (with names as SNPs) from a single animal.
-#   coded as dosage of allele B {0, 1, 2}
-# @param X numeric matrix of allele frequencies from reference animals
-# @param p numeric indicating number of breeds represented in X
-# @param names character names of breeds
-# @return data.frame of breed composition estimates
-# @import quadprog
-# @export
+#' Performs whole genome breed composition prediction.
+#'
+#' @param Y numeric vector of genotypes (with names as SNPs) from a single animal.
+#'   coded as dosage of allele B {0, 1, 2}
+#' @param X numeric matrix of allele frequencies from reference animals
+#' @param p numeric indicating number of breeds represented in X
+#' @param names character names of breeds
+#' @return data.frame of breed composition estimates
+#' @import quadprog
+#' @references Funkhouser SA, Bates RO, Ernst CW, Newcom D, Steibel JP. Estimation of genome-wide and locus-specific breed composition in pigs. Transl Anim Sci. 2017 Feb 1;1(1):36-44. doi: 10.2527/tas2016.0003. PMID: 32704628; PMCID: PMC7235465
+#'
+#' @noRd
 QPsolve <- function(Y, X) {
 
   # Remove NAs from Y and remove corresponding
@@ -107,6 +111,8 @@ QPsolve <- function(Y, X) {
 #' @return A data.frame or list of data.frames (if groups is !NULL) with breed/ancestry composition
 #'  results
 #' @import quadprog
+#' @references Funkhouser SA, Bates RO, Ernst CW, Newcom D, Steibel JP. Estimation of genome-wide and locus-specific breed composition in pigs. Transl Anim Sci. 2017 Feb 1;1(1):36-44. doi: 10.2527/tas2016.0003. PMID: 32704628; PMCID: PMC7235465
+#'
 #' @export
 solve_composition_poly <- function(Y,
                                    X,

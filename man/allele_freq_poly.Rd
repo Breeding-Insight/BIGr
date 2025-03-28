@@ -7,7 +7,7 @@
 allele_freq_poly(geno, populations, ploidy = 2)
 }
 \arguments{
-\item{geno}{matrix of genotypes coded as the dosage of allele B {0, 1, 2, ..., ploidy}
+\item{geno}{matrix of genotypes coded as the dosage of allele B \code{{0, 1, 2, ..., ploidy}}
 with individuals in rows (named) and SNPs in columns (named)}
 
 \item{populations}{list of named populations. Each population has a vector of IDs
@@ -23,5 +23,6 @@ each SNP (rows)
 Computes allele frequencies for specified populations given SNP array data
 }
 \references{
-Funkhouser SA, Bates RO, Ernst CW, Newcom D, Steibel JP. Estimation of genome-wide and locus-specific breed composition in pigs. Transl Anim Sci. 2017 Feb 1;1(1):36-44. doi: 10.2527/tas2016.0003. PMID: 32704628; PMCID: PMC7235465
+Funkhouser SA, Bates RO, Ernst CW, Newcom D, Steibel JP. Estimation of genome-wide and locus-specific
+breed composition in pigs. Transl Anim Sci. 2017 Feb 1;1(1):36-44.
 }

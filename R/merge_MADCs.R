@@ -47,12 +47,11 @@
 ##' )
 ##' write.csv(df2, file2_path, row.names = FALSE, quote = FALSE)
 ##'
-##' # --- 2. Run the merge function ---
+##' # 2. Run the merge function
 ##' # Use default suffixes (.x, .y) for the duplicated "SampleA"
 ##' merge_MADCs(madc_list = list(file1_path, file2_path),
 ##'             out_madc = out_path)
 ##'
-##' # --- 3. Display the results (optional) ---
 ##' # Check if output file exists and print its content
 ##' if (file.exists(out_path)) {
 ##'   cat("--- Content of merged MADC file: ---\n")

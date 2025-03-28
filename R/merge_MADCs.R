@@ -52,16 +52,6 @@
 ##' merge_MADCs(madc_list = list(file1_path, file2_path),
 ##'             out_madc = out_path)
 ##'
-##' # Check if output file exists and print its content
-##' if (file.exists(out_path)) {
-##'   cat("--- Content of merged MADC file: ---\n")
-##'   merged_data <- read.csv(out_path, check.names = FALSE)
-##'   print(merged_data)
-##'   # Expected output shows:
-##'   # - 4 rows (union of alleles)
-##'   # - Columns: ID cols, SampleA.x, SampleB, SampleA.y, SampleC
-##'   # - NA values generated during merge replaced with 0
-##' }
 ##'
 ##' @export
 merge_MADCs <- function(..., madc_list=NULL, out_madc=NULL, run_ids=NULL){

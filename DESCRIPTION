@@ -1,18 +1,22 @@
 Package: BIGr
-Title: Breeding Insight Genomics Functions for Polypoid and Diploid Species
+Title: Breeding Insight Genomics Functions for Polypoid and Diploid
+    Species
 Version: 0.5.0
 Author: Alexander M. Sandercock, Cristiane H. Taniguti, Josue
     Chinchilla-Vargas, Shufen Chen, Manoj Sapkota, Meng Lin, Dongyan Zhao,
     and Breeding Insight Team
 Maintainer: Alexander M. Sandercock <ams866@cornell.edu>
-Description: Functions developed within Breeding Insight to analyze diploid and polyploid 
-    breeding and genetic data. 'BIGr' provides the ability to filter VCF files, extract SNPs from the DArT MADC file, 
-    and manipulate genotype data for both diploid and polyploid species. It also serves 
-    as the core dependency for the 'BIGapp' Shiny app, which provides a user-friendly interface for performing routine genotype analysis tasks 
-    such as dosage calling, filtering, PCA, GWAS, and Genomic Prediction.
+Description: Functions developed within Breeding Insight to analyze
+    diploid and polyploid breeding and genetic data. 'BIGr' provides the
+    ability to filter VCF files, extract SNPs from the DArT MADC file, and
+    manipulate genotype data for both diploid and polyploid species. It
+    also serves as the core dependency for the 'BIGapp' Shiny app, which
+    provides a user-friendly interface for performing routine genotype
+    analysis tasks such as dosage calling, filtering, PCA, GWAS, and
+    Genomic Prediction.
+License: Apache License (>= 2)
 URL: https://github.com/Breeding-Insight/BIGr
 BugReports: https://github.com/Breeding-Insight/BIGr/issues
-License: Apache License (>= 2)
 Depends: 
     R (>= 4.4.0)
 Imports: 
@@ -34,7 +38,7 @@ Imports:
     utils,
     vcfR (>= 1.15.0)
 Suggests:
-  testthat (>= 3.0.0)
+    testthat (>= 3.0.0)
 RdMacros: 
     Rdpack
 Encoding: UTF-8

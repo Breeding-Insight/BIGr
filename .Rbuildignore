@@ -1,7 +1,2 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
-^dev$
-^doc$
-^LICENSE\.md$
-^revdep$
-^cran-comments\.md$

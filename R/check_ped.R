@@ -160,4 +160,5 @@ check_ped <- function(ped.file) {
   } else {
     cat("No dependencies found.\n")
   }
+  return(results)
 }

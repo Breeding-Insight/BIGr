@@ -47,6 +47,35 @@ results
 Computes genome-wide breed/ancestry composition using quadratic programming on a
 batch of animals.
 }
+\examples{
+# Example inputs for solve_composition_poly (ploidy = 4)
+
+# (This would typically be the output from allele_freq_poly)
+allele_freqs_matrix <- matrix(
+  c(0.625, 0.500,
+    0.500, 0.500,
+    0.500, 0.500,
+    0.750, 0.500,
+    0.625, 0.625),
+  nrow = 5, ncol = 2, byrow = TRUE,
+  dimnames = list(paste0("SNP", 1:5), c("VarA", "VarB"))
+)
+
+# Validation Genotypes (individuals x SNPs)
+val_geno_matrix <- matrix(
+  c(2, 1, 2, 3, 4,  # Test1 dosages for SNP1-5
+    3, 4, 2, 3, 0), # Test2 dosages for SNP1-5
+  nrow = 2, ncol = 5, byrow = TRUE,
+  dimnames = list(paste0("Test", 1:2), paste0("SNP", 1:5))
+)
+
+# Calculate Breed Composition
+composition <- solve_composition_poly(Y = val_geno_matrix,
+                                      X = allele_freqs_matrix,
+                                      ploidy = 4)
+print(composition)
+
+}
 \references{
 Funkhouser SA, Bates RO, Ernst CW, Newcom D, Steibel JP. Estimation of genome-wide and locus-specific
 breed composition in pigs. Transl Anim Sci. 2017 Feb 1;1(1):36-44.

@@ -15,7 +15,7 @@ test_that("test breedtools poly",{
   #Calculations
   ref_ids = lapply(as.list(reference_ids),as.character)
 
-  freq = allele_freq_poly(reference, ref_ids, ploid = 4)
+  freq = allele_freq_poly(reference, ref_ids, ploidy = 4)
 
   prediction = as.data.frame(solve_composition_poly(validation,freq, ploidy = 4))
 

@@ -3,10 +3,9 @@ context("Updog to VCF")
 
 test_that("test updog conversion",{
   #Input variables
-  updog_file <- system.file("iris_updog_multidog.RData", package="BIGr")
+  load(testthat::test_path("iris_updog.RData"))
 
   temp_file <- tempfile()
-  load(updog_file)
 
   # Convert updog to VCF
   updog2vcf(

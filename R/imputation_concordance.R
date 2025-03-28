@@ -9,11 +9,12 @@
 #' @param missing_code Optional input to consider missing data to exclude in concordance calculation.
 #' @param snps_2_exclude Optional input to exclude specific markers from concordance calculation. Single column of marker ids.
 #' @param output Optional input to assign the output dataframe to a specific variable name. Default is "imputation_concordance"
+#' @param verbose Optional input to print the concordance summary.
 #' @import dplyr
 #' @return 2 outputs: 1) A data frame with sample IDs and concordance percentages. 2) A summary of concordance percentages.
 #' @export
 #'
-imputation_concordance <- function(reference_genos, imputed_genos, missing_code = NULL, snps_2_exclude = NULL, output = "imputation_concordance") {
+imputation_concordance <- function(reference_genos, imputed_genos, missing_code = NULL, snps_2_exclude = NULL, output = "imputation_concordance", verbose = FALSE) {
 
   # Find common IDs
   common_ids <- intersect(imputed_genos$ID, reference_genos$ID)
@@ -48,16 +49,23 @@ imputation_concordance <- function(reference_genos, imputed_genos, missing_code 
     Concordance = paste0(round(percentage_match * 100, 2), "%")
   )
 
-  # Assign the result dataframe to the output variable
-  assign(output, result_df, envir = .GlobalEnv)
-
   # Print mean concordance
   summary_concordance <- summary(percentage_match, na.rm = TRUE) * 100
   names(summary_concordance) <- c("Min", "1st Qu.", "Median", "Mean", "3rd Qu.", "Max")
 
-  cat("Concordance Summary:\n")
-  for (name in names(summary_concordance)) {
-    cat(name, ":", round(summary_concordance[name], 2), "%\n")
+  if (verbose) {
+    message("Concordance Summary:\n")
+    for (name in names(summary_concordance)) {
+      cat(name, ":", round(summary_concordance[name], 2), "%\n")
+    }
   }
+
+  # Assign the result dataframe to the output variable
+  if (!is.null(output)) {
+    assign(output, result_df, envir = .GlobalEnv)
+  } else {
+    return(result_df)
+  }
+
 }
 

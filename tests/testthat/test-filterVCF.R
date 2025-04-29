@@ -1,6 +1,5 @@
 context("Filtering")
 
-
 test_that("Filtering with Updog metrics",{
 
   #Variables

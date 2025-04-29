@@ -1,0 +1,6 @@
+VarA	VarB
+Reference1_A	Reference1_B
+Reference2_A	Reference2_B
+Reference3_A	Reference3_B
+Reference4_A	Reference4_B
+Reference5_A	Reference5_B

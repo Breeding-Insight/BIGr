@@ -15,6 +15,7 @@
 #'
 #' @param ped.file path to pedigree text file. The pedigree file is a
 #' 3-column pedigree tab separated file with columns labeled as id sire dam in any order
+#' @param return.output logical. If TRUE, the function will return a list of dataframes with the error types found.
 #' @return A list of dataframes of error types, and the output printed to the console
 #' @examples
 #' ##Get list with a dataframe for each error type
@@ -32,7 +33,7 @@
 #' @importFrom utils read.table
 #' @export
 #### Function to check for hierarchical errors missing parents and repeated ids ####
-check_ped <- function(ped.file) {
+check_ped <- function(ped.file, return.output = FALSE) {
   set.seed(101919)
   #### read in data ####
   data = utils::read.table(ped.file, header = T)
@@ -129,11 +130,14 @@ check_ped <- function(ped.file) {
   missing_parents <- results$missing_parents
   messy_parents <- results$messy_parents
   errors <- results$dependencies
+  # Adding the dataframes as an output list
+  output.results <- list()
   #### Print errors and cycles ####
   # Print repeated ids if any
   if (nrow(repeated_ids) > 0) {
     cat("Repeated ids found:\n")
     print(repeated_ids)
+    output.results$repeated_ids <- repeated_ids
   } else {
     cat("No repeated ids found.\n")
   }
@@ -141,6 +145,7 @@ check_ped <- function(ped.file) {
   if (nrow(messy_parents) > 0) {
     cat("Ids found as male and female parent:\n")
     print(messy_parents)
+    output.results$messy_parents <- messy_parents
   } else {
     cat("No ids found as male and female parent.\n")
   }
@@ -148,6 +153,7 @@ check_ped <- function(ped.file) {
   if (nrow(missing_parents) > 0) {
     cat("Missing parents found:\n")
     print(missing_parents)
+    output.results$missing_parents <- missing_parents
   } else {
     cat("No missing parents found.\n")
   }
@@ -159,5 +165,9 @@ check_ped <- function(ped.file) {
     }
   } else {
     cat("No dependencies found.\n")
+  }
+
+  if (return.output) {
+    return(output.results)
   }
 }

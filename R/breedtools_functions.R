@@ -1,12 +1,35 @@
 #' Computes allele frequencies for specified populations given SNP array data
 #'
-#' @param geno matrix of genotypes coded as the dosage of allele B {0, 1, 2, ..., ploidy}
+#' @param geno matrix of genotypes coded as the dosage of allele B \code{{0, 1, 2, ..., ploidy}}
 #'  with individuals in rows (named) and SNPs in columns (named)
 #' @param populations list of named populations. Each population has a vector of IDs
 #'  that belong to the population. Allele frequencies will be derived from all animals
 #' @param ploidy integer indicating the ploidy level (default is 2 for diploid)
 #' @return data.frame consisting of allele_frequencies for populations (columns) for
 #'  each SNP (rows)
+#' @references Funkhouser SA, Bates RO, Ernst CW, Newcom D, Steibel JP. Estimation of genome-wide and locus-specific
+#' breed composition in pigs. Transl Anim Sci. 2017 Feb 1;1(1):36-44.
+#'
+#' @examples
+#' # Example inputs
+#' geno_matrix <- matrix(
+#' c(4, 1, 4, 0, # S1
+#'   2, 2, 1, 3, # S2
+#'   0, 4, 0, 4, # S3
+#'   3, 3, 2, 2, # S4
+#'   1, 4, 2, 3),# S5
+#' nrow = 4, ncol = 5, byrow = FALSE, # individuals=rows, SNPs=cols
+#' dimnames = list(paste0("Ind", 1:4), paste0("S", 1:5))
+#' )
+#'
+#'pop_list <- list(
+#' PopA = c("Ind1", "Ind2"),
+#' PopB = c("Ind3", "Ind4")
+#' )
+#'
+#' allele_freqs <- allele_freq_poly(geno = geno_matrix, populations = pop_list, ploidy = 4)
+#' print(allele_freqs)
+#'
 #' @export
 allele_freq_poly <- function(geno, populations, ploidy = 2) {
 
@@ -37,16 +60,20 @@ allele_freq_poly <- function(geno, populations, ploidy = 2) {
 }
 
 
-# Performs whole genome breed composition prediction.
-#
-# @param Y numeric vector of genotypes (with names as SNPs) from a single animal.
-#   coded as dosage of allele B {0, 1, 2}
-# @param X numeric matrix of allele frequencies from reference animals
-# @param p numeric indicating number of breeds represented in X
-# @param names character names of breeds
-# @return data.frame of breed composition estimates
-# @import quadprog
-# @export
+#' Performs whole genome breed composition prediction.
+#'
+#' @param Y numeric vector of genotypes (with names as SNPs) from a single animal.
+#'   coded as dosage of allele B \code{{0, 1, 2, ..., ploidy}}
+#' @param X numeric matrix of allele frequencies from reference animals
+#' @param p numeric indicating number of breeds represented in X
+#' @param names character names of breeds
+#' @return data.frame of breed composition estimates
+#' @import quadprog
+#' @importFrom stats cor
+#' @references Funkhouser SA, Bates RO, Ernst CW, Newcom D, Steibel JP. Estimation of genome-wide and locus-specific
+#' breed composition in pigs. Transl Anim Sci. 2017 Feb 1;1(1):36-44.
+#'
+#' @noRd
 QPsolve <- function(Y, X) {
 
   # Remove NAs from Y and remove corresponding
@@ -90,7 +117,7 @@ QPsolve <- function(Y, X) {
 #' batch of animals.
 #'
 #' @param Y numeric matrix of genotypes (columns) from all animals (rows) in population
-#'  coded as dosage of allele B {0, 1, ..., ploidy}
+#'  coded as dosage of allele B \code{{0, 1, 2, ..., ploidy}}
 #' @param X numeric matrix of allele frequencies (rows) from each reference panel (columns). Frequencies are
 #'  relative to allele B.
 #' @param ped data.frame giving pedigree information. Must be formatted "ID", "Sire", "Dam"
@@ -107,6 +134,37 @@ QPsolve <- function(Y, X) {
 #' @return A data.frame or list of data.frames (if groups is !NULL) with breed/ancestry composition
 #'  results
 #' @import quadprog
+#' @references Funkhouser SA, Bates RO, Ernst CW, Newcom D, Steibel JP. Estimation of genome-wide and locus-specific
+#' breed composition in pigs. Transl Anim Sci. 2017 Feb 1;1(1):36-44.
+#'
+#' @examples
+#' # Example inputs for solve_composition_poly (ploidy = 4)
+#'
+#' # (This would typically be the output from allele_freq_poly)
+#' allele_freqs_matrix <- matrix(
+#'   c(0.625, 0.500,
+#'     0.500, 0.500,
+#'     0.500, 0.500,
+#'     0.750, 0.500,
+#'     0.625, 0.625),
+#'   nrow = 5, ncol = 2, byrow = TRUE,
+#'   dimnames = list(paste0("SNP", 1:5), c("VarA", "VarB"))
+#' )
+#'
+#' # Validation Genotypes (individuals x SNPs)
+#' val_geno_matrix <- matrix(
+#'   c(2, 1, 2, 3, 4,  # Test1 dosages for SNP1-5
+#'     3, 4, 2, 3, 0), # Test2 dosages for SNP1-5
+#'   nrow = 2, ncol = 5, byrow = TRUE,
+#'   dimnames = list(paste0("Test", 1:2), paste0("SNP", 1:5))
+#' )
+#'
+#' # Calculate Breed Composition
+#' composition <- solve_composition_poly(Y = val_geno_matrix,
+#'                                       X = allele_freqs_matrix,
+#'                                       ploidy = 4)
+#' print(composition)
+#'
 #' @export
 solve_composition_poly <- function(Y,
                                    X,

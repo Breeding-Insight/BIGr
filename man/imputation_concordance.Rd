@@ -9,7 +9,8 @@ imputation_concordance(
   imputed_genos,
   missing_code = NULL,
   snps_2_exclude = NULL,
-  output = "imputation_concordance"
+  output = "imputation_concordance",
+  verbose = FALSE
 )
 }
 \arguments{
@@ -22,6 +23,8 @@ imputation_concordance(
 \item{snps_2_exclude}{Optional input to exclude specific markers from concordance calculation. Single column of marker ids.}
 
 \item{output}{Optional input to assign the output dataframe to a specific variable name. Default is "imputation_concordance"}
+
+\item{verbose}{Optional input to print the concordance summary.}
 }
 \value{
 2 outputs: 1) A data frame with sample IDs and concordance percentages. 2) A summary of concordance percentages.

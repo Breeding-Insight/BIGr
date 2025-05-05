@@ -22,8 +22,14 @@
 #'     \item \code{homoRef_x_homoAlt_match}: Percentage of matching loci in the progeny for mixed homozygous parents.
 #'     \item \code{homoalt_x_homoRef_n}: Number of loci where one parent is homozygous alternate and the other is homozygous reference.
 #'     \item \code{homoalt_x_homoRef_match}: Percentage of matching loci in the progeny for mixed homozygous parents (alternate-reference).
+#'     \item \code{missing}: The number of loci with missing genotype data in the comparison.
 #'   }
-#' @details The function requires both parent and progeny candidates to be specified. It validates the ploidy level and ensures that all specified samples are present in the VCF file. The results include detailed statistics for each combination of parents and progeny.
+#' @details The function requires both parent and progeny candidates to be specified. It validates the ploidy level 
+#'          and ensures that all specified samples are present in the VCF file. The results include detailed 
+#'          statistics for each combination of parents and progeny. The function also removes reciprocal 
+#'          comparisons (e.g., A vs. B and B vs. A) and self-comparisons (e.g., A vs. A) to avoid redundancy.
+#'
+#' @importFrom vcfR read.vcfR extract.gt
 #'
 #' @export
 check_homozygous_trios <- function(path.vcf, ploidy = 4, parents_candidates = NULL, progeny_candidates = NULL, verbose = TRUE) {
@@ -80,16 +86,18 @@ check_homozygous_trios <- function(path.vcf, ploidy = 4, parents_candidates = NU
     homoAlt_x_homoAlt_n <- length(homoAlt_x_homoAlt)
     homoRef_x_homoAlt_n <- length(homoRef_x_homoAlt)
     homoalt_x_homoRef_n <- length(homoalt_x_homoRef)
-    homoRef_x_homoRef_match <- ifelse(homoRef_x_homoRef_n > 0, round((sum(gt3[homoRef_x_homoRef] == homo1, na.rm = NA) / homoRef_x_homoRef_n) * 100, 2), NA)
-    homoAlt_x_homoAlt_match <- ifelse(homoAlt_x_homoAlt_n > 0, round((sum(gt3[homoAlt_x_homoAlt] == homo2, na.rm = NA) / homoAlt_x_homoAlt_n) * 100, 2), NA)
-    homoRef_x_homoAlt_match <- ifelse(homoRef_x_homoAlt_n > 0, round((sum(gt3[homoRef_x_homoAlt] == ploidy / 2, na.rm = NA) / homoRef_x_homoAlt_n) * 100, 2), NA)
-    homoalt_x_homoRef_match <- ifelse(homoalt_x_homoRef_n > 0, round((sum(gt3[homoalt_x_homoRef] == ploidy / 2, na.rm = NA) / homoalt_x_homoRef_n) * 100, 2), NA)
+    homoRef_x_homoRef_match <- ifelse(homoRef_x_homoRef_n > 0, round((sum(gt3[homoRef_x_homoRef] == homo1, na.rm = TRUE) / homoRef_x_homoRef_n) * 100, 2), NA)
+    homoAlt_x_homoAlt_match <- ifelse(homoAlt_x_homoAlt_n > 0, round((sum(gt3[homoAlt_x_homoAlt] == homo2, na.rm = TRUE) / homoAlt_x_homoAlt_n) * 100, 2), NA)
+    homoRef_x_homoAlt_match <- ifelse(homoRef_x_homoAlt_n > 0, round((sum(gt3[homoRef_x_homoAlt] == ploidy / 2, na.rm = TRUE) / homoRef_x_homoAlt_n) * 100, 2), NA)
+    homoalt_x_homoRef_match <- ifelse(homoalt_x_homoRef_n > 0, round((sum(gt3[homoalt_x_homoRef] == ploidy / 2, na.rm = TRUE) / homoalt_x_homoRef_n) * 100, 2), NA)
+
+    miss <- sum(is.na(gt1) | is.na(gt2) | is.na(gt3))
 
     # Return the result
     result <- c(
       homoRef_x_homoRef_n, homoRef_x_homoRef_match, homoAlt_x_homoAlt_n,
       homoAlt_x_homoAlt_match, homoRef_x_homoAlt_n, homoRef_x_homoAlt_match,
-      homoalt_x_homoRef_n, homoalt_x_homoRef_match
+      homoalt_x_homoRef_n, homoalt_x_homoRef_match, miss
     )
     return(result)
   }, filtered_combinations$parent1, filtered_combinations$parent2, filtered_combinations$progeny, homo1, homo2)
@@ -99,7 +107,7 @@ check_homozygous_trios <- function(path.vcf, ploidy = 4, parents_candidates = NU
   colnames(all_comb) <- c(
     "parent1", "parent2", "progeny", "homoRef_x_homoRef_n", "homoRef_x_homoRef_match",
     "homoAlt_x_homoAlt_n", "homoAlt_x_homoAlt_match", "homoRef_x_homoAlt_n",
-    "homoRef_x_homoAlt_match", "homoalt_x_homoRef_n", "homoalt_x_homoRef_match"
+    "homoRef_x_homoAlt_match", "homoalt_x_homoRef_n", "homoalt_x_homoRef_match", "missing"
   )
 
   return(all_comb)
@@ -113,13 +121,14 @@ check_homozygous_trios <- function(path.vcf, ploidy = 4, parents_candidates = NU
 #' @param select_samples An optional character vector of sample names to be selected for comparison. If NULL (default), all samples in the VCF file are used.
 #' @param verbose A logical value indicating whether to print the number of combinations tested. Default is TRUE.
 #'
-#' @return A data frame with three columns:
+#' @return A data frame with four columns:
 #'   \itemize{
 #'     \item \code{sample1}: The name of the first sample in the pair.
 #'     \item \code{sample2}: The name of the second sample in the pair.
 #'     \item \code{%_matching_genotypes}: The percentage of compatible genotypes between the two samples.
+#'     \item \code{%_missing_genotypes}: The percentage of missing genotypes in the comparison.
 #'   }
-#' @details The function removes reciprocal comparisons (e.g., A vs. B and B vs. A) and self-comparisons (e.g., A vs. A) to avoid redundancy. Compatibility is calculated as the percentage of matching genotypes between two samples, excluding missing values.
+#' @details The function removes reciprocal comparisons (e.g., A vs. B and B vs. A) and self-comparisons (e.g., A vs. A) to avoid redundancy. Compatibility is calculated as the percentage of matching genotypes between two samples, excluding missing values. The percentage of missing genotypes is also reported for each pair.
 #'
 #' @importFrom vcfR read.vcfR extract.gt
 #'
@@ -129,7 +138,8 @@ check_replicates <- function(path.vcf, select_samples = NULL, verbose = TRUE) {
   vcf <- read.vcfR(path.vcf, verbose = FALSE)
 
   # Extract the genotype data
-  GT <- extract.gt(vcf, element = "GT")
+  GT <- extract.gt(vcf, element = "GT", convertNA = TRUE)
+  if(any(GT == "./.")) GT[which(GT == "./.")] <- NA
 
   # Select samples
   if (is.null(select_samples)) {
@@ -147,19 +157,22 @@ check_replicates <- function(path.vcf, select_samples = NULL, verbose = TRUE) {
   if(verbose) cat("Number of combinations tested: ", nrow(filtered_combinations), "\n")
 
   compatibility <- mapply(function(sample1, sample2) {
+
     # Get the genotypes for the two samples
     gt1 <- GT[, sample1]
     gt2 <- GT[, sample2]
 
     # Check if the genotypes are compatible
     compatible <- (sum(gt1 == gt2, na.rm = TRUE) / length(gt1)) * 100
+    miss.perc <- (sum(is.na(gt1) | is.na(gt2))/ length(gt1)) * 100
 
     # Return the result
-    return(compatible)
+    return(c(compatible = compatible, miss.perc = miss.perc))
   }, filtered_combinations$Var1, filtered_combinations$Var2)
 
 
-  result <- cbind(filtered_combinations, compatibility)
-  colnames(result) <- c("sample1", "sample2", "%_matching_genotypes")
+  result <- cbind(filtered_combinations, t(compatibility))
+  colnames(result) <- c("sample1", "sample2", "%_matching_genotypes", "%_missing_genotypes")
   return(result)
 }
+

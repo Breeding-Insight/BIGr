@@ -1,20 +1,32 @@
 #' Calculate Concordance between Imputed and Reference Genotypes
 #'
-#' This calculates the concordance between imputed and reference genotypes. It assumes that samples are rows and markers are columns.
-#' It is recommended to use allele dosages (0,1,2) but will work with other formats. Missing data in reference or imputed genotypes
-#' will not be considered for concordance if argument missing_code used. If a specific subset of markers should it can be provided as argument snps_2_exclude.
+#' This function calculates the concordance between imputed and reference genotypes. It assumes that samples are rows and markers are columns.
+#' It is recommended to use allele dosages (0, 1, 2) but will work with other formats. Missing data in reference or imputed genotypes
+#' will not be considered for concordance if the `missing_code` argument is used. If a specific subset of markers should be excluded,
+#' it can be provided using the `snps_2_exclude` argument.
 #'
-#' @param reference_genos Genotype data.frame with rows as samples and columns as markers. Dosage recommended.
-#' @param imputed_genos Genotype data.frame with rows as samples and columns as markers. Dosage recommended.
-#' @param missing_code Optional input to consider missing data to exclude in concordance calculation.
-#' @param snps_2_exclude Optional input to exclude specific markers from concordance calculation. Single column of marker ids.
-#' @param output Optional input to assign the output dataframe to a specific variable name. Default is "imputation_concordance"
-#' @param verbose Optional input to print the concordance summary.
+#' @param reference_genos A data frame containing reference genotype data, with rows as samples and columns as markers. Dosage format (0, 1, 2) is recommended.
+#' @param imputed_genos A data frame containing imputed genotype data, with rows as samples and columns as markers. Dosage format (0, 1, 2) is recommended.
+#' @param missing_code An optional value to specify missing data. If provided, loci with this value in either dataset will be excluded from the concordance calculation.
+#' @param snps_2_exclude An optional vector of marker IDs to exclude from the concordance calculation.
+#' @param verbose A logical value indicating whether to print a summary of the concordance results. Default is FALSE.
+#'
+#' @return A list with two elements:
+#'   \itemize{
+#'     \item \code{result_df}: A data frame with sample IDs and their concordance percentages.
+#'     \item \code{summary_concordance}: A summary of concordance percentages, including minimum, maximum, mean, and quartiles.
+#'   }
+#'
+#' @details The function identifies common samples and markers between the reference and imputed genotype datasets. It calculates the percentage of matching genotypes for each sample, excluding missing data and specified markers. The concordance is reported as a percentage for each sample, along with a summary of the overall concordance distribution.
+#'
 #' @import dplyr
-#' @return 2 outputs: 1) A data frame with sample IDs and concordance percentages. 2) A summary of concordance percentages.
 #' @export
 #'
-imputation_concordance <- function(reference_genos, imputed_genos, missing_code = NULL, snps_2_exclude = NULL, output = "imputation_concordance", verbose = FALSE) {
+imputation_concordance <- function(reference_genos,
+                                   imputed_genos,
+                                   missing_code = NULL,
+                                   snps_2_exclude = NULL,
+                                   verbose = FALSE) {
 
   # Find common IDs
   common_ids <- intersect(imputed_genos$ID, reference_genos$ID)
@@ -60,12 +72,6 @@ imputation_concordance <- function(reference_genos, imputed_genos, missing_code 
     }
   }
 
-  # Assign the result dataframe to the output variable
-  if (!is.null(output)) {
-    assign(output, result_df, envir = .GlobalEnv)
-  } else {
-    return(result_df)
-  }
-
+  return(result_df)
 }
 

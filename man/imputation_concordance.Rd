@@ -9,28 +9,33 @@ imputation_concordance(
   imputed_genos,
   missing_code = NULL,
   snps_2_exclude = NULL,
-  output = "imputation_concordance",
   verbose = FALSE
 )
 }
 \arguments{
-\item{reference_genos}{Genotype data.frame with rows as samples and columns as markers. Dosage recommended.}
+\item{reference_genos}{A data frame containing reference genotype data, with rows as samples and columns as markers. Dosage format (0, 1, 2) is recommended.}
 
-\item{imputed_genos}{Genotype data.frame with rows as samples and columns as markers. Dosage recommended.}
+\item{imputed_genos}{A data frame containing imputed genotype data, with rows as samples and columns as markers. Dosage format (0, 1, 2) is recommended.}
 
-\item{missing_code}{Optional input to consider missing data to exclude in concordance calculation.}
+\item{missing_code}{An optional value to specify missing data. If provided, loci with this value in either dataset will be excluded from the concordance calculation.}
 
-\item{snps_2_exclude}{Optional input to exclude specific markers from concordance calculation. Single column of marker ids.}
+\item{snps_2_exclude}{An optional vector of marker IDs to exclude from the concordance calculation.}
 
-\item{output}{Optional input to assign the output dataframe to a specific variable name. Default is "imputation_concordance"}
-
-\item{verbose}{Optional input to print the concordance summary.}
+\item{verbose}{A logical value indicating whether to print a summary of the concordance results. Default is FALSE.}
 }
 \value{
-2 outputs: 1) A data frame with sample IDs and concordance percentages. 2) A summary of concordance percentages.
+A list with two elements:
+\itemize{
+\item \code{result_df}: A data frame with sample IDs and their concordance percentages.
+\item \code{summary_concordance}: A summary of concordance percentages, including minimum, maximum, mean, and quartiles.
+}
 }
 \description{
-This calculates the concordance between imputed and reference genotypes. It assumes that samples are rows and markers are columns.
-It is recommended to use allele dosages (0,1,2) but will work with other formats. Missing data in reference or imputed genotypes
-will not be considered for concordance if argument missing_code used. If a specific subset of markers should it can be provided as argument snps_2_exclude.
+This function calculates the concordance between imputed and reference genotypes. It assumes that samples are rows and markers are columns.
+It is recommended to use allele dosages (0, 1, 2) but will work with other formats. Missing data in reference or imputed genotypes
+will not be considered for concordance if the \code{missing_code} argument is used. If a specific subset of markers should be excluded,
+it can be provided using the \code{snps_2_exclude} argument.
+}
+\details{
+The function identifies common samples and markers between the reference and imputed genotype datasets. It calculates the percentage of matching genotypes for each sample, excluding missing data and specified markers. The concordance is reported as a percentage for each sample, along with a summary of the overall concordance distribution.
 }

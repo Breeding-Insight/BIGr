@@ -4,13 +4,11 @@
 \alias{check_ped}
 \title{Evaluate Pedigree File for Accuracy}
 \usage{
-check_ped(ped.file, return.output = FALSE)
+check_ped(ped.file)
 }
 \arguments{
 \item{ped.file}{path to pedigree text file. The pedigree file is a
 3-column pedigree tab separated file with columns labeled as id sire dam in any order}
-
-\item{return.output}{logical. If TRUE, the function will return a list of dataframes with the error types found.}
 }
 \value{
 A list of dataframes of error types, and the output printed to the console

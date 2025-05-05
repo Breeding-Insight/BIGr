@@ -15,7 +15,6 @@
 #'
 #' @param ped.file path to pedigree text file. The pedigree file is a
 #' 3-column pedigree tab separated file with columns labeled as id sire dam in any order
-#' @param return.output logical. If TRUE, the function will return a list of dataframes with the error types found.
 #' @return A list of dataframes of error types, and the output printed to the console
 #' @examples
 #' ##Get list with a dataframe for each error type
@@ -33,7 +32,7 @@
 #' @importFrom utils read.table
 #' @export
 #### Function to check for hierarchical errors missing parents and repeated ids ####
-check_ped <- function(ped.file, return.output = FALSE) {
+check_ped <- function(ped.file) {
   set.seed(101919)
   #### read in data ####
   data = utils::read.table(ped.file, header = T)
@@ -167,7 +166,5 @@ check_ped <- function(ped.file, return.output = FALSE) {
     cat("No dependencies found.\n")
   }
 
-  if (return.output) {
-    return(output.results)
-  }
+  return(results)
 }

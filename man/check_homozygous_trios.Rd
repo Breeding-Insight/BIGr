@@ -45,8 +45,5 @@ This function analyzes homozygous loci segregation in trios (parents and progeny
 It calculates the percentage of homozygous loci in the progeny that match the expected segregation patterns based on the tested parents.
 }
 \details{
-The function requires both parent and progeny candidates to be specified. It validates the ploidy level
-and ensures that all specified samples are present in the VCF file. The results include detailed
-statistics for each combination of parents and progeny. The function also removes reciprocal
-comparisons (e.g., A vs. B and B vs. A) and self-comparisons (e.g., A vs. A) to avoid redundancy.
+This function is designed to validate the segregation of homozygous loci in trios, ensuring that the progeny genotypes align with the expected patterns based on the parental genotypes. It requires both parent and progeny candidates to be specified. The function validates the ploidy level and ensures that all specified samples are present in the VCF file. The results include detailed statistics for each combination of parents and progeny. Reciprocal comparisons (e.g., A vs. B and B vs. A) and self-comparisons (e.g., A vs. A) are removed to avoid redundancy. Missing genotype data is also accounted for and reported in the results.
 }

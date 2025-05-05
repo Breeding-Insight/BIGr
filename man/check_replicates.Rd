@@ -19,8 +19,8 @@ A data frame with four columns:
 \item \code{sample1}: The name of the first sample in the pair.
 \item \code{sample2}: The name of the second sample in the pair.
 \item \code{\%_matching_genotypes}: The percentage of compatible genotypes between the two samples.
-\item \code{%_missing_genotypes}: The percentage of missing genotypes in the comparison.
-  }
+\item \code{\%_missing_genotypes}: The percentage of missing genotypes in the comparison.
+}
 }
 \description{
 This function checks the compatibility between sample genotypes in a VCF file by comparing all pairs of samples.

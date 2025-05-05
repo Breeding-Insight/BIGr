@@ -24,10 +24,8 @@
 #'     \item \code{homoalt_x_homoRef_match}: Percentage of matching loci in the progeny for mixed homozygous parents (alternate-reference).
 #'     \item \code{missing}: The number of loci with missing genotype data in the comparison.
 #'   }
-#' @details The function requires both parent and progeny candidates to be specified. It validates the ploidy level 
-#'          and ensures that all specified samples are present in the VCF file. The results include detailed 
-#'          statistics for each combination of parents and progeny. The function also removes reciprocal 
-#'          comparisons (e.g., A vs. B and B vs. A) and self-comparisons (e.g., A vs. A) to avoid redundancy.
+#'
+#' @details This function is designed to validate the segregation of homozygous loci in trios, ensuring that the progeny genotypes align with the expected patterns based on the parental genotypes. It requires both parent and progeny candidates to be specified. The function validates the ploidy level and ensures that all specified samples are present in the VCF file. The results include detailed statistics for each combination of parents and progeny. Reciprocal comparisons (e.g., A vs. B and B vs. A) and self-comparisons (e.g., A vs. A) are removed to avoid redundancy. Missing genotype data is also accounted for and reported in the results.
 #'
 #' @importFrom vcfR read.vcfR extract.gt
 #'
@@ -125,9 +123,10 @@ check_homozygous_trios <- function(path.vcf, ploidy = 4, parents_candidates = NU
 #'   \itemize{
 #'     \item \code{sample1}: The name of the first sample in the pair.
 #'     \item \code{sample2}: The name of the second sample in the pair.
-#'     \item \code{%_matching_genotypes}: The percentage of compatible genotypes between the two samples.
-#'     \item \code{%_missing_genotypes}: The percentage of missing genotypes in the comparison.
+#'     \item \code{\%_matching_genotypes}: The percentage of compatible genotypes between the two samples.
+#'     \item \code{\%_missing_genotypes}: The percentage of missing genotypes in the comparison.
 #'   }
+#'
 #' @details The function removes reciprocal comparisons (e.g., A vs. B and B vs. A) and self-comparisons (e.g., A vs. A) to avoid redundancy. Compatibility is calculated as the percentage of matching genotypes between two samples, excluding missing values. The percentage of missing genotypes is also reported for each pair.
 #'
 #' @importFrom vcfR read.vcfR extract.gt

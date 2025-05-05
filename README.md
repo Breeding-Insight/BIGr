@@ -3,7 +3,7 @@
 ![GitHub Release](https://img.shields.io/github/v/release/Breeding-Insight/BIGr)
 [![Development Status](https://img.shields.io/badge/development-active-blue.svg)](https://img.shields.io/badge/development-active-blue.svg)
 ![GitHub License](https://img.shields.io/github/license/Breeding-Insight/BIGr)
-
+[![codecov](https://codecov.io/gh/Breeding-Insight/BIGr/graph/badge.svg?token=PJUZMRN1NF)](https://codecov.io/gh/Breeding-Insight/BIGr)
 
 
 <!-- badges: end -->

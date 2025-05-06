@@ -1,3 +1,14 @@
+<!-- badges: start -->
+[![R-CMD-check](https://github.com/Breeding-Insight/BIGr/workflows/R-CMD-check/badge.svg)](https://github.com/Breeding-Insight/BIGr/actions)
+![GitHub Release](https://img.shields.io/github/v/release/Breeding-Insight/BIGr)
+[![Development Status](https://img.shields.io/badge/development-active-blue.svg)](https://img.shields.io/badge/development-active-blue.svg)
+![GitHub License](https://img.shields.io/github/license/Breeding-Insight/BIGr)
+[![codecov](https://codecov.io/gh/Breeding-Insight/BIGr/graph/badge.svg?token=PJUZMRN1NF)](https://codecov.io/gh/Breeding-Insight/BIGr)
+
+
+<!-- badges: end -->
+
+=======
 # BIGr <img src="https://github.com/user-attachments/assets/2168c801-fcee-4999-b04e-f7b01fed9cfa" align="right" width="250"/>
 
 

@@ -1,2 +1,11 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^dev$
+^doc$
+^LICENSE\.md$
+^LICENSE$
+^revdep$
+^cran-comments\.md$
+^.github$
+^package-code\.Rmd$
+^docs$

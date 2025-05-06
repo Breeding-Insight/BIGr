@@ -51,7 +51,7 @@ filterVCF <- function(vcf.file,
   #Should allow for any INFO field to be entered to be filtered
 
   # Import VCF (can be .vcf or .vcf.gz)
-  if (class(vcf.file) != "vcfR"){
+  if (!inherits(vcf.file, "vcfR")) {
     vcf <- read.vcfR(vcf.file)
   } else {
     vcf <- vcf.file
@@ -303,18 +303,18 @@ filterVCF <- function(vcf.file,
   }
   ### Export the modified VCF file (this exports as a .vcf.gz, so make sure to have the name end in .vcf.gz)
   cat("Exporting VCF\n")
-  if (!class(vcf.file) == "vcfR"){
-    if (!is.null(output.file)){
-      output_name <- paste0(output.file,".vcf.gz")
+  if (!inherits(vcf.file, "vcfR")) {
+    if (!is.null(output.file)) {
+      output_name <- paste0(output.file, ".vcf.gz")
       vcfR::write.vcf(vcf, file = output_name)
-    }else{
+    } else {
       return(vcf)
     }
-  }else{
-    if (!is.null(output.file)){
-      output_name <- paste0(output.file,"_filtered.vcf.gz")
+  } else {
+    if (!is.null(output.file)) {
+      output_name <- paste0(output.file, "_filtered.vcf.gz")
       vcfR::write.vcf(vcf, file = output_name)
-    }else{
+    } else {
       return(vcf)
     }
   }

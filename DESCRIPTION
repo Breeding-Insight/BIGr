@@ -1,7 +1,31 @@
 Package: BIGr
 Title: (B)reeding (I)nsight (G)enomics Analysis Functions for Polypoid and Diploid Species
 Version: 0.5.1
-Author: Alexander M. Sandercock, Cristiane Taniguti, Josue Chinchilla-Vargas, Shufen Chen, Manoj Sapkota, Meng Lin, Dongyan Zhao, and Breeding Insight Team
+Authors@R: c(person(given='Alexander',
+                    family='Sandercock',
+                    email='ams866@cornell.edu',
+                    role=c('cre','aut')),
+             person(given='Cristiane',
+                    family='Taniguti',
+                    role = 'aut'),
+             person(given='Josue',
+                    family='Chinchilla-Vargas',
+                    role='aut'),
+             person(given='Shufen',
+                    family='Chen',
+                    role='ctb'),
+             person(given='Manoj',
+                    family='Sapkota',
+                    role='ctb'),
+             person(given='Meng',
+                    family='Lin',
+                    role='ctb'),
+             person(given='Dongyan',
+                    family='Zhao',
+                    role='ctb'),
+             person('Cornell', 'University',
+                    role=c('cph'), 
+                    comment = "Breeding Insight"))
 Maintainer: Alexander M. Sandercock <ams866@cornell.edu>
 Description: Functions developed within Breeding Insight to analyze
     diploid and polyploid breeding and genetic data. 'BIGr' provides the

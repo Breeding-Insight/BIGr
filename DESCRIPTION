@@ -1,5 +1,5 @@
 Package: BIGr
-Title: (B)reeding (I)nsight (G)enomics Analysis Functions for Polypoid and Diploid Species
+Title: Breeding Insight Genomics Analysis Functions for Polypoid and Diploid Species
 Version: 0.5.1
 Authors@R: c(person(given='Alexander',
                     family='Sandercock',
@@ -35,7 +35,9 @@ Description: Functions developed within Breeding Insight to analyze
     provides a user-friendly interface for performing routine genotype
     analysis tasks such as dosage calling, filtering, PCA, GWAS, and
     Genomic Prediction.
-License: Apache License 2.0
+License: Apache License (>= 2)
+URL: https://github.com/Breeding-Insight/BIGr
+BugReports: https://github.com/Breeding-Insight/BIGr/issues
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2

@@ -14,7 +14,9 @@
 #' @param out_vcf output VCF file name
 #' @param verbose print metrics on the console
 #'
+#' @importFrom utils packageVersion read.csv
 #' @import vcfR
+#'
 #' @export
 get_OffTargets <- function(madc = NULL,
                            botloci = NULL,

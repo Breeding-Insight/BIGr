@@ -15,6 +15,7 @@
 ##' exist in different files.
 ##'
 ##' @import dplyr
+##' @importFrom utils tail write.csv
 ##'
 ##' @examples
 ##' # First generating example MADC files

@@ -11,6 +11,11 @@
 
 # BIGr 0.5.0
 
+ * Add imputation_concordance function to estimate accuracy of imputed and original dataset
+ * Add get_OffTargets function to extract target and off-target SNPs from a MADC file
+ * Add merge_MADCs function to merge two or more MADC files together
+ * Improved documentation and examples for all functions
+ * Add tests for all functions
 
 # BIGr 0.5.1
 

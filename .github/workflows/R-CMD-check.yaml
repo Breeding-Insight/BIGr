@@ -46,7 +46,13 @@ jobs:
           needs: check
       - uses: r-lib/actions/check-r-package@v2
 
-      - name: Test coverage
+      - name: Generate test coverage
         run: |
-          covr::codecov(token = "${{ secrets.CODECOV_TOKEN }}")
+          cov <- covr::package_coverage(type = "tests")
+          covr::codecov(coverage = cov, quiet = FALSE)
         shell: Rscript {0}
+
+      - uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: Breeding-Insight/BIGr

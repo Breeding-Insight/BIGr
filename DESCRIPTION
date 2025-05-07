@@ -57,5 +57,12 @@ Imports:
     janitor,
     quadprog,
     tibble
+Suggests: 
+    covr,
+    spelling,
+    rmdformats,
+    knitr (>= 1.10),
+    rmarkdown,
+    testthat (>= 3.0.0)   
 Remotes:
 RdMacros: Rdpack

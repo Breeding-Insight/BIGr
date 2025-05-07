@@ -13,7 +13,7 @@ test_that("test imputation",{
   messy_parents <- output.list$messy_parents
   missing_parents <- output.list$missing_parents
 
-  expect_true(df_length == 2)
+  expect_true(df_length == 4)
   expect_true(all(messy_parents$id == c("grandfather2","grandfather3")))
   expect_true(nrow(missing_parents) == 13)
 

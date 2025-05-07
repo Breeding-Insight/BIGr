@@ -6,7 +6,7 @@ test_that("test imputation",{
   ped_file <- system.file("check_ped_test.txt", package="BIGr")
 
   #Calculations
-  output.list <- check_ped(ped_file, TRUE)
+  output.list <- check_ped(ped_file)
 
   #Check
   df_length <- length(output.list)

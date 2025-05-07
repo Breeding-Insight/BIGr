@@ -13,7 +13,7 @@ test_that("test imputation",{
   test = read.table(test_file, header = TRUE)
 
   #Calculations
-  result <- imputation_concordance(ref, test,snps_2_exclude = snps, missing_code =5, verbose = FALSE)
+  result <- imputation_concordance(ref, test,snps_2_exclude = snps, missing_code =5, output = NULL, verbose = FALSE)
 
   #Check
   result2 <- sum(as.numeric(gsub("%","",result$Concordance)))

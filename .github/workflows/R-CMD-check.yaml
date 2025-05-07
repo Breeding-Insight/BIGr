@@ -46,7 +46,15 @@ jobs:
           needs: check
       - uses: r-lib/actions/check-r-package@v2
 
-      - name: Test coverage
+      - name: Generate test coverage report
         run: |
-          covr::codecov(token = "${{ secrets.CODECOV_TOKEN }}")
+          cov <- covr::package_coverage(type = "tests")
+          covr::to_cobertura(cov, file = "coverage.xml")
         shell: Rscript {0}
+
+      - uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: Breeding-Insight/BIGr
+          files: coverage.xml
+

@@ -38,5 +38,5 @@ BIGr development is supported by [Breeding Insight](https://www.breedinginsight.
 
 If you use BIGr in your research, please cite as:
 
-Sandercock, Alexander M., Cristiane H. Taniguti, Josue Chinchilla-Vargas, Donguan Zhao, Shufen Chen, Meng Lin, Manoj Sapkota, and Breeding Insight Team. 2024. “(B)reeding (I)nsight (G)enomics Functions for Polypoid and Diploid Species.” https://github.com/Breeding-Insight/BIGr.
+Sandercock, Alexander M., Cristiane H. Taniguti, Josue Chinchilla-Vargas, Dongyan Zhao, Shufen Chen, Meng Lin, Manoj Sapkota, and Breeding Insight Team. 2025. “Breeding Insight Genomics Functions for Polypoid and Diploid Species.” https://github.com/Breeding-Insight/BIGr.
 

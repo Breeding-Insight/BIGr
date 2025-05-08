@@ -14,7 +14,7 @@
 #' @param out_vcf output VCF file name
 #' @param verbose print metrics on the console
 #'
-#' @importFrom utils packageVersion read.csv
+#' @importFrom utils packageVersion read.csv write.table
 #' @import vcfR
 #'
 #' @export

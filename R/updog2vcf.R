@@ -14,6 +14,7 @@
 #' @import dplyr
 #' @import tidyr
 #' @importFrom Rdpack reprompt
+#' @importFrom utils write.table
 #' @references
 #' Updog R package
 #' @export

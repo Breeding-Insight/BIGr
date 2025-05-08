@@ -1,7 +1,7 @@
 Package: BIGr
 Title: Breeding Insight Genomics Functions for Polypoid and Diploid Species
-Version: 0.5.1
-Authors@R: c(person(given='Alexander',
+Version: 0.5.2
+Authors@R: c(person(given='Alexander M.',
                     family='Sandercock',
                     email='ams866@cornell.edu',
                     role=c('cre','aut')),
@@ -65,5 +65,4 @@ Suggests:
     knitr (>= 1.10),
     rmarkdown,
     testthat (>= 3.0.0)   
-Remotes:
 RdMacros: Rdpack

@@ -2,9 +2,9 @@
 #' Converts MADC file to VCF recovering target and off-target SNPs
 #' @param madc path to MADC file
 #' @param botloci path to file containing the target IDs that were designed in the bottom strand
-#' @param hap_seq path to haplotype DB fasta file
+#' @param hap_seq path to haplotype DB FASTA file
 #' @param rm_multiallelic_SNP logical. If TRUE, SNP with more than one alternative base will be removed. If FALSE, check `multiallelic_SNP_dp_thr` specs
-#' @param multiallelic_SNP_dp_thr nnumerical. If `rm_multiallelic_SNP` is FALSE, set a minimum depth by tag threshold `multiallelic_SNP_dp_thr` combined
+#' @param multiallelic_SNP_dp_thr numerical. If `rm_multiallelic_SNP` is FALSE, set a minimum depth by tag threshold `multiallelic_SNP_dp_thr` combined
 #' with minimum number of samples `multiallelic_SNP_sample_thr` to eliminate low frequency SNP allele. If the threshold does not eliminate the multiallelic
 #' aspect of the marker, the marker is discarded. This is likely to happen to paralogous sites.
 #' @param multiallelic_SNP_sample_thr numerical. If `rm_multiallelic_SNP` is FALSE, set a minimum depth by tag threshold combined with minimum number of

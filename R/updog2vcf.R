@@ -17,7 +17,25 @@
 #' @importFrom utils write.table
 #' @importFrom Rsamtools bgzip
 #' @references
-#' Updog R package
+#' Gerard, D., Ferrão, L. F. V., Garcia, A. A. F., & Stephens, M. (2018). Genotyping polyploids from messy sequencing data. Genetics, 210(3), 789-807.
+#' @examples
+#'
+#' # Retrieving the updog output multidog object
+#' load(testthat::test_path("iris_updog.RData"))
+#'
+#' temp_file <- tempfile()
+#'
+#' # Convert updog to VCF, where the new VCF will be saved at the location specified in the output.file
+#' updog2vcf(
+#'   multidog.object = mout,
+#'   output.file = temp_file,
+#'   updog_version = "0.0.0",
+#'   compress = TRUE
+#' )
+#'
+#' #Removing the example vcf
+#' rm(temp_file)
+#'
 #' @export
 updog2vcf <- function(multidog.object, output.file, updog_version = NULL, compress = TRUE) {
   #Making the VCF (This is highly dependent on snps being in a format where the SNP IDs are the CHR_POS)

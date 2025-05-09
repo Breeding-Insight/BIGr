@@ -35,7 +35,8 @@ Description: Functions developed within Breeding Insight to analyze
     provides a user-friendly interface for performing routine genotype
     analysis tasks such as dosage calling, filtering, PCA, GWAS, and
     Genomic Prediction. For more details about the included breedtools 
-    functions, see Funkhouser et al. (2017) <doi:10.2527/tas2016.0003>.
+    functions, see Funkhouser et al. (2017) <doi:10.2527/tas2016.0003>, and
+    the Updog output format, see Gerard et al. (2018) <doi:10.1534/genetics.118.301468>.
 License: Apache License (>= 2)
 URL: https://github.com/Breeding-Insight/BIGr
 BugReports: https://github.com/Breeding-Insight/BIGr/issues

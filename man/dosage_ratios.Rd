@@ -29,7 +29,7 @@ colnames(geno) <- paste0("Ind", 1:n_ind)
 rownames(geno) <- paste0("SNP", 1:n_snps)
 ploidy <- 4
 
-# ratio of dosage value (numeric genotypes) appearance in dataset
+# ratio of dosage value (numeric genotypes) across samples in dataset
 result <- dosage_ratios(geno, ploidy)
 
 print(result)

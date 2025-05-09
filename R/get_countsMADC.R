@@ -8,6 +8,20 @@
 #' @param madc_file Path to MADC file
 #' @import dplyr
 #' @return A list of read count matrices for reference, alternate, and total read count values
+#' @examples
+#' # Get the path to the MADC file
+#' madc_path <- system.file("iris_DArT_MADC.csv", package = "BIGr")
+#'
+#' # Extract the read count matrices
+#' counts_matrices <- get_countsMADC(madc_path)
+#'
+#' # Access the reference, alternate, and size matrices
+#'
+#' # ref_matrix <- counts_matrices$ref_matrix
+#' # alt_matrix <- counts_matrices$alt_matrix
+#' # size_matrix <- counts_matrices$size_matrix
+#'
+#' rm(counts_matrices)
 #' @export
 get_countsMADC <- function(madc_file) {
   # This function takes the MADC file as input and generates a Ref and Alt counts dataframe as output

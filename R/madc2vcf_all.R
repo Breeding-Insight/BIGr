@@ -42,9 +42,9 @@ madc2vcf_all <- function(madc = NULL,
                       "out_vcf= ", out_vcf, ', ',
                       "verbose= ", verbose,')">')
 
-  report <- read.csv(madc)
-  botloci <- read.csv(botloci, header = F)
-  hap_seq <- read.table(hap_seq, header = F)
+  if(!is.null(madc)) report <- read.csv(madc) else stop("Please provide a MADC file")
+  if(!is.null(botloci)) botloci <- read.csv(botloci, header = F) else stop("Please provide a botloci file")
+  if(!is.null(had_seq)) hap_seq <- read.table(hap_seq, header = F)
 
   # Check marker names compatibility between MADC and botloci
   if(!any(botloci$V1 %in% report$CloneID)) {

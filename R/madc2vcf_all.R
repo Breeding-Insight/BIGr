@@ -1,27 +1,29 @@
-
 #' Converts MADC file to VCF recovering target and off-target SNPs
-#' @param madc path to MADC file
-#' @param botloci path to file containing the target IDs that were designed in the bottom strand
-#' @param hap_seq path to haplotype DB fasta file
-#' @param rm_multiallelic_SNP logical. If TRUE, SNP with more than one alternative base will be removed. If FALSE, check `multiallelic_SNP_dp_thr` specs
-#' @param multiallelic_SNP_dp_thr nnumerical. If `rm_multiallelic_SNP` is FALSE, set a minimum depth by tag threshold `multiallelic_SNP_dp_thr` combined
-#' with minimum number of samples `multiallelic_SNP_sample_thr` to eliminate low frequency SNP allele. If the threshold does not eliminate the multiallelic
-#' aspect of the marker, the marker is discarded. This is likely to happen to paralogous sites.
-#' @param multiallelic_SNP_sample_thr numerical. If `rm_multiallelic_SNP` is FALSE, set a minimum depth by tag threshold combined with minimum number of
-#' samples `multiallelic_SNP_sample_thr` to eliminate low frequency SNP allele. If the threshold does not eliminate the multiallelic aspect of the marker,
-#' the marker is discarded. This is likely to happen to paralogous sites.
-#' @param n.cores number of cores to be used in the parallelization
-#' @param out_vcf output VCF file name
-#' @param verbose print metrics on the console
+#'
+#' This function processes a MADC file to generate a VCF file containing both target and off-target SNPs. It includes options for filtering multiallelic SNPs and parallel processing to improve performance.
+#'
+#' @param madc A string specifying the path to the MADC file.
+#' @param botloci A string specifying the path to the file containing the target IDs designed in the bottom strand.
+#' @param hap_seq A string specifying the path to the haplotype database fasta file.
+#' @param rm_multiallelic_SNP A logical value. If TRUE, SNPs with more than one alternative base are removed. If FALSE, the thresholds specified by `multiallelic_SNP_dp_thr` and `multiallelic_SNP_sample_thr` are used to filter low-frequency SNP alleles. Default is FALSE.
+#' @param multiallelic_SNP_dp_thr A numeric value specifying the minimum depth by tag threshold for filtering low-frequency SNP alleles when `rm_multiallelic_SNP` is FALSE. Default is 0.
+#' @param multiallelic_SNP_sample_thr A numeric value specifying the minimum number of samples threshold for filtering low-frequency SNP alleles when `rm_multiallelic_SNP` is FALSE. Default is 0.
+#' @param n.cores An integer specifying the number of cores to use for parallel processing. Default is 1.
+#' @param out_vcf A string specifying the name of the output VCF file. If the file extension is not `.vcf`, it will be appended automatically.
+#' @param verbose A logical value indicating whether to print metrics and progress to the console. Default is TRUE.
+#'
+#' @return This function does not return an R object. It writes the processed VCF file to the specified `out_vcf` path.
+#'
+#' @details The function reads the MADC file, processes it to identify target and off-target SNPs, and generates a VCF file. It uses parallel processing to improve performance and provides options to filter multiallelic SNPs based on user-defined thresholds. The generated VCF file includes metadata about the processing parameters and the BIGr package version.
 #'
 #' @importFrom utils packageVersion read.csv
 #' @import vcfR
 #'
 #' @export
-get_OffTargets <- function(madc = NULL,
+madc2vcf_all <- function(madc = NULL,
                            botloci = NULL,
                            hap_seq = NULL,
-                           n.cores = 5,
+                           n.cores = 1,
                            rm_multiallelic_SNP = FALSE,
                            multiallelic_SNP_dp_thr = 0,
                            multiallelic_SNP_sample_thr = 0,
@@ -43,6 +45,31 @@ get_OffTargets <- function(madc = NULL,
   report <- read.csv(madc)
   botloci <- read.csv(botloci, header = F)
   hap_seq <- read.table(hap_seq, header = F)
+
+  # Check marker names compatibility between MADC and botloci
+  if(!any(botloci$V1 %in% report$CloneID)) {
+    if(verbose) cat("None of the botloci markers could be found in the MADC file. Checking padding match...\n")
+
+    pad_madc <- unique(nchar(sub(".*_", "", report$CloneID)))
+    pad_botloci <- unique(nchar(sub(".*_", "", botloci$V1)))
+
+    if(length(pad_madc) > 1 | length(pad_botloci) > 1) stop("Check marker IDs in both MADC and botloci files. They should be the same.")
+    if(pad_madc != pad_botloci) {
+      if(verbose) c("Padding between MADC and botloci files do not match. Markers ID modified to match longest padding.\n")
+      if (pad_madc < pad_botloci) {
+        report$CloneID <- paste0(sub("_(.*)", "", report$CloneID), "_",
+          sprintf(paste0("%0", pad_botloci, "d"), as.integer(sub(".*_", "", report$CloneID)))
+        )
+      } else {
+        botloci$V1 <- paste0(sub("_(.*)", "", botloci$V1), "_",
+          sprintf(paste0("%0", pad_madc, "d"), as.integer(sub(".*_", "", botloci$V1)))
+        )
+      }
+
+    } else {
+      stop("Check marker IDs in both MADC and botloci files. They should be the same.")
+    }
+  }
 
   my_results_csv <- loop_though_dartag_report(report,
                                               botloci,
@@ -203,9 +230,9 @@ add_ref_alt <- function(one_tag, hap_seq, nsamples) {
 #'
 #' @noRd
 compare <- function(one_tag, botloci){
-
+  #one_tag <- updated_by_cloneID[[2]]
   cloneID <- one_tag$CloneID[1]
-  isBotLoci <- cloneID %in% botloci
+  isBotLoci <- cloneID %in% botloci[,1]
   # If marker is present in the botloc list, get the reverse complement sequence
   if(isBotLoci) one_tag$AlleleSequence <- sapply(one_tag$AlleleSequence, function(x) as.character(reverseComplement(DNAString(x))))
 

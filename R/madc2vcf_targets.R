@@ -1,9 +1,9 @@
 #' Format MADC Target Loci Read Counts Into VCF
 #'
-#' This function will extract the read count information from a MADC file and convert to VCF file format.
+#' This function will extract the read count information from a MADC file target markers and convert to VCF file format.
 #'
 #' The DArTag MADC file format is not commonly supported through existing tools. This function
-#' will extract the read count information from a MADC file and convert it to a VCF file format for the
+#' will extract the read count information from a MADC file for the target markers and convert it to a VCF file format for the
 #' genotyping panel target markers only
 #'
 #' @param madc_file Path to MADC file
@@ -19,7 +19,7 @@
 #' @references
 #' Updog R package
 #' @export
-madc2vcf <- function(madc_file, output.file, get_REF_ALT = FALSE) {
+madc2vcf_targets <- function(madc_file, output.file, get_REF_ALT = FALSE) {
   #Making the VCF (This is highly dependent on snps being in a format where the SNP IDs are the CHR_POS)
 
   matrices <- get_countsMADC(madc_file)

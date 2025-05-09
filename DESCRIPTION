@@ -52,6 +52,7 @@ Imports:
     reshape2 (>= 1.4.4),
     tidyr (>= 1.3.1),
     vcfR (>= 1.15.0),
+    Rsamtools,
     Biostrings,
     pwalign,
     janitor,

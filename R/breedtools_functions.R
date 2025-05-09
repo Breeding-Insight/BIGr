@@ -32,7 +32,7 @@
 #' allele_freqs <- allele_freq_poly(geno = geno_matrix, populations = pop_list, ploidy = 4)
 #' print(allele_freqs)
 #'
-#' @export
+#' @noRd
 allele_freq_poly <- function(geno, populations, ploidy = 2) {
 
   # Initialize returned df
@@ -168,7 +168,7 @@ QPsolve <- function(Y, X) {
 #'                                       ploidy = 4)
 #' print(composition)
 #'
-#' @export
+#' @noRd
 solve_composition_poly <- function(Y,
                                    X,
                                    ped = NULL,

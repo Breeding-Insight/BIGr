@@ -9,6 +9,23 @@
 #' @param ploidy The ploidy of the species being analyzed
 #' @param is.reference The dosage calls value is based on the count of reference alleles (TRUE/FALSE)
 #' @return A genotype matrix
+#' @examples
+#' # example code
+#'
+#' # example numeric genotype matrix for a tetraploid
+#' n_ind <- 5
+#' n_snps <- 10
+#'
+#' geno <- matrix(as.numeric(sample(0:4, n_ind * n_snps, replace = TRUE)), nrow = n_snps, ncol = n_ind)
+#' colnames(geno) <- paste0("Ind", 1:n_ind)
+#' rownames(geno) <- paste0("SNP", 1:n_snps)
+#' ploidy <- 4
+#'
+#' # Output matrix with the allele count reversed
+#' results <- flip_dosage(geno, ploidy, is.reference = TRUE)
+#'
+#' print(results)
+#'
 #' @export
 flip_dosage <- function(df, ploidy, is.reference = TRUE) {
   if (is.reference) {

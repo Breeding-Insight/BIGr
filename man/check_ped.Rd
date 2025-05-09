@@ -11,7 +11,7 @@ check_ped(ped.file)
 3-column pedigree tab separated file with columns labeled as id sire dam in any order}
 }
 \value{
-A list of dataframes of error types, and the output printed to the console
+A list of data.frames of error types, and the output printed to the console
 }
 \description{
 Check a pedigree file for accuracy and output suspected errors
@@ -21,7 +21,7 @@ check_ped takes a 3-column pedigree tab separated file with columns labeled as i
 \itemize{
 \item Ids that appear more than once in the id column
 \item Ids that appear in both sire and dam columns
-\item Direct (e.g. parent is a offspring of his own daughter) and indirect (e.g. a great grandparent is son of its granchild) dependencies within the pedigree.
+\item Direct (e.g. parent is a offspring of his own daughter) and indirect (e.g. a great grandparent is son of its grandchild) dependencies within the pedigree.
 \item Individuals included in the pedigree as sire or dam but not on the id column and reports them back with unknown parents (0).
 }
 
@@ -32,12 +32,13 @@ Note: This function does not change the input file but prints any errors found i
 }
 \examples{
 ##Get list with a dataframe for each error type
-#ped_errors <- check_ped(ped.file = "example_ped.txt")
+ped_file <- system.file("check_ped_test.txt", package="BIGr")
+ped_errors <- check_ped(ped.file = ped_file)
 
 ##Access the "messy parents" dataframe result
-#ped_errors$messy_parents
+ped_errors$messy_parents
 
 ##Get list of sample IDs with messy parents error
-#messy_parent_ids <- ped_errors$messy_parents$id
-#print(messy_parent_ids)
+messy_parent_ids <- ped_errors$messy_parents$id
+print(messy_parent_ids)
 }

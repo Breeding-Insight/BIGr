@@ -14,8 +14,28 @@
 #' @import dplyr
 #' @import tidyr
 #' @importFrom Rdpack reprompt
+#' @importFrom utils write.table
+#' @importFrom Rsamtools bgzip
 #' @references
-#' Updog R package
+#' Gerard, D., Ferrão, L. F. V., Garcia, A. A. F., & Stephens, M. (2018). Genotyping polyploids from messy sequencing data. Genetics, 210(3), 789-807.
+#' @examples
+#'
+#' # Retrieving the updog output multidog object
+#' load(system.file("extdata", "iris-multidog.rdata", package = "BIGr"))
+#'
+#' temp_file <- tempfile()
+#'
+#' # Convert updog to VCF, where the new VCF will be saved at the location specified in the output.file
+#' updog2vcf(
+#'   multidog.object = mout,
+#'   output.file = temp_file,
+#'   updog_version = "0.0.0",
+#'   compress = TRUE
+#' )
+#'
+#' #Removing the example vcf
+#' rm(temp_file)
+#'
 #' @export
 updog2vcf <- function(multidog.object, output.file, updog_version = NULL, compress = TRUE) {
   #Making the VCF (This is highly dependent on snps being in a format where the SNP IDs are the CHR_POS)
@@ -64,10 +84,10 @@ updog2vcf <- function(multidog.object, output.file, updog_version = NULL, compre
 
       parents.depth <- apply(parents, 1, function(x) {
         if(grepl("p1", x[7]))
-          return(data.frame(ref = x[2], size = x[3]))
+          return(data.frame(ref = x[2], size = x[3], check.names = FALSE))
         else if(grepl("p2", x[7]))
-          return(data.frame(ref = x[4], size = x[5]))
-        else return(data.frame(ref = NA, size = NA))
+          return(data.frame(ref = x[4], size = x[5], check.names = FALSE))
+        else return(data.frame(ref = NA, size = NA, check.names=FALSE))
       })
       parents.depth <- do.call(rbind,parents.depth)
       parents <- cbind(parents[,c(1,6:8)], parents.depth)
@@ -77,7 +97,7 @@ updog2vcf <- function(multidog.object, output.file, updog_version = NULL, compre
 
     } else {
       sele_col <- c("snp", "maxpostprob", "pgeno", "p1ref", "p1size")
-      parents <- data.frame(mout$snpdf[,sele_col[1:2]], ind = "parent", mout$snpdf[,sele_col[3:5]])
+      parents <- data.frame(mout$snpdf[,sele_col[1:2]], ind = "parent", mout$snpdf[,sele_col[3:5]], check.names = FALSE)
       colnames(parents)[4:6] <- c("geno", "ref", "size")
     }
 
@@ -119,7 +139,8 @@ updog2vcf <- function(multidog.object, output.file, updog_version = NULL, compre
     QUAL = ".",
     FILTER = ".",
     INFO = NA,
-    FORMAT = NA
+    FORMAT = NA,
+    check.names=FALSE
   )
 
   #Add the INFO column for each SNP
@@ -161,7 +182,8 @@ updog2vcf <- function(multidog.object, output.file, updog_version = NULL, compre
                     inddf$size,":",
                     inddf$ref,":",
                     inddf$ref,",",(inddf$size-inddf$ref),":",
-                    inddf$maxpostprob)
+                    inddf$maxpostprob),
+    check.names = FALSE
   )
   #Make sample the columns
   format_wide <- format_df %>%
@@ -183,12 +205,19 @@ updog2vcf <- function(multidog.object, output.file, updog_version = NULL, compre
     )
   } else {
 
-    gz <- gzfile(paste0(output.file, ".gz"), "w")
-    write(vcf_header, gz)
-    header <- colnames(vcf_df)
-    header <- paste(header, collapse="\t")
-    write(header, gz)
-    close(gz)
-    vcfR:::.write_vcf_body(fix = as.matrix(vcf_df[,1:8]), gt = as.matrix(vcf_df[,9:ncol(vcf_df)]), filename = paste0(output.file, ".gz"))
+    temp_loc <- tempfile()
+
+    # Write the header to the file
+    writeLines(vcf_header, con = temp_loc)
+
+    # Append the dataframe to the file in tab-separated format
+    suppressWarnings(
+      write.table(vcf_df, file = temp_loc, sep = "\t", quote = FALSE, row.names = FALSE, col.names = TRUE, append = TRUE)
+    )
+
+    #bgzip the file and output
+    suppressMessages(
+      Rsamtools::bgzip(temp_loc, dest = paste0(output.file,".gz"), overwrite = FALSE)
+    )
   }
 }

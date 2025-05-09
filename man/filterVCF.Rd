@@ -58,11 +58,17 @@ The VCF format is v4.3
 \examples{
 ## Use file paths for each file on the local system
 
+#Temp location (only for example)
+output_file <- tempfile()
 
-#filterVCF(vcf.file = "example_dart_Dosage_Report.csv",
- #          filter.OD = 0.5,
- #          ploidy = 2,
- #          output.file = "name_for_vcf")
+filterVCF(vcf.file = system.file("iris_DArT_VCF.vcf.gz", package = "BIGr"),
+           filter.OD = 0.5,
+           filter.MAF = 0.05,
+           ploidy = 2,
+           output.file = output_file)
+
+# Removing the output for the example
+rm(output_file)
 
 ##The function will output the filtered VCF to the current working directory
 

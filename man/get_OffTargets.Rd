@@ -21,13 +21,13 @@ get_OffTargets(
 
 \item{botloci}{path to file containing the target IDs that were designed in the bottom strand}
 
-\item{hap_seq}{path to haplotype DB fasta file}
+\item{hap_seq}{path to haplotype DB FASTA file}
 
 \item{n.cores}{number of cores to be used in the parallelization}
 
 \item{rm_multiallelic_SNP}{logical. If TRUE, SNP with more than one alternative base will be removed. If FALSE, check \code{multiallelic_SNP_dp_thr} specs}
 
-\item{multiallelic_SNP_dp_thr}{nnumerical. If \code{rm_multiallelic_SNP} is FALSE, set a minimum depth by tag threshold \code{multiallelic_SNP_dp_thr} combined
+\item{multiallelic_SNP_dp_thr}{numerical. If \code{rm_multiallelic_SNP} is FALSE, set a minimum depth by tag threshold \code{multiallelic_SNP_dp_thr} combined
 with minimum number of samples \code{multiallelic_SNP_sample_thr} to eliminate low frequency SNP allele. If the threshold does not eliminate the multiallelic
 aspect of the marker, the marker is discarded. This is likely to happen to paralogous sites.}
 

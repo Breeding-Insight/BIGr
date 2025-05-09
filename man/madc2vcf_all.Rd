@@ -6,12 +6,13 @@
 \usage{
 madc2vcf_all(
   madc = NULL,
-  botloci = NULL,
-  hap_seq = NULL,
+  botloci_file = NULL,
+  hap_seq_file = NULL,
   n.cores = 1,
   rm_multiallelic_SNP = FALSE,
   multiallelic_SNP_dp_thr = 0,
   multiallelic_SNP_sample_thr = 0,
+  alignment_score_thr = 40,
   out_vcf = NULL,
   verbose = TRUE
 )
@@ -19,9 +20,9 @@ madc2vcf_all(
 \arguments{
 \item{madc}{A string specifying the path to the MADC file.}
 
-\item{botloci}{A string specifying the path to the file containing the target IDs designed in the bottom strand.}
+\item{botloci_file}{A string specifying the path to the file containing the target IDs designed in the bottom strand.}
 
-\item{hap_seq}{A string specifying the path to the haplotype database fasta file.}
+\item{hap_seq_file}{A string specifying the path to the haplotype database fasta file.}
 
 \item{n.cores}{An integer specifying the number of cores to use for parallel processing. Default is 1.}
 
@@ -30,6 +31,8 @@ madc2vcf_all(
 \item{multiallelic_SNP_dp_thr}{A numeric value specifying the minimum depth by tag threshold for filtering low-frequency SNP alleles when \code{rm_multiallelic_SNP} is FALSE. Default is 0.}
 
 \item{multiallelic_SNP_sample_thr}{A numeric value specifying the minimum number of samples threshold for filtering low-frequency SNP alleles when \code{rm_multiallelic_SNP} is FALSE. Default is 0.}
+
+\item{alignment_score_thr}{A numeric value specifying the minimum alignment score threshold. Default is 40.}
 
 \item{out_vcf}{A string specifying the name of the output VCF file. If the file extension is not \code{.vcf}, it will be appended automatically.}
 
@@ -42,5 +45,26 @@ This function does not return an R object. It writes the processed VCF file to t
 This function processes a MADC file to generate a VCF file containing both target and off-target SNPs. It includes options for filtering multiallelic SNPs and parallel processing to improve performance.
 }
 \details{
-The function reads the MADC file, processes it to identify target and off-target SNPs, and generates a VCF file. It uses parallel processing to improve performance and provides options to filter multiallelic SNPs based on user-defined thresholds. The generated VCF file includes metadata about the processing parameters and the BIGr package version.
+The function processes a MADC file to generate a VCF file containing both target and off-target SNPs. It uses parallel processing to improve performance and provides options to filter multiallelic SNPs based on user-defined thresholds. The alignment score threshold can be adjusted using the \code{alignment_score_thr} parameter. The generated VCF file includes metadata about the processing parameters and the BIGr package version. If the \code{alignment_score_thr} is not met, the corresponding SNPs are discarded.
+}
+\examples{
+# Example usage:
+
+madc_file <- system.file("example_MADC_FixedAlleleID.csv", package="BIGr")
+bot_file <- system.file("example_SNPs_DArTag-probe-design_f180bp.botloci", package="BIGr")
+db_file <- system.file("example_allele_db.fa", package="BIGr")
+
+madc2vcf_all(
+  madc = madc_file,
+  botloci_file = bot_file,
+  hap_seq_file = db_file,
+  n.cores = 1,
+  rm_multiallelic_SNP = TRUE,
+  multiallelic_SNP_dp_thr = 10,
+  multiallelic_SNP_sample_thr = 5,
+  alignment_score_thr = 40,
+  out_vcf = "output.vcf",
+  verbose = TRUE
+)
+
 }

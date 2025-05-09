@@ -3,48 +3,72 @@
 #' This function processes a MADC file to generate a VCF file containing both target and off-target SNPs. It includes options for filtering multiallelic SNPs and parallel processing to improve performance.
 #'
 #' @param madc A string specifying the path to the MADC file.
-#' @param botloci A string specifying the path to the file containing the target IDs designed in the bottom strand.
-#' @param hap_seq A string specifying the path to the haplotype database fasta file.
+#' @param botloci_file A string specifying the path to the file containing the target IDs designed in the bottom strand.
+#' @param hap_seq_file A string specifying the path to the haplotype database fasta file.
 #' @param rm_multiallelic_SNP A logical value. If TRUE, SNPs with more than one alternative base are removed. If FALSE, the thresholds specified by `multiallelic_SNP_dp_thr` and `multiallelic_SNP_sample_thr` are used to filter low-frequency SNP alleles. Default is FALSE.
 #' @param multiallelic_SNP_dp_thr A numeric value specifying the minimum depth by tag threshold for filtering low-frequency SNP alleles when `rm_multiallelic_SNP` is FALSE. Default is 0.
 #' @param multiallelic_SNP_sample_thr A numeric value specifying the minimum number of samples threshold for filtering low-frequency SNP alleles when `rm_multiallelic_SNP` is FALSE. Default is 0.
+#' @param alignment_score_thr A numeric value specifying the minimum alignment score threshold. Default is 40.
 #' @param n.cores An integer specifying the number of cores to use for parallel processing. Default is 1.
 #' @param out_vcf A string specifying the name of the output VCF file. If the file extension is not `.vcf`, it will be appended automatically.
 #' @param verbose A logical value indicating whether to print metrics and progress to the console. Default is TRUE.
 #'
 #' @return This function does not return an R object. It writes the processed VCF file to the specified `out_vcf` path.
 #'
-#' @details The function reads the MADC file, processes it to identify target and off-target SNPs, and generates a VCF file. It uses parallel processing to improve performance and provides options to filter multiallelic SNPs based on user-defined thresholds. The generated VCF file includes metadata about the processing parameters and the BIGr package version.
+#' @details
+#' The function processes a MADC file to generate a VCF file containing both target and off-target SNPs. It uses parallel processing to improve performance and provides options to filter multiallelic SNPs based on user-defined thresholds. The alignment score threshold can be adjusted using the `alignment_score_thr` parameter. The generated VCF file includes metadata about the processing parameters and the BIGr package version. If the `alignment_score_thr` is not met, the corresponding SNPs are discarded.
+#'
+#' @examples
+#' # Example usage:
+#' 
+#' madc_file <- system.file("example_MADC_FixedAlleleID.csv", package="BIGr")
+#' bot_file <- system.file("example_SNPs_DArTag-probe-design_f180bp.botloci", package="BIGr")
+#' db_file <- system.file("example_allele_db.fa", package="BIGr")
+#' 
+#' madc2vcf_all(
+#'   madc = madc_file,
+#'   botloci_file = bot_file,
+#'   hap_seq_file = db_file,
+#'   n.cores = 1,
+#'   rm_multiallelic_SNP = TRUE,
+#'   multiallelic_SNP_dp_thr = 10,
+#'   multiallelic_SNP_sample_thr = 5,
+#'   alignment_score_thr = 40,
+#'   out_vcf = "output.vcf",
+#'   verbose = TRUE
+#' )
 #'
 #' @importFrom utils packageVersion read.csv write.table
 #' @import vcfR
 #'
 #' @export
 madc2vcf_all <- function(madc = NULL,
-                           botloci = NULL,
-                           hap_seq = NULL,
-                           n.cores = 1,
-                           rm_multiallelic_SNP = FALSE,
-                           multiallelic_SNP_dp_thr = 0,
-                           multiallelic_SNP_sample_thr = 0,
-                           out_vcf = NULL,
-                           verbose = TRUE){
+                         botloci_file = NULL,
+                         hap_seq_file = NULL,
+                         n.cores = 1,
+                         rm_multiallelic_SNP = FALSE,
+                         multiallelic_SNP_dp_thr = 0,
+                         multiallelic_SNP_sample_thr = 0,
+                         alignment_score_thr = 40,
+                         out_vcf = NULL,
+                         verbose = TRUE){
 
-  bigr_meta <- paste0('##BIGrCommandLine.getOffTargets=<ID=getOffTargets,Version="',
+  bigr_meta <- paste0('##BIGrCommandLine.madc2vcf_all=<ID=madc2vcf_all,Version="',
                       packageVersion("BIGr"), '",Data="',
-                      Sys.time(),'", CommandLine="> getOffTargets(',deparse(substitute(madc)),', ',
-                      "botloci= ", botloci, ', ',
-                      "hap_seq= ", hap_seq, ', ',
+                      Sys.time(),'", CommandLine="> madc2vcf_all(',deparse(substitute(madc)),', ',
+                      "botloci= ", botloci_file, ', ',
+                      "hap_seq= ", hap_seq_file, ', ',
                       "n.cores= ", n.cores, ', ',
                       "rm_multiallelic_SNP= ", rm_multiallelic_SNP, ', ',
                       "multiallelic_SNP_dp_thr= ", multiallelic_SNP_dp_thr, ', ',
                       "multiallelic_SNP_sample_thr= ", multiallelic_SNP_sample_thr, ', ',
+                      "alignment_score_thr= ", alignment_score_thr, ', ',
                       "out_vcf= ", out_vcf, ', ',
                       "verbose= ", verbose,')">')
 
   if(!is.null(madc)) report <- read.csv(madc) else stop("Please provide a MADC file")
-  if(!is.null(botloci)) botloci <- read.csv(botloci, header = F) else stop("Please provide a botloci file")
-  if(!is.null(had_seq)) hap_seq <- read.table(hap_seq, header = F)
+  if(!is.null(botloci_file)) botloci <- read.csv(botloci_file, header = F) else stop("Please provide a botloci file")
+  if(!is.null(hap_seq_file)) hap_seq <- read.table(hap_seq_file, header = F) else hap_seq <- NULL
 
   # Check marker names compatibility between MADC and botloci
   if(!any(botloci$V1 %in% report$CloneID)) {
@@ -54,18 +78,19 @@ madc2vcf_all <- function(madc = NULL,
     pad_botloci <- unique(nchar(sub(".*_", "", botloci$V1)))
 
     if(length(pad_madc) > 1 | length(pad_botloci) > 1) stop("Check marker IDs in both MADC and botloci files. They should be the same.")
+
     if(pad_madc != pad_botloci) {
-      if(verbose) c("Padding between MADC and botloci files do not match. Markers ID modified to match longest padding.\n")
+      if(verbose) cat("Padding between MADC and botloci files do not match. Markers ID modified to match longest padding.\n")
       if (pad_madc < pad_botloci) {
         report$CloneID <- paste0(sub("_(.*)", "", report$CloneID), "_",
-          sprintf(paste0("%0", pad_botloci, "d"), as.integer(sub(".*_", "", report$CloneID)))
+                                 sprintf(paste0("%0", pad_botloci, "d"), as.integer(sub(".*_", "", report$CloneID)))
         )
       } else {
         botloci$V1 <- paste0(sub("_(.*)", "", botloci$V1), "_",
-          sprintf(paste0("%0", pad_madc, "d"), as.integer(sub(".*_", "", botloci$V1)))
+                             sprintf(paste0("%0", pad_madc, "d"), as.integer(sub(".*_", "", botloci$V1)))
         )
+        if(!any(botloci$V1 %in% report$CloneID)) stop("After matching padding, botloci markers still not found in MADC file. Check marker IDs.\n")
       }
-
     } else {
       stop("Check marker IDs in both MADC and botloci files. They should be the same.")
     }
@@ -75,6 +100,7 @@ madc2vcf_all <- function(madc = NULL,
                                               botloci,
                                               hap_seq,
                                               n.cores=n.cores,
+                                              alignment_score_thr = alignment_score_thr,
                                               verbose = verbose)
 
   vcf_body <- create_VCF_body(csv = my_results_csv,
@@ -111,15 +137,18 @@ madc2vcf_all <- function(madc = NULL,
 #' @param report MADC file
 #' @param botloci file containing the target IDs that were designed in the bottom strand
 #' @param hap_seq haplotype DB fasta file
+#' @param alignment_score_thr A numeric value specifying the minimum alignment score threshold. Default is 40.
 #' @param n.cores number of cores to be used in the parallelization
 #' @param verbose print metrics on the console
 #'
 #' @import parallel
 #'
 #' @noRd
-loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, verbose = TRUE){
+loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, alignment_score_thr=40, verbose = TRUE){
 
-  hap_seq <- get_ref_alt_hap_seq(hap_seq)
+  if(!is.null(hap_seq)){
+    hap_seq <- get_ref_alt_hap_seq(hap_seq)
+  }
 
   nsamples <- ncol(report) - 3
   new.file <- data.frame("AlleleID" = report[,1],
@@ -134,19 +163,26 @@ loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, verbo
   add_ref_alt_results <- parLapply(clust, by_cloneID, function(x) add_ref_alt(x, hap_seq, nsamples))
   stopCluster(clust)
 
-  updated_by_cloneID <- lapply(add_ref_alt_results, "[[",1)
   ref_index <- sapply(add_ref_alt_results, "[[",2)
   alt_index <- sapply(add_ref_alt_results, "[[",3)
 
+  # If Ref_0001 and Alt_0002 are missing, remove tag
+  rm.tags <- unique(c(which(ref_index == -1), which(alt_index == -1)))
+  if(length(rm.tags) > 0)  add_ref_alt_results <- add_ref_alt_results[-rm.tags]
+
+  updated_by_cloneID <- lapply(add_ref_alt_results, "[[",1)
+
   if(verbose){
-    cat("The Ref_0001 sequence had to be added for:", sum(ref_index),"tags\n")
-    cat("The Alt_0002 sequence had to be added for:", sum(alt_index),"tags\n")
+    cat("The Ref_0001 sequence had to be added for:", sum(ref_index==1),"tags\n")
+    cat("The Alt_0002 sequence had to be added for:", sum(alt_index==1),"tags\n")
+    cat("Tags discarded due to lack of Ref_0001 sequence:", sum(ref_index==-1),"tags\n")
+    cat("Tags discarded due to lack of Alt_0002 sequence:", sum(alt_index==-1),"tags\n")
   }
 
   clust <- makeCluster(n.cores)
   #clusterExport(clust, c("botloci", "compare", "nucleotideSubstitutionMatrix", "pairwiseAlignment", "DNAString", "reverseComplement"))
   #clusterExport(clust, c("botloci"))
-  compare_results <- parLapply(clust, updated_by_cloneID, function(x) compare(x, botloci))
+  compare_results <- parLapply(clust, updated_by_cloneID, function(x) compare(x, botloci, alignment_score_thr))
   stopCluster(clust)
 
   my_results_csv <- lapply(compare_results, "[[", 1)
@@ -166,11 +202,22 @@ loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, verbo
   return(my_results_csv)
 }
 
-#' Check if Ref_0001 and Alt_0002 tags are present, if not, add them from the hap_seq input. Function made for parallelization.
+#' Check and add reference (Ref_0001) and alternative (Alt_0002) alleles to a tag
 #'
-#' @param one_tag madc file split by tag
-#' @param hap_seq haplotype DB
-#' @param nsamples number of samples
+#' This function ensures that each tag in the MADC file has both reference and alternative alleles. If either is missing, it attempts to add them using the provided haplotype database. If the haplotype database is not provided, missing alleles are flagged with warnings.
+#'
+#' @param one_tag A data frame representing a single tag from the MADC file, split by tag.
+#' @param hap_seq A data frame containing the haplotype database with columns `AlleleID` and `AlleleSequence`.
+#' @param nsamples An integer specifying the number of samples in the MADC file.
+#'
+#' @return A list with three elements:
+#'   \itemize{
+#'     \item \code{one_tag}: The updated data frame with added reference and alternative alleles if they were missing.
+#'     \item \code{ref_index}: An integer indicating whether the reference allele was added (1), already present (0), or flagged as missing (-1).
+#'     \item \code{alt_index}: An integer indicating whether the alternative allele was added (1), already present (0), or flagged as missing (-1).
+#'   }
+#'
+#' @details The function checks if the reference (Ref_0001) and alternative (Alt_0002) alleles are present in the `one_tag` data frame. If not, it attempts to retrieve them from the `hap_seq` database. If the `hap_seq` database is not provided, the missing alleles are flagged with warnings, and the tag may be incomplete.
 #'
 #' @noRd
 add_ref_alt <- function(one_tag, hap_seq, nsamples) {
@@ -183,25 +230,36 @@ add_ref_alt <- function(one_tag, hap_seq, nsamples) {
   # Precompute ref and alt indices
   ref_index <- alt_index <- 0
 
-  # Use match() for faster lookup in hap_seq
-  ref_row <- match(ref, hap_seq$AlleleID)
-  alt_row <- match(alt, hap_seq$AlleleID)
-
   # Initialize a list to store potential new rows to add
   new_rows <- list()
+
+  # Check if ref and alt are present in one_tag
   if (!ref %in% one_tag$AlleleID) {
-    ref_index <- 1
-    # Only extract the relevant sequence data once from hap_seq
-    ref_seq <- if (!is.na(ref_row)) hap_seq[ref_row, 2] else NA
-    empty_allele <- c(ref, rep(NA, 4), cloneID, ref_seq, rep(0, nsamples))
-    new_rows[[length(new_rows) + 1]] <- empty_allele
+    ref_row <- match(ref, hap_seq$AlleleID) # if hap_seq is null, it will return NA anyway
+    if (!is.na(ref_row)) {
+      ref_index <- 1
+      ref_seq <- hap_seq[ref_row, 2]
+      empty_allele <- c(ref, rep(NA, 4), cloneID, ref_seq, rep(0, nsamples))
+      new_rows[[length(new_rows) + 1]] <- empty_allele
+    } else {
+      warning("Ref_0001 sequence not found in hap_seq and not present in one_tag. Removing tag:", cloneID)
+      ref_index <- -1
+      ref_seq <- NA
+    }
   }
 
   if (!alt %in% one_tag$AlleleID) {
-    alt_index <- 1
-    alt_seq <- if (!is.na(alt_row)) hap_seq[alt_row, 2] else NA
-    empty_allele <- c(alt, rep(NA, 4), cloneID, alt_seq, rep(0, nsamples))
-    new_rows[[length(new_rows) + 1]] <- empty_allele
+    alt_row <- match(alt, hap_seq$AlleleID) # if hap_seq is null, it will return NA anyway
+    if (!is.na(alt_row)){
+      alt_index <- 1
+      alt_seq <- hap_seq[alt_row, 2]
+      empty_allele <- c(alt, rep(NA, 4), cloneID, alt_seq, rep(0, nsamples))
+      new_rows[[length(new_rows) + 1]] <- empty_allele
+    } else {
+      warning("Alt_0002 sequence not found in hap_seq and not present in one_tag. Removing tag:", cloneID)
+      alt_index <- -1
+      alt_seq <- NA
+    }
   }
 
   # Only rbind once if new rows were added
@@ -224,12 +282,13 @@ add_ref_alt <- function(one_tag, hap_seq, nsamples) {
 #'
 #' @param one_tag madc file split by tag
 #' @param botloci file containing the target IDs that were designed in the bottom strand
+#' @param alignment_score_thr A numeric value specifying the minimum alignment score threshold. Default is 40.
 #'
 #' @importFrom Biostrings DNAString reverseComplement
 #' @importFrom pwalign pairwiseAlignment nucleotideSubstitutionMatrix
 #'
 #' @noRd
-compare <- function(one_tag, botloci){
+compare <- function(one_tag, botloci, alignment_score_thr = 40){
   #one_tag <- updated_by_cloneID[[2]]
   cloneID <- one_tag$CloneID[1]
   isBotLoci <- cloneID %in% botloci[,1]
@@ -248,9 +307,8 @@ compare <- function(one_tag, botloci){
                              substitutionMatrix = sigma,gapOpening=-1.4, gapExtension=-0.1, type = "global")
 
   # The score is a bit different from the python script despite same weights
-  if(align@score > 40){ # if score for the target sequence is smaller than 40, the tag will be discarted
+  if(align@score > alignment_score_thr){ # if score for the target sequence is smaller than the threshold, the tag will be discarted
     pos_target_idx <- align@pattern@mismatch@unlistData
-    pos_target_alt_idx <- align@subject@mismatch@unlistData
     ref_base <- substring(ref_seq, align@pattern@mismatch@unlistData, align@pattern@mismatch@unlistData)
     alt_base <- substring(alt_seq, align@subject@mismatch@unlistData, align@subject@mismatch@unlistData)
 
@@ -266,7 +324,7 @@ compare <- function(one_tag, botloci){
 
       Match_seq <- one_tag[grep("Match",one_tag$AlleleID),]
       if(nrow(Match_seq) >0){
-        for(j in 1:nrow(Match_seq)){
+        for(j in seq_len(nrow(Match_seq))){
           align <- pairwiseAlignment(ref_seq,
                                      Match_seq[j,]$AlleleSequence,
                                      substitutionMatrix = sigma,gapOpening=-1.4, gapExtension=-0.1, type = "global")
@@ -321,7 +379,7 @@ compare <- function(one_tag, botloci){
   }
 }
 
-#' Converts the fasta to a data.frame with first column the AlleleID and and second the AlleleSequence
+#' Converts the fasta to a data.frame with first column the AlleleID and second the AlleleSequence
 #' The function will work even if the sequence is split in multiple lines
 #'
 #' @param hap_seq haplotype db
@@ -337,7 +395,7 @@ get_ref_alt_hap_seq <- function(hap_seq){
   last <- length(hap_seq$V1) - grep(">",hap_seq$V1)[length(grep(">",hap_seq$V1))]
   times <- c(times, last)
   index <- vector()
-  for(i in 1:length(headers)){
+  for(i in seq_along(headers)){
     index <- c(index, rep(i, times[i]))
   }
 
@@ -389,7 +447,7 @@ create_VCF_body <- function(csv,
 
   if(verbose) print(paste("SNP removed because presented more than one allele:", sum(rm_mks)))
 
-  for(i in 1:length(vcf_tag_list1)) {
+  for(i in seq_along(vcf_tag_list1)) {
     if(is.vector(vcf_tag_list1[[i]])) {
       vcf_tag_list1[[i]] <- c(target = names(vcf_tag_list1)[i],vcf_tag_list1[[i]])
     } else  vcf_tag_list1[[i]] <- cbind(target = names(vcf_tag_list1)[i],vcf_tag_list1[[i]])
@@ -470,7 +528,7 @@ merge_counts <- function(cloneID_unit, rm_multiallelic_SNP = FALSE, multiallelic
 
     ## Possibility to filter alt alleles with low read
     # The filtering is done after the counts are collapsed so all reads can be counted
-    for(i in 1:length(by_pos)){
+    for(i in seq_along(by_pos)){
       alleles <- unique(by_pos[[i]]$AlleleID)
 
       if(length(unique(by_pos[[i]]$Alt)) > 1){ # If SNP is multiallelic
@@ -492,7 +550,7 @@ merge_counts <- function(cloneID_unit, rm_multiallelic_SNP = FALSE, multiallelic
             total_counts <- sapply(by_alt_counts, sum)
             by_alt_counts <- by_alt_counts[order(total_counts, decreasing = T)] # Most frequency base will come first
             total_alt <- 0
-            for(j in 1:length(by_alt_counts)){
+            for(j in seq_along(by_alt_counts)){
               total_alt <- total_alt + by_alt_counts[[j]]
               if(j == 1) alt <- by_alt_counts[[j]] else  alt <- paste0(alt, ",",by_alt_counts[[j]])
             }
@@ -512,7 +570,7 @@ merge_counts <- function(cloneID_unit, rm_multiallelic_SNP = FALSE, multiallelic
           total_counts <- sapply(by_alt_counts, sum)
           by_alt_counts <- by_alt_counts[order(total_counts, decreasing = T)] # Most frequency base will come first
           total_alt <- 0
-          for(j in 1:length(by_alt_counts)){
+          for(j in seq_along(by_alt_counts)){
             total_alt <- total_alt + by_alt_counts[[j]]
             if(j == 1) alt <- by_alt_counts[[j]] else  alt <- paste0(alt, ",",by_alt_counts[[j]])
           }

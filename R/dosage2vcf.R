@@ -16,16 +16,23 @@
 #' @importFrom readr read_csv
 #' @importFrom reshape2 melt
 #' @importFrom reshape2 dcast
+#' @importFrom utils packageVersion read.csv tail write.csv write.table
 #' @examples
 #' ## Use file paths for each file on the local system
 #'
 #' #The files are directly from DArT for a given sequencing project.
 #' #The are labeled with Dosage_Report or Counts in the file names.
 #'
-#' #dosage2vcf(dart.report = "example_dart_Dosage_Report.csv",
-#'  #          dart.counts = "example_dart_Counts.csv",
-#'  #          ploidy = 2,
-#'  #          output.file = "name_for_vcf")
+#' #Temp location (only for example)
+#' output_file <- tempfile()
+#'
+#' dosage2vcf(dart.report = system.file("iris_DArT_Allele_Dose_Report.csv", package = "BIGr"),
+#'            dart.counts = system.file("iris_DArT_Counts.csv", package = "BIGr"),
+#'            ploidy = 2,
+#'            output.file = output_file)
+#'
+#' # Removing the output for the example
+#' rm(output_file)
 #'
 #' ##The function will output the converted VCF using information from the DArT files
 #'

@@ -16,6 +16,7 @@
 #' @import tibble
 #' @importFrom Rdpack reprompt
 #' @importFrom reshape2 melt dcast
+#' @importFrom utils write.table
 #' @references
 #' Updog R package
 #' @export

@@ -16,7 +16,7 @@
 #'
 #' @details The function reads the MADC file, processes it to identify target and off-target SNPs, and generates a VCF file. It uses parallel processing to improve performance and provides options to filter multiallelic SNPs based on user-defined thresholds. The generated VCF file includes metadata about the processing parameters and the BIGr package version.
 #'
-#' @importFrom utils packageVersion read.csv
+#' @importFrom utils packageVersion read.csv write.table
 #' @import vcfR
 #'
 #' @export

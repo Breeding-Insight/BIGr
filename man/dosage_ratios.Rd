@@ -19,3 +19,19 @@ This function calculates the percentage of each dosage value within a genotype m
 It assumes that the samples are the columns, and the genomic markers are in rows. Missing data should
 be set as NA, which will then be ignored for the calculations. All samples must have the same ploidy.
 }
+\examples{
+# example numeric genotype matrix for a tetraploid
+n_ind <- 5
+n_snps <- 10
+
+geno <- matrix(as.numeric(sample(0:4, n_ind * n_snps, replace = TRUE)), nrow = n_snps, ncol = n_ind)
+colnames(geno) <- paste0("Ind", 1:n_ind)
+rownames(geno) <- paste0("SNP", 1:n_snps)
+ploidy <- 4
+
+# ratio of dosage value (numeric genotypes) across samples in dataset
+result <- dosage_ratios(geno, ploidy)
+
+print(result)
+
+}

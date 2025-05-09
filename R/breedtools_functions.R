@@ -1,3 +1,5 @@
+#' Compute Allele Frequencies for Populations
+#'
 #' Computes allele frequencies for specified populations given SNP array data
 #'
 #' @param geno matrix of genotypes coded as the dosage of allele B \code{{0, 1, 2, ..., ploidy}}
@@ -30,7 +32,7 @@
 #' allele_freqs <- allele_freq_poly(geno = geno_matrix, populations = pop_list, ploidy = 4)
 #' print(allele_freqs)
 #'
-#' @export
+#' @noRd
 allele_freq_poly <- function(geno, populations, ploidy = 2) {
 
   # Initialize returned df
@@ -60,6 +62,7 @@ allele_freq_poly <- function(geno, populations, ploidy = 2) {
 }
 
 
+#'
 #' Performs whole genome breed composition prediction.
 #'
 #' @param Y numeric vector of genotypes (with names as SNPs) from a single animal.
@@ -111,7 +114,7 @@ QPsolve <- function(Y, X) {
 }
 
 
-#' Compute genome-wide breed composition
+#' Compute Genome-Wide Breed Composition
 #'
 #' Computes genome-wide breed/ancestry composition using quadratic programming on a
 #' batch of animals.
@@ -165,7 +168,7 @@ QPsolve <- function(Y, X) {
 #'                                       ploidy = 4)
 #' print(composition)
 #'
-#' @export
+#' @noRd
 solve_composition_poly <- function(Y,
                                    X,
                                    ped = NULL,

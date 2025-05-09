@@ -5,7 +5,7 @@
 #'check_ped takes a 3-column pedigree tab separated file with columns labeled as id sire dam in any order and checks for:
 #'* Ids that appear more than once in the id column
 #'* Ids that appear in both sire and dam columns
-#'* Direct (e.g. parent is a offspring of his own daughter) and indirect (e.g. a great grandparent is son of its granchild) dependencies within the pedigree.
+#'* Direct (e.g. parent is a offspring of his own daughter) and indirect (e.g. a great grandparent is son of its grandchild) dependencies within the pedigree.
 #'* Individuals included in the pedigree as sire or dam but not on the id column and reports them back with unknown parents (0).
 #'
 #'When using check_ped, do a first run to check for repeated ids and parents that appear as sire and dam.
@@ -15,24 +15,25 @@
 #'
 #' @param ped.file path to pedigree text file. The pedigree file is a
 #' 3-column pedigree tab separated file with columns labeled as id sire dam in any order
-#' @return A list of dataframes of error types, and the output printed to the console
+#' @return A list of data.frames of error types, and the output printed to the console
 #' @examples
 #' ##Get list with a dataframe for each error type
-#' #ped_errors <- check_ped(ped.file = "example_ped.txt")
+#' ped_file <- system.file("check_ped_test.txt", package="BIGr")
+#' ped_errors <- check_ped(ped.file = ped_file)
 #'
 #' ##Access the "messy parents" dataframe result
-#' #ped_errors$messy_parents
+#' ped_errors$messy_parents
 #'
 #' ##Get list of sample IDs with messy parents error
-#' #messy_parent_ids <- ped_errors$messy_parents$id
-#' #print(messy_parent_ids)
+#' messy_parent_ids <- ped_errors$messy_parents$id
+#' print(messy_parent_ids)
 #' @import dplyr
 #' @import janitor
 #' @importFrom stats setNames
 #' @importFrom utils read.table
 #' @export
-#### Function to check for hierarchical errors missing parents and repeated ids ####
 check_ped <- function(ped.file) {
+  #### Function to check for hierarchical errors missing parents and repeated ids ####
   set.seed(101919)
   #### read in data ####
   data = utils::read.table(ped.file, header = T)

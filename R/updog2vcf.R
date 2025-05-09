@@ -66,10 +66,10 @@ updog2vcf <- function(multidog.object, output.file, updog_version = NULL, compre
 
       parents.depth <- apply(parents, 1, function(x) {
         if(grepl("p1", x[7]))
-          return(data.frame(ref = x[2], size = x[3]), check.names = FALSE)
+          return(data.frame(ref = x[2], size = x[3], check.names = FALSE))
         else if(grepl("p2", x[7]))
-          return(data.frame(ref = x[4], size = x[5]), check.names = FALSE)
-        else return(data.frame(ref = NA, size = NA), check.names=FALSE)
+          return(data.frame(ref = x[4], size = x[5], check.names = FALSE))
+        else return(data.frame(ref = NA, size = NA, check.names=FALSE))
       })
       parents.depth <- do.call(rbind,parents.depth)
       parents <- cbind(parents[,c(1,6:8)], parents.depth)

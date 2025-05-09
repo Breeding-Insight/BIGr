@@ -21,7 +21,7 @@
 #' @examples
 #'
 #' # Retrieving the updog output multidog object
-#' load(testthat::test_path("iris_updog.RData"))
+#' load(system.file("extdata", "iris_updog.RData", package = "BIGr"))
 #'
 #' temp_file <- tempfile()
 #'

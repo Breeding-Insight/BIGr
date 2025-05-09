@@ -3,7 +3,7 @@ context("Updog to VCF")
 
 test_that("test updog conversion",{
   #Input variables
-  load(testthat::test_path("iris_updog.RData"))
+  load(system.file("extdata", "iris_updog.RData", package = "BIGr"))
 
   temp_file <- tempfile()
 

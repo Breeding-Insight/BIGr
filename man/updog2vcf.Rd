@@ -29,7 +29,7 @@ used to filter low quality and low confident dosage calls.
 \examples{
 
 # Retrieving the updog output multidog object
-load(system.file("extdata", "iris_updog.RData", package = "BIGr"))
+load(system.file("extdata", "iris-multidog.rdata", package = "BIGr"))
 
 temp_file <- tempfile()
 

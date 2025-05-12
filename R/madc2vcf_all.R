@@ -21,10 +21,12 @@
 #' @examples
 #' # Example usage:
 #'
+#' \donttest{
+#' Sys.setenv("OMP_THREAD_LIMIT" = 2)
+#'
 #' madc_file <- system.file("example_MADC_FixedAlleleID.csv", package="BIGr")
 #' bot_file <- system.file("example_SNPs_DArTag-probe-design_f180bp.botloci", package="BIGr")
 #' db_file <- system.file("example_allele_db.fa", package="BIGr")
-#'
 #'
 #' #Temp location (only for example)
 #' output_file <- tempfile()
@@ -33,7 +35,7 @@
 #'   madc = madc_file,
 #'   botloci_file = bot_file,
 #'   hap_seq_file = db_file,
-#'   n.cores = 1,
+#'   n.cores = 2,
 #'   rm_multiallelic_SNP = TRUE,
 #'   multiallelic_SNP_dp_thr = 10,
 #'   multiallelic_SNP_sample_thr = 5,
@@ -43,6 +45,7 @@
 #' )
 #'
 #' rm(output_file)
+#' }
 #'
 #' @importFrom utils packageVersion read.csv write.table
 #' @import vcfR

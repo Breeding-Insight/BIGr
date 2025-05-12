@@ -9,7 +9,9 @@ test_that("test madc conversion",{
   temp <- tempfile(fileext = ".vcf")
 
   #Convert the dart files to vcf
-  madc2vcf_targets(madc_file = madc_file, output.file = temp, get_REF_ALT = FALSE)
+  suppressWarnings(
+    madc2vcf_targets(madc_file = madc_file, output.file = temp, get_REF_ALT = FALSE)
+  )
 
   #Test validity of VCF
   vcf <- read.vcfR(temp, verbose = FALSE)
@@ -29,7 +31,10 @@ test_that("test madc conversion",{
 
   # Test with REF_ALT
   temp <- tempfile(fileext = ".vcf")
-  madc2vcf_targets(madc_file = madc_file, output.file = temp, get_REF_ALT = TRUE, botloci_file = bot_file)
+
+  suppressWarnings(
+    madc2vcf_targets(madc_file = madc_file, output.file = temp, get_REF_ALT = TRUE, botloci_file = bot_file)
+  )
 
   #Test validity of VCF
   vcf <- read.vcfR(temp, verbose = FALSE)

@@ -13,7 +13,7 @@
 #' @param out_vcf A string specifying the name of the output VCF file. If the file extension is not `.vcf`, it will be appended automatically.
 #' @param verbose A logical value indicating whether to print metrics and progress to the console. Default is TRUE.
 #'
-#' @return This function does not return an R object. It writes the processed VCF file to the specified `out_vcf` path.
+#' @return This function does not return an R object. It writes the processed VCF file v4.3 to the specified `out_vcf` path.
 #'
 #' @details
 #' The function processes a MADC file to generate a VCF file containing both target and off-target SNPs. It uses parallel processing to improve performance and provides options to filter multiallelic SNPs based on user-defined thresholds. The alignment score threshold can be adjusted using the `alignment_score_thr` parameter. The generated VCF file includes metadata about the processing parameters and the BIGr package version. If the `alignment_score_thr` is not met, the corresponding SNPs are discarded.
@@ -25,6 +25,10 @@
 #' bot_file <- system.file("example_SNPs_DArTag-probe-design_f180bp.botloci", package="BIGr")
 #' db_file <- system.file("example_allele_db.fa", package="BIGr")
 #'
+#'
+#' #Temp location (only for example)
+#' output_file <- tempfile()
+#'
 #' madc2vcf_all(
 #'   madc = madc_file,
 #'   botloci_file = bot_file,
@@ -34,9 +38,11 @@
 #'   multiallelic_SNP_dp_thr = 10,
 #'   multiallelic_SNP_sample_thr = 5,
 #'   alignment_score_thr = 40,
-#'   out_vcf = "output.vcf",
+#'   out_vcf = output_file,
 #'   verbose = TRUE
 #' )
+#'
+#' rm(output_file)
 #'
 #' @importFrom utils packageVersion read.csv write.table
 #' @import vcfR

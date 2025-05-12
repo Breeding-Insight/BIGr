@@ -39,7 +39,7 @@ madc2vcf_all(
 \item{verbose}{A logical value indicating whether to print metrics and progress to the console. Default is TRUE.}
 }
 \value{
-This function does not return an R object. It writes the processed VCF file to the specified \code{out_vcf} path.
+This function does not return an R object. It writes the processed VCF file v4.3 to the specified \code{out_vcf} path.
 }
 \description{
 This function processes a MADC file to generate a VCF file containing both target and off-target SNPs. It includes options for filtering multiallelic SNPs and parallel processing to improve performance.
@@ -54,6 +54,10 @@ madc_file <- system.file("example_MADC_FixedAlleleID.csv", package="BIGr")
 bot_file <- system.file("example_SNPs_DArTag-probe-design_f180bp.botloci", package="BIGr")
 db_file <- system.file("example_allele_db.fa", package="BIGr")
 
+
+#Temp location (only for example)
+output_file <- tempfile()
+
 madc2vcf_all(
   madc = madc_file,
   botloci_file = bot_file,
@@ -63,8 +67,10 @@ madc2vcf_all(
   multiallelic_SNP_dp_thr = 10,
   multiallelic_SNP_sample_thr = 5,
   alignment_score_thr = 40,
-  out_vcf = "output.vcf",
+  out_vcf = output_file,
   verbose = TRUE
 )
+
+rm(output_file)
 
 }

@@ -43,7 +43,7 @@ get_countsMADC <- function(madc_file) {
 
   #Retain only the rows in common if they are not identical and provide warning
   if (same == FALSE) {
-    warning("Mismatch between Ref and Alt Markers. MADC likely altered. Markers without a Ref or Alt match removed.")
+    warning("Mismatch between Ref and Alt Markers. Markers without a Ref or Alt match removed.")
     # Find the common CloneIDs between the two dataframes
     common_ids <- intersect(rownames(ref_df), rownames(alt_df))
     # Subset both dataframes to retain only the common rows

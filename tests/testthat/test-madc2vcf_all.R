@@ -20,6 +20,7 @@ test_that("test madc offtargets",{
                rm_multiallelic_SNP = FALSE,
                multiallelic_SNP_dp_thr = 0,
                multiallelic_SNP_sample_thr = 0,
+               alignment_score_thr = 40,
                out_vcf = temp,
                verbose = TRUE)
 
@@ -31,6 +32,7 @@ test_that("test madc offtargets",{
                rm_multiallelic_SNP = TRUE,
                multiallelic_SNP_dp_thr = 0,
                multiallelic_SNP_sample_thr = 0,
+               alignment_score_thr = 40,
                out_vcf = temp_multi,
                verbose = TRUE)
 

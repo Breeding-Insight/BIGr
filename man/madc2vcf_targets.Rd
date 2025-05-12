@@ -17,6 +17,8 @@ madc2vcf_targets(madc_file, output.file, botloci_file, get_REF_ALT = FALSE)
 }
 \value{
 A VCF file v4.3 with the target marker read count information
+
+A VCF file v4.3 with the target marker read count information
 }
 \description{
 This function will extract the read count information from a MADC file target markers and convert to VCF file format.
@@ -31,13 +33,15 @@ genotyping panel target markers only
 madc_file <- system.file("example_MADC_FixedAlleleID.csv", package="BIGr")
 bot_file <- system.file("example_SNPs_DArTag-probe-design_f180bp.botloci", package="BIGr")
 
+#Temp location (only for example)
+output_file <- tempfile()
+
 # Convert MADC to VCF
 madc2vcf_targets(madc_file = madc_file,
-                 output.file = "output.vcf",
+                 output.file = output_file,
                  get_REF_ALT = TRUE,
                  botloci_file = bot_file)
 
-}
-\references{
-Updog R package
+rm(output_file)
+
 }

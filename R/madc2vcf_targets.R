@@ -19,21 +19,24 @@
 #' @importFrom reshape2 melt dcast
 #' @importFrom utils write.table
 #' @importFrom Biostrings DNAString reverseComplement
-#'
+#' @return A VCF file v4.3 with the target marker read count information
 #'
 #' @examples
 #' # Load example files
 #' madc_file <- system.file("example_MADC_FixedAlleleID.csv", package="BIGr")
 #' bot_file <- system.file("example_SNPs_DArTag-probe-design_f180bp.botloci", package="BIGr")
 #'
+#' #Temp location (only for example)
+#' output_file <- tempfile()
+#'
 #' # Convert MADC to VCF
 #' madc2vcf_targets(madc_file = madc_file,
-#'                  output.file = "output.vcf",
+#'                  output.file = output_file,
 #'                  get_REF_ALT = TRUE,
 #'                  botloci_file = bot_file)
 #'
-#' @references
-#' Updog R package
+#' rm(output_file)
+#'
 #' @export
 madc2vcf_targets <- function(madc_file, output.file, botloci_file, get_REF_ALT = FALSE) {
   #Making the VCF (This is highly dependent on snps being in a format where the SNP IDs are the CHR_POS)

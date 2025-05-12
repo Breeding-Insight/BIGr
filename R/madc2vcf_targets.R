@@ -18,7 +18,19 @@
 #' @importFrom Rdpack reprompt
 #' @importFrom reshape2 melt dcast
 #' @importFrom utils write.table
-#' @importFrom Biostrings reverseComplement
+#' @importFrom Biostrings DNAString reverseComplement
+#'
+#'
+#' @examples
+#' # Load example files
+#' madc_file <- system.file("example_MADC_FixedAlleleID.csv", package="BIGr")
+#' bot_file <- system.file("example_SNPs_DArTag-probe-design_f180bp.botloci", package="BIGr")
+#'
+#' # Convert MADC to VCF
+#' madc2vcf_targets(madc_file = madc_file,
+#'                  output.file = "output.vcf",
+#'                  get_REF_ALT = TRUE,
+#'                  botloci_file = bot_file)
 #'
 #' @references
 #' Updog R package
@@ -76,8 +88,13 @@ madc2vcf_targets <- function(madc_file, output.file, botloci_file, get_REF_ALT =
 
     # Get reverse complement the tag is present in botloci
     botloci <- read.table(botloci_file, header = FALSE)
+
+    # Check if the botloci file marker IDs match with the MADC file
+    checked_botloci <- check_botloci(botloci, csv)
+    botloci <- checked_botloci[[1]]
+    csv <- checked_botloci[[2]]
+
     idx <- which(csv$CloneID %in% botloci[,1])
-    if(length(idx) == 0) stop("None of the tags in the MADC file are present in the botloci file.")
     csv$AlleleSequence[idx] <- sapply(csv$AlleleSequence[idx], function(sequence) as.character(reverseComplement(DNAString(sequence))))
 
     ref_seq <- csv$AlleleSequence[grep("\\|Ref.*", csv$AlleleID)]

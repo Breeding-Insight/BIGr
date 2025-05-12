@@ -4,12 +4,14 @@
 \alias{madc2vcf_targets}
 \title{Format MADC Target Loci Read Counts Into VCF}
 \usage{
-madc2vcf_targets(madc_file, output.file, get_REF_ALT = FALSE)
+madc2vcf_targets(madc_file, output.file, botloci_file, get_REF_ALT = FALSE)
 }
 \arguments{
 \item{madc_file}{Path to MADC file}
 
 \item{output.file}{output file name and path}
+
+\item{botloci_file}{A string specifying the path to the file containing the target IDs designed in the bottom strand.}
 
 \item{get_REF_ALT}{if TRUE recovers the reference and alternative bases by comparing the sequences. If more than one polymorphism are found for a tag, it is discarded.}
 }
@@ -23,6 +25,18 @@ This function will extract the read count information from a MADC file target ma
 The DArTag MADC file format is not commonly supported through existing tools. This function
 will extract the read count information from a MADC file for the target markers and convert it to a VCF file format for the
 genotyping panel target markers only
+}
+\examples{
+# Load example files
+madc_file <- system.file("example_MADC_FixedAlleleID.csv", package="BIGr")
+bot_file <- system.file("example_SNPs_DArTag-probe-design_f180bp.botloci", package="BIGr")
+
+# Convert MADC to VCF
+madc2vcf_targets(madc_file = madc_file,
+                 output.file = "output.vcf",
+                 get_REF_ALT = TRUE,
+                 botloci_file = bot_file)
+
 }
 \references{
 Updog R package

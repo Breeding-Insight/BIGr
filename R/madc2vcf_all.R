@@ -20,11 +20,11 @@
 #'
 #' @examples
 #' # Example usage:
-#' 
+#'
 #' madc_file <- system.file("example_MADC_FixedAlleleID.csv", package="BIGr")
 #' bot_file <- system.file("example_SNPs_DArTag-probe-design_f180bp.botloci", package="BIGr")
 #' db_file <- system.file("example_allele_db.fa", package="BIGr")
-#' 
+#'
 #' madc2vcf_all(
 #'   madc = madc_file,
 #'   botloci_file = bot_file,
@@ -71,30 +71,9 @@ madc2vcf_all <- function(madc = NULL,
   if(!is.null(hap_seq_file)) hap_seq <- read.table(hap_seq_file, header = F) else hap_seq <- NULL
 
   # Check marker names compatibility between MADC and botloci
-  if(!any(botloci$V1 %in% report$CloneID)) {
-    if(verbose) cat("None of the botloci markers could be found in the MADC file. Checking padding match...\n")
-
-    pad_madc <- unique(nchar(sub(".*_", "", report$CloneID)))
-    pad_botloci <- unique(nchar(sub(".*_", "", botloci$V1)))
-
-    if(length(pad_madc) > 1 | length(pad_botloci) > 1) stop("Check marker IDs in both MADC and botloci files. They should be the same.")
-
-    if(pad_madc != pad_botloci) {
-      if(verbose) cat("Padding between MADC and botloci files do not match. Markers ID modified to match longest padding.\n")
-      if (pad_madc < pad_botloci) {
-        report$CloneID <- paste0(sub("_(.*)", "", report$CloneID), "_",
-                                 sprintf(paste0("%0", pad_botloci, "d"), as.integer(sub(".*_", "", report$CloneID)))
-        )
-      } else {
-        botloci$V1 <- paste0(sub("_(.*)", "", botloci$V1), "_",
-                             sprintf(paste0("%0", pad_madc, "d"), as.integer(sub(".*_", "", botloci$V1)))
-        )
-        if(!any(botloci$V1 %in% report$CloneID)) stop("After matching padding, botloci markers still not found in MADC file. Check marker IDs.\n")
-      }
-    } else {
-      stop("Check marker IDs in both MADC and botloci files. They should be the same.")
-    }
-  }
+  checked_botloci <- check_botloci(botloci, report)
+  botloci <- checked_botloci[[1]]
+  report <- checked_botloci[[2]]
 
   my_results_csv <- loop_though_dartag_report(report,
                                               botloci,
@@ -346,10 +325,7 @@ compare <- function(one_tag, botloci, alignment_score_thr = 40){
 
             if(length(alt_base) >0){ # If the N is the only polymorphis found, the Match tag will be discarted
               # The reported position is always on reference
-              # If present in the botloc, the position will be before target, if not, after
               pos <- pos_target - (pos_target_idx - pos_ref_idx)
-              # if(isBotLoci) pos <- pos_target - (pos_target_idx - pos_ref_idx) else
-              #   pos <- pos_target + (pos_target_idx - pos_ref_idx)
 
               # Sometimes there are more than one polymorphism in the sequence, we need to add rows to the table
               update_tag_temp <- one_tag[grep("Match",one_tag$AlleleID)[j],][rep(1, length(alt_base)), ]

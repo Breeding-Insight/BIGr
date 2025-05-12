@@ -2,7 +2,7 @@
 % Please edit documentation in R/relationship_qc.R
 \name{check_replicates}
 \alias{check_replicates}
-\title{Compatibility between samples genotypes}
+\title{Compatibility Between Samples Genotypes}
 \usage{
 check_replicates(path.vcf, select_samples = NULL, verbose = TRUE)
 }

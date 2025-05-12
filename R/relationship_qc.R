@@ -1,4 +1,4 @@
-#' Check homozygous loci in trios
+#' Check Homozygous Loci in Trios
 #'
 #' This function analyzes homozygous loci segregation in trios (parents and progeny) using genotype data from a VCF file.
 #' It calculates the percentage of homozygous loci in the progeny that match the expected segregation patterns based on the tested parents.
@@ -111,7 +111,7 @@ check_homozygous_trios <- function(path.vcf, ploidy = 4, parents_candidates = NU
   return(all_comb)
 }
 
-#' Compatibility between samples genotypes
+#' Compatibility Between Samples Genotypes
 #'
 #' This function checks the compatibility between sample genotypes in a VCF file by comparing all pairs of samples.
 #'

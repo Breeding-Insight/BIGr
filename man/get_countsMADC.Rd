@@ -17,3 +17,18 @@ This function takes the MADC file as input and retrieves the ref and alt counts 
 and converts them to ref, alt, and size(total count) matrices for dosage calling tools. At the moment,
 only the read counts for the Ref and Alt target loci are obtained while the additional loci are ignored.
 }
+\examples{
+# Get the path to the MADC file
+madc_path <- system.file("iris_DArT_MADC.csv", package = "BIGr")
+
+# Extract the read count matrices
+counts_matrices <- get_countsMADC(madc_path)
+
+# Access the reference, alternate, and size matrices
+
+# ref_matrix <- counts_matrices$ref_matrix
+# alt_matrix <- counts_matrices$alt_matrix
+# size_matrix <- counts_matrices$size_matrix
+
+rm(counts_matrices)
+}

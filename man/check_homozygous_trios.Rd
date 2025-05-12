@@ -2,7 +2,7 @@
 % Please edit documentation in R/relationship_qc.R
 \name{check_homozygous_trios}
 \alias{check_homozygous_trios}
-\title{Check homozygous loci in trios}
+\title{Check Homozygous Loci in Trios}
 \usage{
 check_homozygous_trios(
   path.vcf,

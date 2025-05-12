@@ -26,8 +26,8 @@
 #' #Temp location (only for example)
 #' output_file <- tempfile()
 #'
-#' dosage2vcf(dart.report = system.file("iris_DArT_Allele_Dose_Report.csv", package = "BIGr"),
-#'            dart.counts = system.file("iris_DArT_Counts.csv", package = "BIGr"),
+#' dosage2vcf(dart.report = system.file("iris_DArT_Allele_Dose_Report_small.csv", package = "BIGr"),
+#'            dart.counts = system.file("iris_DArT_Counts_small.csv", package = "BIGr"),
 #'            ploidy = 2,
 #'            output.file = output_file)
 #'

@@ -30,3 +30,7 @@
 # BIGr 0.5.3
 
 -   Updated madc2vcf_all example
+
+# BIGr 0.5.4
+
+-   Updated dosage2vcf example

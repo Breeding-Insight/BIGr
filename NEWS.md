@@ -26,3 +26,7 @@
 -   madc2vcf function changed to madc2vcf_targets
 -   get_OffTargets function changed to madc2vcf_all
 -   Updates to testthat tests and function examples
+
+# BIGr 0.5.3
+
+-   Updated madc2vcf_all example

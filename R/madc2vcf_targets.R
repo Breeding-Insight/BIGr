@@ -1,13 +1,14 @@
 #' Format MADC Target Loci Read Counts Into VCF
 #'
-#' This function will extract the read count information from a MADC file and convert to VCF file format.
+#' This function will extract the read count information from a MADC file target markers and convert to VCF file format.
 #'
 #' The DArTag MADC file format is not commonly supported through existing tools. This function
-#' will extract the read count information from a MADC file and convert it to a VCF file format for the
+#' will extract the read count information from a MADC file for the target markers and convert it to a VCF file format for the
 #' genotyping panel target markers only
 #'
 #' @param madc_file Path to MADC file
 #' @param output.file output file name and path
+#' @param botloci_file A string specifying the path to the file containing the target IDs designed in the bottom strand.
 #' @param get_REF_ALT if TRUE recovers the reference and alternative bases by comparing the sequences. If more than one polymorphism are found for a tag, it is discarded.
 #'
 #' @return A VCF file v4.3 with the target marker read count information
@@ -17,10 +18,24 @@
 #' @importFrom Rdpack reprompt
 #' @importFrom reshape2 melt dcast
 #' @importFrom utils write.table
+#' @importFrom Biostrings DNAString reverseComplement
+#'
+#'
+#' @examples
+#' # Load example files
+#' madc_file <- system.file("example_MADC_FixedAlleleID.csv", package="BIGr")
+#' bot_file <- system.file("example_SNPs_DArTag-probe-design_f180bp.botloci", package="BIGr")
+#'
+#' # Convert MADC to VCF
+#' madc2vcf_targets(madc_file = madc_file,
+#'                  output.file = "output.vcf",
+#'                  get_REF_ALT = TRUE,
+#'                  botloci_file = bot_file)
+#'
 #' @references
 #' Updog R package
 #' @export
-madc2vcf <- function(madc_file, output.file, get_REF_ALT = FALSE) {
+madc2vcf_targets <- function(madc_file, output.file, botloci_file, get_REF_ALT = FALSE) {
   #Making the VCF (This is highly dependent on snps being in a format where the SNP IDs are the CHR_POS)
 
   matrices <- get_countsMADC(madc_file)
@@ -66,39 +81,49 @@ madc2vcf <- function(madc_file, output.file, get_REF_ALT = FALSE) {
 
   # Get REF and ALT
   if(get_REF_ALT){
+    if(is.null(botloci_file)) stop("Please provide the botloci file to recover the reference and alternative bases.")
     csv <- get_counts(madc_file)
+    # Keep only the ones that have alt and ref
+    csv <- csv[which(csv$CloneID %in% rownames(ad_df)),]
+
+    # Get reverse complement the tag is present in botloci
+    botloci <- read.table(botloci_file, header = FALSE)
+
+    # Check if the botloci file marker IDs match with the MADC file
+    checked_botloci <- check_botloci(botloci, csv)
+    botloci <- checked_botloci[[1]]
+    csv <- checked_botloci[[2]]
+
+    idx <- which(csv$CloneID %in% botloci[,1])
+    csv$AlleleSequence[idx] <- sapply(csv$AlleleSequence[idx], function(sequence) as.character(reverseComplement(DNAString(sequence))))
+
     ref_seq <- csv$AlleleSequence[grep("\\|Ref.*", csv$AlleleID)]
     ref_ord <- csv$CloneID[grep("\\|Ref.*", csv$AlleleID)]
     alt_seq <- csv$AlleleSequence[grep("\\|Alt.*", csv$AlleleID)]
     alt_ord <- csv$CloneID[grep("\\|Alt.*", csv$AlleleID)]
 
-    if(length(ref_seq) != length(alt_seq)) {
+    if(all(sort(ref_ord) == sort(alt_ord))){
+      ref_seq <- ref_seq[order(ref_ord)]
+      alt_seq <- alt_seq[order(alt_ord)]
+
+      ref_base <- alt_base <- vector()
+      for(i in 1:length(ref_seq)){
+        temp_list <- strsplit(c(ref_seq[i], alt_seq[i]), "")
+        idx <- which(temp_list[[1]] != temp_list[[2]])
+        if(length(idx) >1) { # If finds more than one polymorphism between Ref and Alt sequences
+          ref_base[i] <- NA
+          alt_base[i] <- NA
+        } else {
+          ref_base[i] <- temp_list[[1]][idx]
+          alt_base[i] <- temp_list[[2]][idx]
+        }
+      }
+    } else {
       warning("There are missing reference or alternative sequence, the SNP bases could not be recovery.")
       ref_base <- "."
       alt_base <- "."
-    } else {
-      if(all(sort(ref_ord) == sort(alt_ord))){
-        ref_seq <- ref_seq[order(ref_ord)]
-        alt_seq <- alt_seq[order(alt_ord)]
-
-        ref_base <- alt_base <- vector()
-        for(i in 1:length(ref_seq)){
-          temp_list <- strsplit(c(ref_seq[i], alt_seq[i]), "")
-          idx <- which(temp_list[[1]] != temp_list[[2]])
-          if(length(idx) >1) { # If finds more than one polymorphism between Ref and Alt sequences
-            ref_base[i] <- NA
-            alt_base[i] <- NA
-          } else {
-            ref_base[i] <- temp_list[[1]][idx]
-            alt_base[i] <- temp_list[[2]][idx]
-          }
-        }
-      } else {
-        warning("There are missing reference or alternative sequence, the SNP bases could not be recovery.")
-        ref_base <- "."
-        alt_base <- "."
-      }
     }
+
   } else {
     ref_base <- "."
     alt_base <- "."

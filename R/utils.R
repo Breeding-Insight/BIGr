@@ -40,7 +40,7 @@ convert_to_dosage <- function(gt) {
 #' @noRd
 check_botloci <- function(botloci, report, verbose=TRUE){
   if(!any(botloci$V1 %in% report$CloneID)) {
-    if(verbose) cat("None of the botloci markers could be found in the MADC file. Checking padding match...\n")
+    if(verbose) message("None of the botloci markers could be found in the MADC file. Checking padding match...\n")
 
     pad_madc <- unique(nchar(sub(".*_", "", report$CloneID)))
     pad_botloci <- unique(nchar(sub(".*_", "", botloci$V1)))
@@ -48,7 +48,7 @@ check_botloci <- function(botloci, report, verbose=TRUE){
     if(length(pad_madc) > 1 | length(pad_botloci) > 1) stop("Check marker IDs in both MADC and botloci files. They should be the same.")
 
     if(pad_madc != pad_botloci) {
-      if(verbose) cat("Padding between MADC and botloci files do not match. Markers ID modified to match longest padding.\n")
+      if(verbose) message("Padding between MADC and botloci files do not match. Markers ID modified to match longest padding.\n")
       if (pad_madc < pad_botloci) {
         report$CloneID <- paste0(sub("_(.*)", "", report$CloneID), "_",
                                  sprintf(paste0("%0", pad_botloci, "d"), as.integer(sub(".*_", "", report$CloneID)))

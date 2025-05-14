@@ -33,7 +33,6 @@ calculate_MAF <- function(df, ploidy) {
   allele_frequencies <- apply(df, 1, function(row) {
     non_na_count <- sum(!is.na(row))
     allele_sum <- sum(row, na.rm = TRUE)
-    #print(paste("Non-NA count:", non_na_count, "Allele sum:", allele_sum))
     if (non_na_count > 0) {
       allele_sum / (ploidy * non_na_count)
     } else {

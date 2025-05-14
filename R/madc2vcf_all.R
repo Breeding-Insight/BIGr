@@ -148,7 +148,7 @@ loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, align
 
   clust <- makeCluster(n.cores)
   #clusterExport(clust, c("hap_seq","add_ref_alt"))
-  add_ref_alt_results <- parLapply(clust, by_cloneID, function(x) add_ref_alt(x, hap_seq, nsamples))
+  add_ref_alt_results <- parLapply(clust, by_cloneID, function(x) add_ref_alt(x, hap_seq, nsamples, verbose = verbose))
   stopCluster(clust)
 
   ref_index <- sapply(add_ref_alt_results, "[[",2)
@@ -208,7 +208,7 @@ loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, align
 #' @details The function checks if the reference (Ref_0001) and alternative (Alt_0002) alleles are present in the `one_tag` data frame. If not, it attempts to retrieve them from the `hap_seq` database. If the `hap_seq` database is not provided, the missing alleles are flagged with warnings, and the tag may be incomplete.
 #'
 #' @noRd
-add_ref_alt <- function(one_tag, hap_seq, nsamples) {
+add_ref_alt <- function(one_tag, hap_seq, nsamples, verbose = TRUE) {
 
   # Add ref and alt
   cloneID <- one_tag$CloneID[1]
@@ -230,7 +230,9 @@ add_ref_alt <- function(one_tag, hap_seq, nsamples) {
       empty_allele <- c(ref, rep(NA, 4), cloneID, ref_seq, rep(0, nsamples))
       new_rows[[length(new_rows) + 1]] <- empty_allele
     } else {
-      warning("Ref_0001 sequence not found in hap_seq and not present in one_tag. Removing tag:", cloneID)
+      if (verbose) {
+        warning("Ref_0001 sequence not found in hap_seq and not present in one_tag. Removing tag:", cloneID)
+      }
       ref_index <- -1
       ref_seq <- NA
     }
@@ -244,7 +246,9 @@ add_ref_alt <- function(one_tag, hap_seq, nsamples) {
       empty_allele <- c(alt, rep(NA, 4), cloneID, alt_seq, rep(0, nsamples))
       new_rows[[length(new_rows) + 1]] <- empty_allele
     } else {
-      warning("Alt_0002 sequence not found in hap_seq and not present in one_tag. Removing tag:", cloneID)
+      if (verbose) {
+        warning("Alt_0002 sequence not found in hap_seq and not present in one_tag. Removing tag:", cloneID)
+      }
       alt_index <- -1
       alt_seq <- NA
     }
@@ -430,7 +434,9 @@ create_VCF_body <- function(csv,
   vcf_tag_list1 <- lapply(vcf_tag_list, "[[", 1)
   rm_mks <- sapply(vcf_tag_list, "[[" ,2)
 
-  if(verbose) print(paste("SNP removed because presented more than one allele:", sum(rm_mks)))
+  if(verbose){
+    print(paste("SNP removed because presented more than one allele:", sum(rm_mks)))
+  }
 
   for(i in seq_along(vcf_tag_list1)) {
     if(is.vector(vcf_tag_list1[[i]])) {
@@ -450,7 +456,9 @@ create_VCF_body <- function(csv,
   if(length(which(duplicated(vcf_body[,3]))) > 0){
     repeated <- vcf_body[which(duplicated(vcf_body[,3])), 4]
 
-    if(verbose) print(paste("Different primers pair capture same SNP positions in", length(repeated), "locations. The repeated were discarded."))
+    if(verbose){
+      print(paste("Different primers pair capture same SNP positions in", length(repeated), "locations. The repeated were discarded."))
+    }
 
     repeated_tab <- vcf_body[which(vcf_body[,4] %in% repeated),]
     vcf_body_new <- vcf_body[-which(vcf_body[,4] %in% repeated),]

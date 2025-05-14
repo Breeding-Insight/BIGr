@@ -77,7 +77,7 @@ get_countsMADC <- function(madc_file) {
 
   # Print the result
   ratio_missing_data <- count_zeros / length(size_matrix)
-  cat("Ratio of missing data =", ratio_missing_data, "\n")
+  message("Ratio of missing data =", ratio_missing_data, "\n")
 
   # Return the ref and alt matrices as a list
   matrices_list <- list(ref_matrix = ref_matrix, size_matrix = size_matrix)

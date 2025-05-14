@@ -17,6 +17,9 @@ merge_MADCs(..., madc_list = NULL, out_madc = NULL, run_ids = NULL)
 This ID will be added as a suffix in repeated sample ID in case they
 exist in different files.}
 }
+\value{
+A merged MADC file in CSV format.
+}
 \description{
 If duplicated samples exist in different files, a suffix will
 be added at the end of the sample name. If run_ids is defined,

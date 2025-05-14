@@ -17,6 +17,7 @@
 ##' @import dplyr
 ##' @importFrom utils tail write.csv
 ##'
+##' @return A merged MADC file in CSV format.
 ##' @examples
 ##' # First generating example MADC files
 ##' temp_dir <- tempdir()

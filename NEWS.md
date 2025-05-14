@@ -34,3 +34,10 @@
 # BIGr 0.5.4
 
 -   Updated dosage2vcf example
+
+# BIGr 0.5.5
+
+- Updated DESCRIPTION
+- Added return value for merge_MADCs
+- Added optional seed for check_ped
+- Added verbose option

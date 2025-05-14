@@ -44,7 +44,7 @@ dosage2vcf <- function(dart.report, dart.counts, ploidy, output.file) {
   ploidy <- as.numeric(ploidy)
   output.file <- paste0(output.file,".vcf")
 
-  cat("Reading input files\n")
+  message("Reading input files\n")
 
   #Make a header separate from the dataframe
   vcf_header <- c(
@@ -194,7 +194,7 @@ dosage2vcf <- function(dart.report, dart.counts, ploidy, output.file) {
   #Add the FORMAT label for each SNP
   vcf_df$FORMAT <- paste("GT","UD","DP","RA",sep=":")
 
-  cat("Converting dosages to genotype format\n")
+  message("Converting dosages to genotype format\n")
 
   ###Convert genotypes from dosage to gt
   # Precompute genotype strings for all possible dosage values to improve efficiency
@@ -259,7 +259,7 @@ dosage2vcf <- function(dart.report, dart.counts, ploidy, output.file) {
     return(as.matrix(combined_wide))
   }
 
-  cat("Formatting VCF and generating output file\n")
+  message("Formatting VCF and generating output file\n")
 
   # Combine the matrices
   geno_df <- make_vcf_format(geno_df, dosage, total_counts, ref_counts)

@@ -4,7 +4,7 @@
 \alias{check_ped}
 \title{Evaluate Pedigree File for Accuracy}
 \usage{
-check_ped(ped.file, seed = NULL)
+check_ped(ped.file, seed = NULL, verbose = TRUE)
 }
 \arguments{
 \item{ped.file}{path to pedigree text file. The pedigree file is a

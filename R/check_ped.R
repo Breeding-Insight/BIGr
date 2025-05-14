@@ -33,7 +33,7 @@
 #' @importFrom stats setNames
 #' @importFrom utils read.table
 #' @export
-check_ped <- function(ped.file, seed = NULL) {
+check_ped <- function(ped.file, seed = NULL, verbose = TRUE) {
   #### Function to check for hierarchical errors missing parents and repeated ids ####
   if(!is.null(seed)){
     set.seed(seed)
@@ -128,7 +128,7 @@ check_ped <- function(ped.file, seed = NULL) {
       errors <- append(errors, paste("Cycle detected involving nodes:", paste(cycle_ids, collapse = " -> ")))
     }
   }
-  results <- list(missing_parents = missing_parents, dependencies = errors, repeated_ids = repeated_ids, messy_parents = messy_parents)
+  results <- list(missing_parents = missing_parents, dependencies = data.frame(Dependency = unlist(errors)), repeated_ids = repeated_ids, messy_parents = messy_parents)
   repeated_ids <- results$repeated_ids
   missing_parents <- results$missing_parents
   messy_parents <- results$messy_parents
@@ -138,36 +138,55 @@ check_ped <- function(ped.file, seed = NULL) {
   #### Print errors and cycles ####
   # Print repeated ids if any
   if (nrow(repeated_ids) > 0) {
-    cat("Repeated ids found:\n")
-    print(repeated_ids)
+    if (verbose) {
+      cat("Repeated ids found:\n")
+      message(repeated_ids)
+    }
     output.results$repeated_ids <- repeated_ids
+
   } else {
-    cat("No repeated ids found.\n")
+    if (verbose) {
+      cat("No repeated ids found.\n")
+    }
   }
-  #Print parents that a ppear as male and female
+  #Print parents that appear as male and female
   if (nrow(messy_parents) > 0) {
-    cat("Ids found as male and female parent:\n")
-    print(messy_parents)
+    if (verbose) {
+      cat("Ids found as male and female parent:\n")
+      message(messy_parents)
+    }
     output.results$messy_parents <- messy_parents
+
   } else {
-    cat("No ids found as male and female parent.\n")
+    if (verbose) {
+      cat("No ids found as male and female parent.\n")
+    }
   }
   # Print missing parents if any
   if (nrow(missing_parents) > 0) {
-    cat("Missing parents found:\n")
-    print(missing_parents)
+    if (verbose) {
+      cat("Missing parents found:\n")
+      message(missing_parents)
+    }
     output.results$missing_parents <- missing_parents
+
   } else {
-    cat("No missing parents found.\n")
+    if (verbose) {
+      cat("No missing parents found.\n")
+    }
   }
   # Print errors if any
-  if (length(errors) > 0) {
-    cat("Dependencies found:\n")
-    for (error in unique(errors)) {
-      cat(error, "\n")
+  if (nrow(errors) > 0) {
+    if (verbose) {
+      cat("Dependencies found:\n")
+      message(unique(errors$Dependency))
     }
+    output.results$dependencies <- data.frame(Dependency = unlist(errors))
+
   } else {
-    cat("No dependencies found.\n")
+    if (verbose) {
+      cat("No dependencies found.\n")
+    }
   }
 
   return(results)

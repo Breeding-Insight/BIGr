@@ -29,6 +29,20 @@
 #'
 #' @importFrom vcfR read.vcfR extract.gt
 #'
+#' @examples
+#'
+#' # Example VCF file
+#' example_vcf <- system.file("iris_DArT_VCF.vcf.gz", package = "BIGr")
+#'
+#' parents_candidates <- paste0("Sample_",1:10)
+#' progeny_candidates <- paste0("Sample_",11:20)
+#'
+#' #Check homozygous loci in trios
+#' check_tab <- check_homozygous_trios(path.vcf = example_vcf,
+#'                                    ploidy = 2,
+#'                                    parents_candidates = parents_candidates,
+#'                                    progeny_candidates = progeny_candidates)
+#'
 #' @export
 check_homozygous_trios <- function(path.vcf, ploidy = 4, parents_candidates = NULL, progeny_candidates = NULL, verbose = TRUE) {
 
@@ -130,6 +144,15 @@ check_homozygous_trios <- function(path.vcf, ploidy = 4, parents_candidates = NU
 #' @details The function removes reciprocal comparisons (e.g., A vs. B and B vs. A) and self-comparisons (e.g., A vs. A) to avoid redundancy. Compatibility is calculated as the percentage of matching genotypes between two samples, excluding missing values. The percentage of missing genotypes is also reported for each pair.
 #'
 #' @importFrom vcfR read.vcfR extract.gt
+#'
+#' @examples
+#'
+#' #Example VCF
+#' example_vcf <- system.file("iris_DArT_VCF.vcf.gz", package = "BIGr")
+#'
+#' # Checking for replicates
+#' check_tab <- check_replicates(path.vcf = example_vcf, select_samples = NULL)
+#'
 #'
 #' @export
 check_replicates <- function(path.vcf, select_samples = NULL, verbose = TRUE) {

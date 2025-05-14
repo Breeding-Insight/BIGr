@@ -8,6 +8,7 @@ globalVariables(c(
 
 #' Convert GT format to numeric dosage
 #' @param gt a genotype matrix with samples as columns and variants as rows
+#' @return numeric genotype values
 #' @noRd
 convert_to_dosage <- function(gt) {
   # Split the genotype string
@@ -36,7 +37,7 @@ convert_to_dosage <- function(gt) {
 #' The function checks if the marker IDs in the botloci file are present in the MADC file. If no matches are found, it examines the padding (number of digits) in the marker IDs and adjusts them to match the longest padding. If the IDs still do not match after adjustment, an error is raised. This function is intended for internal use and helps ensure that the botloci and MADC files are compatible for downstream analysis.
 #'
 #' @keywords internal
-#' @noRd 
+#' @noRd
 check_botloci <- function(botloci, report, verbose=TRUE){
   if(!any(botloci$V1 %in% report$CloneID)) {
     if(verbose) cat("None of the botloci markers could be found in the MADC file. Checking padding match...\n")

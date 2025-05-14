@@ -47,3 +47,18 @@ It calculates the percentage of homozygous loci in the progeny that match the ex
 \details{
 This function is designed to validate the segregation of homozygous loci in trios, ensuring that the progeny genotypes align with the expected patterns based on the parental genotypes. It requires both parent and progeny candidates to be specified. The function validates the ploidy level and ensures that all specified samples are present in the VCF file. The results include detailed statistics for each combination of parents and progeny. Reciprocal comparisons (e.g., A vs. B and B vs. A) and self-comparisons (e.g., A vs. A) are removed to avoid redundancy. Missing genotype data is also accounted for and reported in the results.
 }
+\examples{
+
+# Example VCF file
+example_vcf <- system.file("iris_DArT_VCF.vcf.gz", package = "BIGr")
+
+parents_candidates <- paste0("Sample_",1:10)
+progeny_candidates <- paste0("Sample_",11:20)
+
+#Check homozygous loci in trios
+check_tab <- check_homozygous_trios(path.vcf = example_vcf,
+                                   ploidy = 2,
+                                   parents_candidates = parents_candidates,
+                                   progeny_candidates = progeny_candidates)
+
+}

@@ -18,7 +18,7 @@ This ID will be added as a suffix in repeated sample ID in case they
 exist in different files.}
 }
 \value{
-A merged MADC file in CSV format.
+A data frame containing the merged MADC data. The merged file is also written to the specified \code{out_madc} path in CSV format. Numeric columns are filled with zeros where data is missing.
 }
 \description{
 If duplicated samples exist in different files, a suffix will

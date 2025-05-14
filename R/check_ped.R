@@ -60,7 +60,6 @@ check_ped <- function(ped.file, seed = NULL, verbose = TRUE) {
   messy_parents <- as.data.frame(intersect(data$sire, data$dam)) %>%
     rename(id = 1) %>%
     filter(id != 0)
-  #print("IDs appearing as sire and dam")
   # Missing parents check
   for (i in 1:nrow(data)) {
     id <- data$id[i]

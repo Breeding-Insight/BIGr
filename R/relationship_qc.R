@@ -44,7 +44,9 @@
 #'                                    progeny_candidates = progeny_candidates)
 #'
 #' @export
-check_homozygous_trios <- function(path.vcf, ploidy = 4, parents_candidates = NULL, progeny_candidates = NULL, verbose = TRUE) {
+check_homozygous_trios <- function(path.vcf, ploidy = 4,
+                                   parents_candidates = NULL,
+                                   progeny_candidates = NULL, verbose = TRUE) {
 
   # Check if parents and progeny are not NULL
   if (is.null(parents_candidates) || is.null(progeny_candidates)) {
@@ -52,7 +54,7 @@ check_homozygous_trios <- function(path.vcf, ploidy = 4, parents_candidates = NU
   }
 
   # Load the VCF file
-  vcf <- read.vcfR(path.vcf, verbose = FALSE)
+  vcf <- read.vcfR(path.vcf, verbose = verbose)
 
   # Extract the genotype data
   GT <- extract.gt(vcf, element = "GT")
@@ -77,7 +79,8 @@ check_homozygous_trios <- function(path.vcf, ploidy = 4, parents_candidates = NU
   rownames(filtered_combinations) <- NULL
   filtered_combinations <- cbind(filtered_combinations, progeny_rep)
   colnames(filtered_combinations) <- c("parent1", "parent2", "progeny")
-  if(verbose) cat("Number of combinations tested: ", nrow(filtered_combinations), "\n")
+
+  if(verbose) message("Number of combinations tested: ", nrow(filtered_combinations), "\n")
 
   # Initialize a data frame to store results
   homo1 <- 0
@@ -115,7 +118,7 @@ check_homozygous_trios <- function(path.vcf, ploidy = 4, parents_candidates = NU
   }, filtered_combinations$parent1, filtered_combinations$parent2, filtered_combinations$progeny, homo1, homo2)
 
   all_comb <- cbind(filtered_combinations, t(matches))
-  head(all_comb)
+
   colnames(all_comb) <- c(
     "parent1", "parent2", "progeny", "homoRef_x_homoRef_n", "homoRef_x_homoRef_match",
     "homoAlt_x_homoAlt_n", "homoAlt_x_homoAlt_match", "homoRef_x_homoAlt_n",
@@ -157,7 +160,7 @@ check_homozygous_trios <- function(path.vcf, ploidy = 4, parents_candidates = NU
 #' @export
 check_replicates <- function(path.vcf, select_samples = NULL, verbose = TRUE) {
   # Load the VCF file
-  vcf <- read.vcfR(path.vcf, verbose = FALSE)
+  vcf <- read.vcfR(path.vcf, verbose = verbose)
 
   # Extract the genotype data
   GT <- extract.gt(vcf, element = "GT", convertNA = TRUE)
@@ -176,7 +179,7 @@ check_replicates <- function(path.vcf, select_samples = NULL, verbose = TRUE) {
   filtered_combinations <- combinations[!duplicated(t(apply(combinations, 1, sort))), ] # remove reciprocal combinations
   filtered_combinations <- filtered_combinations[filtered_combinations$Var1 != filtered_combinations$Var2, ] # remove self-comparisons
 
-  if(verbose) cat("Number of combinations tested: ", nrow(filtered_combinations), "\n")
+  if(verbose) message("Number of combinations tested: ", nrow(filtered_combinations), "\n")
 
   compatibility <- mapply(function(sample1, sample2) {
 
@@ -191,7 +194,6 @@ check_replicates <- function(path.vcf, select_samples = NULL, verbose = TRUE) {
     # Return the result
     return(c(compatible = compatible, miss.perc = miss.perc))
   }, filtered_combinations$Var1, filtered_combinations$Var2)
-
 
   result <- cbind(filtered_combinations, t(compatibility))
   colnames(result) <- c("sample1", "sample2", "%_matching_genotypes", "%_missing_genotypes")

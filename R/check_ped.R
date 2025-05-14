@@ -15,6 +15,8 @@
 #'
 #' @param ped.file path to pedigree text file. The pedigree file is a
 #' 3-column pedigree tab separated file with columns labeled as id sire dam in any order
+#' @param seed Optional seed for reproducibility
+#' @param verbose Logical. If TRUE, print the errors to the console.
 #' @return A list of data.frames of error types, and the output printed to the console
 #' @examples
 #' ##Get list with a dataframe for each error type

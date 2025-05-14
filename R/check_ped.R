@@ -19,7 +19,8 @@
 #' @examples
 #' ##Get list with a dataframe for each error type
 #' ped_file <- system.file("check_ped_test.txt", package="BIGr")
-#' ped_errors <- check_ped(ped.file = ped_file)
+#' ped_errors <- check_ped(ped.file = ped_file,
+#'                         seed = 101919)
 #'
 #' ##Access the "messy parents" dataframe result
 #' ped_errors$messy_parents
@@ -32,9 +33,11 @@
 #' @importFrom stats setNames
 #' @importFrom utils read.table
 #' @export
-check_ped <- function(ped.file) {
+check_ped <- function(ped.file, seed = NULL) {
   #### Function to check for hierarchical errors missing parents and repeated ids ####
-  set.seed(101919)
+  if(!is.null(seed)){
+    set.seed(seed)
+  }
   #### read in data ####
   data = utils::read.table(ped.file, header = T)
   data <- data %>%

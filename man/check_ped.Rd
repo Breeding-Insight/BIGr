@@ -4,7 +4,7 @@
 \alias{check_ped}
 \title{Evaluate Pedigree File for Accuracy}
 \usage{
-check_ped(ped.file)
+check_ped(ped.file, seed = NULL)
 }
 \arguments{
 \item{ped.file}{path to pedigree text file. The pedigree file is a
@@ -33,7 +33,8 @@ Note: This function does not change the input file but prints any errors found i
 \examples{
 ##Get list with a dataframe for each error type
 ped_file <- system.file("check_ped_test.txt", package="BIGr")
-ped_errors <- check_ped(ped.file = ped_file)
+ped_errors <- check_ped(ped.file = ped_file,
+                        seed = 101919)
 
 ##Access the "messy parents" dataframe result
 ped_errors$messy_parents

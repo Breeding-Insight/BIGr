@@ -9,6 +9,10 @@ check_ped(ped.file, seed = NULL, verbose = TRUE)
 \arguments{
 \item{ped.file}{path to pedigree text file. The pedigree file is a
 3-column pedigree tab separated file with columns labeled as id sire dam in any order}
+
+\item{seed}{Optional seed for reproducibility}
+
+\item{verbose}{Logical. If TRUE, print the errors to the console.}
 }
 \value{
 A list of data.frames of error types, and the output printed to the console

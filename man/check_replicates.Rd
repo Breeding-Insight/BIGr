@@ -2,7 +2,7 @@
 % Please edit documentation in R/relationship_qc.R
 \name{check_replicates}
 \alias{check_replicates}
-\title{Compatibility between samples genotypes}
+\title{Compatibility Between Samples Genotypes}
 \usage{
 check_replicates(path.vcf, select_samples = NULL, verbose = TRUE)
 }
@@ -27,4 +27,14 @@ This function checks the compatibility between sample genotypes in a VCF file by
 }
 \details{
 The function removes reciprocal comparisons (e.g., A vs. B and B vs. A) and self-comparisons (e.g., A vs. A) to avoid redundancy. Compatibility is calculated as the percentage of matching genotypes between two samples, excluding missing values. The percentage of missing genotypes is also reported for each pair.
+}
+\examples{
+
+#Example VCF
+example_vcf <- system.file("iris_DArT_VCF.vcf.gz", package = "BIGr")
+
+# Checking for replicates
+check_tab <- check_replicates(path.vcf = example_vcf, select_samples = NULL)
+
+
 }

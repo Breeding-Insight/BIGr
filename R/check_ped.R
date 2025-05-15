@@ -5,7 +5,7 @@
 #'check_ped takes a 3-column pedigree tab separated file with columns labeled as id sire dam in any order and checks for:
 #'* Ids that appear more than once in the id column
 #'* Ids that appear in both sire and dam columns
-#'* Direct (e.g. parent is a offspring of his own daughter) and indirect (e.g. a great grandparent is son of its granchild) dependencies within the pedigree.
+#'* Direct (e.g. parent is a offspring of his own daughter) and indirect (e.g. a great grandparent is son of its grandchild) dependencies within the pedigree.
 #'* Individuals included in the pedigree as sire or dam but not on the id column and reports them back with unknown parents (0).
 #'
 #'When using check_ped, do a first run to check for repeated ids and parents that appear as sire and dam.
@@ -15,25 +15,31 @@
 #'
 #' @param ped.file path to pedigree text file. The pedigree file is a
 #' 3-column pedigree tab separated file with columns labeled as id sire dam in any order
-#' @return A list of dataframes of error types, and the output printed to the console
+#' @param seed Optional seed for reproducibility
+#' @param verbose Logical. If TRUE, print the errors to the console.
+#' @return A list of data.frames of error types, and the output printed to the console
 #' @examples
 #' ##Get list with a dataframe for each error type
-#' #ped_errors <- check_ped(ped.file = "example_ped.txt")
+#' ped_file <- system.file("check_ped_test.txt", package="BIGr")
+#' ped_errors <- check_ped(ped.file = ped_file,
+#'                         seed = 101919)
 #'
 #' ##Access the "messy parents" dataframe result
-#' #ped_errors$messy_parents
+#' ped_errors$messy_parents
 #'
 #' ##Get list of sample IDs with messy parents error
-#' #messy_parent_ids <- ped_errors$messy_parents$id
-#' #print(messy_parent_ids)
+#' messy_parent_ids <- ped_errors$messy_parents$id
+#' print(messy_parent_ids)
 #' @import dplyr
 #' @import janitor
 #' @importFrom stats setNames
 #' @importFrom utils read.table
 #' @export
-#### Function to check for hierarchical errors missing parents and repeated ids ####
-check_ped <- function(ped.file) {
-  set.seed(101919)
+check_ped <- function(ped.file, seed = NULL, verbose = TRUE) {
+  #### Function to check for hierarchical errors missing parents and repeated ids ####
+  if(!is.null(seed)){
+    set.seed(seed)
+  }
   #### read in data ####
   data = utils::read.table(ped.file, header = T)
   data <- data %>%
@@ -54,7 +60,6 @@ check_ped <- function(ped.file) {
   messy_parents <- as.data.frame(intersect(data$sire, data$dam)) %>%
     rename(id = 1) %>%
     filter(id != 0)
-  #print("IDs appearing as sire and dam")
   # Missing parents check
   for (i in 1:nrow(data)) {
     id <- data$id[i]
@@ -124,7 +129,7 @@ check_ped <- function(ped.file) {
       errors <- append(errors, paste("Cycle detected involving nodes:", paste(cycle_ids, collapse = " -> ")))
     }
   }
-  results <- list(missing_parents = missing_parents, dependencies = errors, repeated_ids = repeated_ids, messy_parents = messy_parents)
+  results <- list(missing_parents = missing_parents, dependencies = data.frame(Dependency = unlist(errors)), repeated_ids = repeated_ids, messy_parents = messy_parents)
   repeated_ids <- results$repeated_ids
   missing_parents <- results$missing_parents
   messy_parents <- results$messy_parents
@@ -134,36 +139,55 @@ check_ped <- function(ped.file) {
   #### Print errors and cycles ####
   # Print repeated ids if any
   if (nrow(repeated_ids) > 0) {
-    cat("Repeated ids found:\n")
-    print(repeated_ids)
+    if (verbose) {
+      cat("Repeated ids found:\n")
+      message(repeated_ids)
+    }
     output.results$repeated_ids <- repeated_ids
+
   } else {
-    cat("No repeated ids found.\n")
+    if (verbose) {
+      cat("No repeated ids found.\n")
+    }
   }
-  #Print parents that a ppear as male and female
+  #Print parents that appear as male and female
   if (nrow(messy_parents) > 0) {
-    cat("Ids found as male and female parent:\n")
-    print(messy_parents)
+    if (verbose) {
+      cat("Ids found as male and female parent:\n")
+      message(messy_parents)
+    }
     output.results$messy_parents <- messy_parents
+
   } else {
-    cat("No ids found as male and female parent.\n")
+    if (verbose) {
+      cat("No ids found as male and female parent.\n")
+    }
   }
   # Print missing parents if any
   if (nrow(missing_parents) > 0) {
-    cat("Missing parents found:\n")
-    print(missing_parents)
+    if (verbose) {
+      cat("Missing parents found:\n")
+      message(missing_parents)
+    }
     output.results$missing_parents <- missing_parents
+
   } else {
-    cat("No missing parents found.\n")
+    if (verbose) {
+      cat("No missing parents found.\n")
+    }
   }
   # Print errors if any
-  if (length(errors) > 0) {
-    cat("Dependencies found:\n")
-    for (error in unique(errors)) {
-      cat(error, "\n")
+  if (nrow(errors) > 0) {
+    if (verbose) {
+      cat("Dependencies found:\n")
+      message(unique(errors$Dependency))
     }
+    output.results$dependencies <- data.frame(Dependency = unlist(errors))
+
   } else {
-    cat("No dependencies found.\n")
+    if (verbose) {
+      cat("No dependencies found.\n")
+    }
   }
 
   return(results)

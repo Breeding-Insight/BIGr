@@ -7,6 +7,23 @@
 #' @param geno Genotype matrix or data.frame
 #' @param ploidy The ploidy of the species being analyzed
 #' @return A dataframe of observed heterozygosity values for each sample
+#' @examples
+#' # example input for a diploid
+#' geno <- data.frame(
+#'             Sample1 = c(0, 1, 2, NA, 0),
+#'             Sample2 = c(1, 1, 2, 0, NA),
+#'             Sample3 = c(0, 1, 1, 0, 2),
+#'             Sample4 = c(0, 0, 1, 1, NA)
+#'            )
+#' row.names(geno) <- c("Marker1", "Marker2", "Marker3", "Marker4", "Marker5")
+#'
+#' ploidy <- 2
+#'
+#' # calculate observed heterozygosity
+#' result <- calculate_Het(geno, ploidy)
+#'
+#' print(result)
+#'
 #' @export
 calculate_Het <- function(geno, ploidy) {
   # Determine the heterozygous values based on ploidy

@@ -8,6 +8,20 @@
 #' @param madc_file Path to MADC file
 #' @import dplyr
 #' @return A list of read count matrices for reference, alternate, and total read count values
+#' @examples
+#' # Get the path to the MADC file
+#' madc_path <- system.file("iris_DArT_MADC.csv", package = "BIGr")
+#'
+#' # Extract the read count matrices
+#' counts_matrices <- get_countsMADC(madc_path)
+#'
+#' # Access the reference, alternate, and size matrices
+#'
+#' # ref_matrix <- counts_matrices$ref_matrix
+#' # alt_matrix <- counts_matrices$alt_matrix
+#' # size_matrix <- counts_matrices$size_matrix
+#'
+#' rm(counts_matrices)
 #' @export
 get_countsMADC <- function(madc_file) {
   # This function takes the MADC file as input and generates a Ref and Alt counts dataframe as output
@@ -29,7 +43,7 @@ get_countsMADC <- function(madc_file) {
 
   #Retain only the rows in common if they are not identical and provide warning
   if (same == FALSE) {
-    warning("Mismatch between Ref and Alt Markers. MADC likely altered. Markers without a Ref or Alt match removed.")
+    warning("Mismatch between Ref and Alt Markers. Markers without a Ref or Alt match removed.")
     # Find the common CloneIDs between the two dataframes
     common_ids <- intersect(rownames(ref_df), rownames(alt_df))
     # Subset both dataframes to retain only the common rows
@@ -63,7 +77,7 @@ get_countsMADC <- function(madc_file) {
 
   # Print the result
   ratio_missing_data <- count_zeros / length(size_matrix)
-  cat("Ratio of missing data =", ratio_missing_data, "\n")
+  message("Ratio of missing data =", ratio_missing_data, "\n")
 
   # Return the ref and alt matrices as a list
   matrices_list <- list(ref_matrix = ref_matrix, size_matrix = size_matrix)

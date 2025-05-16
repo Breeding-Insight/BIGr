@@ -4,7 +4,7 @@
 \alias{madc2gmat}
 \title{Convert MADC Files to an Additive Genomic Relationship Matrix}
 \usage{
-madc2gmat(madc_file, output.file = NULL)
+madc2gmat(madc_file, seed = NULL, output.file = NULL)
 }
 \arguments{
 \item{madc_file}{Path to the MADC file to be filtered}

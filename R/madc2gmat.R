@@ -28,8 +28,12 @@
 #'
 #'@export
 madc2gmat <- function(madc_file,
+                      seed = NULL,
                       output.file = NULL) {
-
+  #set seed if not null
+  if (!is.null(seed)) {
+    set.seed(seed)
+  }
 
   #Need to first inspect the first 7 rows of the MADC to see if it has been preprocessed or not
   first_seven_rows <- read.csv(madc_file, header = FALSE, nrows = 7, colClasses = c(NA, "NULL"))
@@ -96,11 +100,14 @@ madc2gmat <- function(madc_file,
   #Making additive relationship matrix
   MADC.mat <- A.mat(t(filtered_df))
 
+  rm(filtered_df)
+
   #Save the output to disk if file name provided
   if (!is.null(output.file)) {
     message("Saving filtered data to file")
     write.csv(MADC.mat, paste0(output.file,".csv"), row.names = TRUE)
+  } else {
+    return(MADC.mat)
   }
 
-  return(MADC.mat)
 }

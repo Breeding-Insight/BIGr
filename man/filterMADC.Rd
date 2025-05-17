@@ -47,11 +47,22 @@ it can filter based on mean read depth, number of mhaps per target loci, and oth
 can plot summary statistics and save the filtered data to a file.
 }
 \examples{
-#Example...
+#Example
 
-##Plots
-#Mean read depth
-#Number of Altmatch and Refmatch mhaps per target loci
+#Example MADC
+madc_file <- system.file("example_MADC_FixedAlleleID.csv", package="BIGr")
+
+#Remove mhaps exceeding 3 per target region including the ref and alt target mhaps
+filtered_df <- filterMADC(madc_file,
+                         min.mean.reads = NULL,
+                         max.mean.reads = NULL,
+                         max.mhaps.per.loci = 3,
+                         min.reads.per.site = 1,
+                         min.ind.with.reads = NULL,
+                         target.only = FALSE,
+                         n.summary.columns = NULL,
+                         output.file = NULL)
+
 
 
 }

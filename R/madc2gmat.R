@@ -50,24 +50,15 @@ madc2gmat <- function(madc_file,
     #Read the madc file
     filtered_df <- read.csv(madc_file, sep = ',', skip = 7, check.names = FALSE)
 
-    #Remove extra text after Ref and Alt (_001 or _002)
-    #filtered_df$AlleleID <- sub("\\|Ref.*", "|Ref", filtered_df$AlleleID)
-    #filtered_df$AlleleID <- sub("\\|Alt.*", "|Alt", filtered_df$AlleleID)
-    filtered_df$AlleleID <- sub("\\|Ref_001", "|Ref", filtered_df$AlleleID)
-    filtered_df$AlleleID <- sub("\\|Alt_002*", "|Alt", filtered_df$AlleleID)
-
   } else {
 
     #Read the madc file
     filtered_df <- read.csv(madc_file, sep = ',', check.names = FALSE)
-
-    #Remove extra text after Ref and Alt (_001 or _002)
-    #filtered_df$AlleleID <- sub("\\|Ref.*", "|Ref", filtered_df$AlleleID)
-    #filtered_df$AlleleID <- sub("\\|Alt.*", "|Alt", filtered_df$AlleleID)
-    filtered_df$AlleleID <- sub("\\|Ref_001*", "|Ref", filtered_df$AlleleID)
-    filtered_df$AlleleID <- sub("\\|Alt_002", "|Alt", filtered_df$AlleleID)
-
   }
+
+  #Remove extra text after Ref and Alt (_001 or _002)
+  filtered_df$AlleleID <- sub("\\|Ref_001*", "|Ref", filtered_df$AlleleID)
+  filtered_df$AlleleID <- sub("\\|Alt_002", "|Alt", filtered_df$AlleleID)
 
   #Removing extra columns
   row.names(filtered_df) <- filtered_df$AlleleID
@@ -77,9 +68,6 @@ madc2gmat <- function(madc_file,
 
   #Scale and normalized data
   message("Scaling and normalizing data to be -1,1")
-  #filtered_df <- filtered_df %>%
-  #  mutate(across(starts_with("MeanReads"), ~ scale(.) %>% as.numeric()))
-
   # Function to scale a matrix to be between -1 and 1 for rrBLUP
   scale_matrix <- function(mat) {
     min_val <- min(mat)

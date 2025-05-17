@@ -8,11 +8,11 @@ filterMADC(
   madc_file,
   min.mean.reads = NULL,
   max.mean.reads = NULL,
-  max.match.mhaps = 10,
-  min.reads.per.site = NULL,
+  max.mhaps.per.loci = NULL,
+  min.reads.per.site = 1,
   min.ind.with.reads = NULL,
-  target_only = FALSE,
-  fixed_allele_ids = FALSE,
+  target.only = FALSE,
+  n.summary.columns = NULL,
   plot.summary = FALSE,
   output.file = NULL
 )
@@ -24,21 +24,19 @@ filterMADC(
 
 \item{max.mean.reads}{Maximum mean read depth for filtering}
 
-\item{max.match.mhaps}{Maximum number of matching mhaps per target loci}
+\item{max.mhaps.per.loci}{Maximum number of matching mhaps per target loci. Retains only the target Ref and Alt loci at the sites that exceeds the \code{max.mhaps.per.loci} threshold.}
 
-\item{min.reads.per.site}{Minimum number of reads per site for filtering}
+\item{min.reads.per.site}{Minimum number of reads per site for \code{min.ind.with.reads}. Otherwise, this parameter is ignored}
 
-\item{min.ind.with.reads}{Minimum number of individuals with reads for filtering}
+\item{min.ind.with.reads}{Minimum number of individuals with \code{min.reads.per.site} reads for filtering}
 
-\item{target_only}{Logical indicating whether to filter for target loci only}
+\item{target.only}{Logical indicating whether to filter for target loci only}
 
-\item{fixed_allele_ids}{Logical indicating whether the MADC file has been pre-processed for fixed allele IDs}
+\item{n.summary.columns}{(optional) Number of summary columns to remove from MADC file not including the first three. Otherwise, the columns will be automatically detected and removed.}
 
 \item{plot.summary}{Logical indicating whether to plot summary statistics}
 
 \item{output.file}{Path to save the filtered data (if NULL, data will not be saved)}
-
-\item{verbose}{Logical indicating whether to print additional information during processing}
 }
 \value{
 data.frame or saved csv file
@@ -49,8 +47,7 @@ Filter and process MADC files to remove low quality microhaplotypes
 \details{
 This function can filter raw MADC files or pre-processed MADC files with fixed allele IDs. Additionally,
 it can filter based on mean read depth, number of mhaps per target loci, and other criteria. Optionally, users
-can scale and normalize the data in preparation for conversion to relationship matrices,
-plot summary statistics, and save the filtered data to a file.
+can plot summary statistics and save the filtered data to a file.
 }
 \examples{
 #Example...

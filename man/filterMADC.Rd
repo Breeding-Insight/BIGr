@@ -13,7 +13,6 @@ filterMADC(
   min.ind.with.reads = NULL,
   target.only = FALSE,
   n.summary.columns = NULL,
-  plot.summary = FALSE,
   output.file = NULL
 )
 }
@@ -33,8 +32,6 @@ filterMADC(
 \item{target.only}{Logical indicating whether to filter for target loci only}
 
 \item{n.summary.columns}{(optional) Number of summary columns to remove from MADC file not including the first three. Otherwise, the columns will be automatically detected and removed.}
-
-\item{plot.summary}{Logical indicating whether to plot summary statistics}
 
 \item{output.file}{Path to save the filtered data (if NULL, data will not be saved)}
 }

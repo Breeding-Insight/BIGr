@@ -18,7 +18,7 @@
 #'@param min.ind.with.reads Minimum number of individuals with \code{min.reads.per.site} reads for filtering
 #'@param target.only Logical indicating whether to filter for target loci only
 #'@param n.summary.columns (optional) Number of summary columns to remove from MADC file not including the first three. Otherwise, the columns will be automatically detected and removed.
-#'@param plot.summary Logical indicating whether to plot summary statistics
+#@param plot.summary Logical indicating whether to plot summary statistics
 #'@param output.file Path to save the filtered data (if NULL, data will not be saved)
 #'
 #'@return data.frame or saved csv file
@@ -40,7 +40,7 @@ filterMADC <- function(madc_file,
                        min.ind.with.reads = NULL,
                        target.only = FALSE,
                        n.summary.columns = NULL,
-                       plot.summary = FALSE,
+                       #plot.summary = FALSE,
                        output.file = NULL) {
 
 
@@ -144,8 +144,8 @@ filterMADC <- function(madc_file,
   #Min individuals with reads
   if (!is.null(min.ind.with.reads)) {
     message("Filtering for minimum number of individuals with reads per site")
-    message(past0("Minimum number of individuals with reads per site: ", min.ind.with.reads))
-    message(past0("Minimum number of reads per site: ", min.reads.per.site))
+    message(paste0("Minimum number of individuals with reads per site: ", min.ind.with.reads))
+    message(paste0("Minimum number of reads per site: ", min.reads.per.site))
 
     #Getting colnames
     cols_to_check <- colnames(filtered_df)[-(1:3)]
@@ -167,36 +167,38 @@ filterMADC <- function(madc_file,
   }
 
   #Plots
-  if (plot.summary) {
-    message("Plotting summary statistics")
-    #Plot mean read depth
-    mean_reads <- rowMeans(filtered_df[, -c(1:3)], na.rm = TRUE)
-    hist(mean_reads, main = "Mean Read Depth", xlab = "Mean Reads", ylab = "Frequency")
+  #if (plot.summary) {
+  #  message("Plotting summary statistics")
+  #  #Plot mean read depth
+  #  mean_reads <- rowMeans(filtered_df[, -c(1:3)], na.rm = TRUE)
+  #  hist(mean_reads, main = "Mean Read Depth", xlab = "Mean Reads", ylab = "Frequency")
 
-    #Plot number of Altmatch and Refmatch mhaps per target loci
-    altmatch_counts <- filtered_df %>%
-      filter(grepl("\\|AltMatch", AlleleID)) %>%
-      group_by(CloneID) %>%
-      summarise(Count = n(), .groups = 'drop')
+  #  #Plot number of Altmatch and Refmatch mhaps per target loci
+  #  altmatch_counts <- filtered_df %>%
+  #    filter(grepl("\\|AltMatch", AlleleID)) %>%
+  #    group_by(CloneID) %>%
+  #    summarise(Count = n(), .groups = 'drop')
 
-    refmatch_counts <- filtered_df %>%
-      filter(grepl("\\|RefMatch", AlleleID)) %>%
-      group_by(CloneID) %>%
-      summarise(Count = n(), .groups = 'drop')
+  #  refmatch_counts <- filtered_df %>%
+  #    filter(grepl("\\|RefMatch", AlleleID)) %>%
+  #    group_by(CloneID) %>%
+  #    summarise(Count = n(), .groups = 'drop')
 
-    barplot(cbind(altmatch_counts$Count, refmatch_counts$Count), beside = TRUE,
-            names.arg = altmatch_counts$CloneID, main = "Number of AltMatch and RefMatch Mhaps",
-            xlab = "Clone ID", ylab = "Count")
+  #  barplot(cbind(altmatch_counts$Count, refmatch_counts$Count), beside = TRUE,
+  #          names.arg = altmatch_counts$CloneID, main = "Number of AltMatch and RefMatch Mhaps",
+  #          xlab = "Clone ID", ylab = "Count")
 
     #Plot density of number of CloneID per site on a marker distribution plot
 
-  }
+  #}
 
   #Save the output to disk if file name provided
   if (!is.null(output.file)) {
     message("Saving filtered data to file")
     write.csv(filtered_df, paste0(output.file,".csv"), row.names = FALSE)
+  } else {
+    message("No output file provided. Returning filtered data.")
+    return(filtered_df)
   }
 
-  return(filtered_df)
 }

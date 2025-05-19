@@ -1,7 +1,7 @@
 Package: BIGr
-Title: Breeding Insight Genomics Functions for Polypoid and Diploid Species
-Version: 0.5.1
-Authors@R: c(person(given='Alexander',
+Title: Breeding Insight Genomics Functions for Polyploid and Diploid Species
+Version: 0.5.5
+Authors@R: c(person(given='Alexander M.',
                     family='Sandercock',
                     email='ams866@cornell.edu',
                     role=c('cre','aut')),
@@ -29,12 +29,16 @@ Authors@R: c(person(given='Alexander',
 Maintainer: Alexander M. Sandercock <ams866@cornell.edu>
 Description: Functions developed within Breeding Insight to analyze
     diploid and polyploid breeding and genetic data. 'BIGr' provides the
-    ability to filter VCF files, extract SNPs from the DArT MADC file, and
-    manipulate genotype data for both diploid and polyploid species. It
-    also serves as the core dependency for the 'BIGapp' Shiny app, which
+    ability to filter variant call format (VCF) files, extract single nucleotide polymorphisms (SNPs) 
+    from diversity arrays technology missing allele discovery count (DArT MADC) files, 
+    and manipulate genotype data for both diploid and polyploid species. It
+    also serves as the core dependency for the 'BIGapp' 'Shiny' app, which
     provides a user-friendly interface for performing routine genotype
-    analysis tasks such as dosage calling, filtering, PCA, GWAS, and
-    Genomic Prediction.
+    analysis tasks such as dosage calling, filtering, principal component analysis (PCA), 
+    genome-wide association studies (GWAS), and
+    genomic prediction. For more details about the included 'breedTools' 
+    functions, see Funkhouser et al. (2017) <doi:10.2527/tas2016.0003>, and
+    the 'updog' output format, see Gerard et al. (2018) <doi:10.1534/genetics.118.301468>.
 License: Apache License (>= 2)
 URL: https://github.com/Breeding-Insight/BIGr
 BugReports: https://github.com/Breeding-Insight/BIGr/issues
@@ -44,14 +48,14 @@ RoxygenNote: 7.3.2
 Depends: R (>= 4.4.0)
 biocViews:
 Imports: 
-    doParallel,
+    parallel,
     dplyr,
-    foreach,
     Rdpack (>= 0.7),
     readr (>= 2.1.5),
     reshape2 (>= 1.4.4),
     tidyr (>= 1.3.1),
     vcfR (>= 1.15.0),
+    Rsamtools,
     Biostrings,
     pwalign,
     janitor,
@@ -64,5 +68,4 @@ Suggests:
     knitr (>= 1.10),
     rmarkdown,
     testthat (>= 3.0.0)   
-Remotes:
 RdMacros: Rdpack

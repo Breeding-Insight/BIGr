@@ -3,7 +3,7 @@ context("Updog to VCF")
 
 test_that("test updog conversion",{
   #Input variables
-  load(testthat::test_path("iris_updog.RData"))
+  load(system.file("extdata", "iris-multidog.rdata", package = "BIGr"))
 
   temp_file <- tempfile()
 
@@ -19,10 +19,10 @@ test_that("test updog conversion",{
 
   DP <- sum(as.numeric(extract.gt(vcf_result, "DP")))
 
-  expect_equal(DP, 23618990)
+  expect_equal(DP, 11645)
 
   MPP <- sum(as.numeric(extract.gt(vcf_result, "MPP")))
 
-  expect_equal(MPP, 74519.94, tolerance = 0.01)
+  expect_equal(MPP, 39.99, tolerance = 0.01)
 
 })

@@ -26,6 +26,25 @@ When performing dosage calling for multiple SNPs using Updog, the output file co
 This function will convert the updog output file to a VCF file, while retaining the information for the values that are commonly
 used to filter low quality and low confident dosage calls.
 }
+\examples{
+
+# Retrieving the updog output multidog object
+load(system.file("extdata", "iris-multidog.rdata", package = "BIGr"))
+
+temp_file <- tempfile()
+
+# Convert updog to VCF, where the new VCF will be saved at the location specified in the output.file
+updog2vcf(
+  multidog.object = mout,
+  output.file = temp_file,
+  updog_version = "0.0.0",
+  compress = TRUE
+)
+
+#Removing the example vcf
+rm(temp_file)
+
+}
 \references{
-Updog R package
+Gerard, D., Ferrão, L. F. V., Garcia, A. A. F., & Stephens, M. (2018). Genotyping polyploids from messy sequencing data. Genetics, 210(3), 789-807.
 }

@@ -1,4 +1,3 @@
-
 ##' Merge MADC files
 ##'
 ##' If duplicated samples exist in different files, a suffix will
@@ -17,6 +16,7 @@
 ##' @import dplyr
 ##' @importFrom utils tail write.csv
 ##'
+##' @return A data frame containing the merged MADC data. The merged file is also written to the specified `out_madc` path in CSV format. Numeric columns are filled with zeros where data is missing.
 ##' @examples
 ##' # First generating example MADC files
 ##' temp_dir <- tempdir()

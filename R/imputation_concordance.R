@@ -20,6 +20,28 @@
 #' @details The function identifies common samples and markers between the reference and imputed genotype datasets. It calculates the percentage of matching genotypes for each sample, excluding missing data and specified markers. The concordance is reported as a percentage for each sample, along with a summary of the overall concordance distribution.
 #'
 #' @import dplyr
+#'
+#' @examples
+#'
+#' # Example Input variables
+#' ignore_file <- system.file("imputation_ignore.txt", package="BIGr")
+#' ref_file <- system.file("imputation_reference.txt", package="BIGr")
+#' test_file <- system.file("imputation_test.txt", package="BIGr")
+#'
+#' # Import files
+#' snps = read.table(ignore_file, header = TRUE)
+#' ref = read.table(ref_file, header = TRUE)
+#' test = read.table(test_file, header = TRUE)
+#'
+#' #Calculations
+#' result <- imputation_concordance(reference_genos = ref,
+#'                                  imputed_genos = test,
+#'                                  snps_2_exclude = snps,
+#'                                  missing_code = 5,
+#'                                  verbose = FALSE)
+#'
+#'
+#'
 #' @export
 #'
 imputation_concordance <- function(reference_genos,
@@ -66,7 +88,7 @@ imputation_concordance <- function(reference_genos,
   names(summary_concordance) <- c("Min", "1st Qu.", "Median", "Mean", "3rd Qu.", "Max")
 
   if (verbose) {
-    message("Concordance Summary:\n")
+    cat("Concordance Summary:\n")
     for (name in names(summary_concordance)) {
       cat(name, ":", round(summary_concordance[name], 2), "%\n")
     }

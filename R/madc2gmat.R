@@ -12,6 +12,7 @@
 #'@importFrom rrBLUP A.mat
 #'
 #'@param madc_file Path to the MADC file to be filtered
+#'@param seed Optional seed for random number generation (default is NULL)
 #'@param output.file Path to save the filtered data (if NULL, data will not be saved)
 #'
 #'@return data.frame or saved csv file

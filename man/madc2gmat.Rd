@@ -9,6 +9,8 @@ madc2gmat(madc_file, seed = NULL, output.file = NULL)
 \arguments{
 \item{madc_file}{Path to the MADC file to be filtered}
 
+\item{seed}{Optional seed for random number generation (default is NULL)}
+
 \item{output.file}{Path to save the filtered data (if NULL, data will not be saved)}
 }
 \value{

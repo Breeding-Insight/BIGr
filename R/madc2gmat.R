@@ -17,11 +17,16 @@
 #'@return data.frame or saved csv file
 #'
 #'@examples
-#' #Example...
+#' #Input variables
+#' madc_file <- system.file("example_MADC_FixedAlleleID.csv", package="BIGr")
 #'
-#' ##Plots
-#' #Mean read depth
-#' #Number of Altmatch and Refmatch mhaps per target loci
+#' #Calculations
+#' temp <- tempfile()
+#'
+#' # Converting to additive relationship matrix
+#' gmat <- madc2gmat(madc_file,
+#'                  seed = 123,
+#'                  output.file = NULL)
 #'
 #'@references
 #'Endelman, J. B. (2011). Ridge regression and other kernels for genomic selection with R package rrBLUP. The Plant Genome, 4(3).

@@ -23,11 +23,16 @@ then converts it into an additive genomic relationship matrix using the \code{A.
 The resulting matrix can be used for genomic selection or other genetic analyses.
 }
 \examples{
-#Example...
+#Input variables
+madc_file <- system.file("example_MADC_FixedAlleleID.csv", package="BIGr")
 
-##Plots
-#Mean read depth
-#Number of Altmatch and Refmatch mhaps per target loci
+#Calculations
+temp <- tempfile()
+
+# Converting to additive relationship matrix
+gmat <- madc2gmat(madc_file,
+                 seed = 123,
+                 output.file = NULL)
 
 }
 \references{

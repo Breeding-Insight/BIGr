@@ -10,6 +10,7 @@ et al
 Funkhouser
 GWAS
 Heterozygosity
+madc
 MADC
 MADCs
 MAF
@@ -21,6 +22,7 @@ Steibel
 Updog
 VCF
 breedtools
+breedTools
 codecov
 csv
 doi
@@ -36,6 +38,7 @@ ped
 ploidy
 polymorphism
 polyploid
+reproducibility
 testthat
 triploid
 updog

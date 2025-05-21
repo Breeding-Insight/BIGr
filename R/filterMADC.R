@@ -71,8 +71,8 @@ filterMADC <- function(madc_file,
     filtered_df <- read.csv(madc_file, sep = ',', skip = 7, check.names = FALSE)
 
     #Remove extra text after Ref and Alt (_001 or _002)
-    filtered_df$AlleleID <- sub("\\|Ref_.*", "|Ref", filtered_df$AlleleID)
-    filtered_df$AlleleID <- sub("\\|Alt_.*", "|Alt", filtered_df$AlleleID)
+    #filtered_df$AlleleID <- sub("\\|Ref_.*", "|Ref", filtered_df$AlleleID)
+    #filtered_df$AlleleID <- sub("\\|Alt_.*", "|Alt", filtered_df$AlleleID)
 
   } else {
 
@@ -80,8 +80,8 @@ filterMADC <- function(madc_file,
     filtered_df <- read.csv(madc_file, sep = ',', check.names = FALSE)
 
     #Remove extra text after Ref and Alt (_001 or _002)
-    filtered_df$AlleleID <- sub("\\|Ref_.*", "|Ref", filtered_df$AlleleID)
-    filtered_df$AlleleID <- sub("\\|Alt_.*", "|Alt", filtered_df$AlleleID)
+    #filtered_df$AlleleID <- sub("\\|Ref_.*", "|Ref", filtered_df$AlleleID)
+    #filtered_df$AlleleID <- sub("\\|Alt_.*", "|Alt", filtered_df$AlleleID)
 
   }
   #Check for extra columns

@@ -45,7 +45,7 @@ BugReports: https://github.com/Breeding-Insight/BIGr/issues
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
-Depends:
+Depends: R (>= 4.0.0)
 biocViews:
 Imports: 
     parallel,

@@ -169,6 +169,7 @@ loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, align
 
   clust <- makeCluster(n.cores)
   #clusterExport(clust, c("botloci", "compare", "nucleotideSubstitutionMatrix", "pairwiseAlignment", "DNAString", "reverseComplement"))
+  #clusterExport(clust, c("botloci", "alignment_score_thr"))
   compare_results <- parLapply(clust, updated_by_cloneID, function(x) compare(x, botloci, alignment_score_thr))
   stopCluster(clust)
 
@@ -449,7 +450,11 @@ create_VCF_body <- function(csv,
   vcf_body$V3 <- as.numeric(vcf_body$V3)
   rownames(vcf_body) <- NULL
 
-  vcf_body$target <- paste0(sapply(strsplit(vcf_body$target, "_"),"[[", 1), "_",as.numeric(sapply(strsplit(vcf_body$target, "_"),"[[", 2)))
+  # Remove padding
+  sp <- strsplit(vcf_body$target, "_")
+  pos <- sapply(sp, function(x) x[length(x)])
+  chr <- sapply(sp, function(x) paste0(x[-length(x)], collapse = "_"))
+  vcf_body$target <- paste0(chr, "_",as.numeric(pos))
 
   # Dealing with repeated positions
   # discard the ones that are not the target and keep only the first if all are off-targets

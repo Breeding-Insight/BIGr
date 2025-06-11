@@ -35,6 +35,7 @@
 #'@export
 madc2gmat <- function(madc_file,
                       seed = NULL,
+                      method = "collapsed",
                       output.file = NULL) {
   #set seed if not null
   if (!is.null(seed)) {
@@ -65,58 +66,113 @@ madc2gmat <- function(madc_file,
   #Convert to data.table
   #filtered_df <- as.data.table(filtered_df)
 
-  #Get allele ratios
-  # --- Step 1: Calculate frequency of each specific allele using total locus count ---
-  # The denominator MUST be the sum of all reads at the locus.
-  allele_freq_df <- filtered_df %>%
-    group_by(CloneID) %>%
-    mutate(across(
-      .cols = where(is.numeric),
-      # The calculation is count / total_locus_count
-      .fns = ~ . / sum(.),
-      .names = "{.col}_freq"
-    )) %>%
-    ungroup()
+  if (method == "unique") {
+    #Get allele ratios
+    # --- Step 1: Calculate frequency of each specific allele using total locus count ---
+    # The denominator MUST be the sum of all reads at the locus.
+    allele_freq_df <- filtered_df %>%
+      group_by(CloneID) %>%
+      mutate(across(
+        .cols = where(is.numeric),
+        # The calculation is count / total_locus_count
+        .fns = ~ . / sum(.),
+        .names = "{.col}_freq"
+      )) %>%
+      ungroup()
 
-  #Rm object
-  rm(filtered_df)
+    #Rm object
+    rm(filtered_df)
 
-  # --- Step 2: Prepare data for reshaping ---
-  # Filter out the reference rows and create a unique marker name for each alternative allele
-  markers_to_pivot <- allele_freq_df %>%
-    filter(!str_ends(AlleleID, "\\|Ref_0001")) %>%
-    # Create a new, unique column for each marker (e.g., "chr1.1_000194324_RefMatch_0001")
-    # This makes each alternative allele its own column in the final matrix.
-    mutate(MarkerID = str_replace(AlleleID, "\\|", "_")) %>%
-    select(MarkerID, ends_with("_freq")) %>%
-    tibble::column_to_rownames(var = "MarkerID")
-  names(markers_to_pivot) <- str_remove(names(markers_to_pivot), "_freq$")
-  markers_to_pivot <- t(markers_to_pivot)
-  #Replace the NaN to NA
-  markers_to_pivot[is.nan(markers_to_pivot)] <- NA
+    # --- Step 2: Prepare data for reshaping ---
+    # Filter out the reference rows and create a unique marker name for each alternative allele
+    markers_to_pivot <- allele_freq_df %>%
+      filter(!str_ends(AlleleID, "\\|Ref_0001")) %>%
+      # Create a new, unique column for each marker (e.g., "chr1.1_000194324_RefMatch_0001")
+      # This makes each alternative allele its own column in the final matrix.
+      mutate(MarkerID = str_replace(AlleleID, "\\|", "_")) %>%
+      select(MarkerID, ends_with("_freq")) %>%
+      tibble::column_to_rownames(var = "MarkerID")
+    names(markers_to_pivot) <- str_remove(names(markers_to_pivot), "_freq$")
+    markers_to_pivot <- t(markers_to_pivot)
+    #Replace the NaN to NA
+    markers_to_pivot[is.nan(markers_to_pivot)] <- NA
 
-  #rm unneeded objects
-  rm(allele_freq_df)
+    #rm unneeded objects
+    rm(allele_freq_df)
 
-  #Step 3 is a robust transformation step, but probably not needed.
-  # --- Step 3: Reshape data into the Marker Matrix format ---
-  #marker_matrix_for_Amat <- markers_to_pivot %>%
-  #  pivot_longer(
-  #    cols = -MarkerID,
-  #    names_to = "SampleID",
-  #    values_to = "AlleleFreq"
-  #  ) %>%
-  #  mutate(SampleID = str_remove(SampleID, "_freq$")) %>%
-  #  pivot_wider(
-  #    names_from = MarkerID,
-  #    values_from = AlleleFreq,
-  # If a sample has zero reads for an allele, it won't appear after the filter.
-  # values_fill = 0 ensures these are explicitly set to zero frequency.
-  #    values_fill = 0
-  #  ) %>%
-  #  tibble::column_to_rownames("SampleID") %>%
-  #  as.matrix()
+    #Step 3 is a robust transformation step, but probably not needed.
+    # --- Step 3: Reshape data into the Marker Matrix format ---
+    #marker_matrix_for_Amat <- markers_to_pivot %>%
+    #  pivot_longer(
+    #    cols = -MarkerID,
+    #    names_to = "SampleID",
+    #    values_to = "AlleleFreq"
+    #  ) %>%
+    #  mutate(SampleID = str_remove(SampleID, "_freq$")) %>%
+    #  pivot_wider(
+    #    names_from = MarkerID,
+    #    values_from = AlleleFreq,
+    # If a sample has zero reads for an allele, it won't appear after the filter.
+    # values_fill = 0 ensures these are explicitly set to zero frequency.
+    #    values_fill = 0
+    #  ) %>%
+    #  tibble::column_to_rownames("SampleID") %>%
+    #  as.matrix()
+  } else if (method == "collapsed"){
 
+    # This single pipeline calculates the final matrix.
+    # The output is the marker dosage matrix (X) to be used as input for A.mat()
+    markers_to_pivot <- filtered_df %>%
+
+      # --- Part A: Calculate the frequency of each allele at each locus ---
+      group_by(CloneID) %>%
+      mutate(across(
+        .cols = where(is.numeric),
+        # Use if_else to prevent 0/0, which results in NaN
+        .fns = ~ . / sum(.),
+        .names = "{.col}_freq"
+      )) %>%
+      ungroup() %>%
+
+      # --- Part B: Isolate and sum all alternative allele frequencies ---
+      #Note, the RefMatch counts are being counted as Reference allele counts, and not
+      #Alternative allele counts
+      # Filter to keep only the alternative alleles using base R's endsWith()
+      filter(!grepl("\\|Ref", AlleleID)) %>%
+      # Group by the main locus ID
+      group_by(CloneID) %>%
+      # For each locus, sum the frequencies of all its alternative alleles
+      summarise(across(ends_with("_freq"), sum), .groups = 'drop') %>%
+
+      # --- Part C: Reshape the data into the final matrix format ---
+      # Convert from a "long" format to a "wide" format
+      pivot_longer(
+        cols = -CloneID,
+        names_to = "SampleID",
+        values_to = "Dosage"
+      ) %>%
+      # Clean up the sample names using base R's sub()
+      mutate(SampleID = sub("_freq$", "", SampleID)) %>%
+      # Pivot to the final shape: samples in rows, markers in columns
+      pivot_wider(
+        names_from = CloneID,
+        values_from = Dosage,
+        # This ensures that if a sample/locus combination is missing,
+        # it gets a value of 0 instead of NA.
+        values_fill = 0
+      ) %>%
+      # Convert the 'SampleID' column into the actual row names of the dataframe
+      column_to_rownames("SampleID") %>%
+      # Convert the final dataframe into a true matrix object
+      as.matrix()
+    #Replace the NaN to NA
+    markers_to_pivot[is.nan(markers_to_pivot)] <- NA
+    #rm unneeded objects
+    rm(filtered_df)
+
+  } else {
+    stop("Invalid method specified. Use 'unique' or 'collapsed'.")
+  }
 
   #Scale and normalized data
   message("Scaling and normalizing data to be -1,1")

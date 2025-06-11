@@ -62,7 +62,8 @@ Imports:
     pwalign,
     janitor,
     quadprog,
-    tibble
+    tibble,
+    stringr
 Suggests: 
     covr,
     spelling,

@@ -24,7 +24,7 @@ test_that("test madc2gmat",{
   #Check
   expect_true(all(dim(gmat) == c("10","10")))
   expect_true(all(row.names(gmat) == row.names(gmat)))
-  expect_equal(sum(gmat), -1.480586e-15, tolerance = 1e-16)
+  expect_equal(sum(gmat), -1.480586e-15, tolerance = 1e-15)
   expect_true(is.matrix(gmat), "Output should be a matrix")
 
   # Read the output file

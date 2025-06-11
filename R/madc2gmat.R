@@ -13,6 +13,7 @@
 #'
 #'@param madc_file Path to the MADC file to be filtered
 #'@param seed Optional seed for random number generation (default is NULL)
+#'@param method Method to use for processing the MADC data. Options are "unique" or "collapsed". Default is "collapsed".
 #'@param output.file Path to save the filtered data (if NULL, data will not be saved)
 #'
 #'@return data.frame or saved csv file

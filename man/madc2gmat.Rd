@@ -11,6 +11,8 @@ madc2gmat(madc_file, seed = NULL, method = "collapsed", output.file = NULL)
 
 \item{seed}{Optional seed for random number generation (default is NULL)}
 
+\item{method}{Method to use for processing the MADC data. Options are "unique" or "collapsed". Default is "collapsed".}
+
 \item{output.file}{Path to save the filtered data (if NULL, data will not be saved)}
 }
 \value{

@@ -8,12 +8,13 @@
 #' The resulting matrix can be used for genomic selection or other genetic analyses.
 #'
 #'@importFrom utils read.csv write.csv
-#'@importFrom rrBLUP A.mat
+#'@importFrom AGHmatrix Gmatrix
 #'@import tibble stringr dplyr tidyr
 #'
 #'@param madc_file Path to the MADC file to be filtered
 #'@param seed Optional seed for random number generation (default is NULL)
 #'@param method Method to use for processing the MADC data. Options are "unique" or "collapsed". Default is "collapsed".
+#'@param ploidy Numeric. Ploidy level of the samples (e.g., 2 for diploid, 4 for tetraploid)
 #'@param output.file Path to save the filtered data (if NULL, data will not be saved)
 #'
 #'@return data.frame or saved csv file
@@ -37,6 +38,7 @@
 madc2gmat <- function(madc_file,
                       seed = NULL,
                       method = "collapsed",
+                      ploidy,
                       output.file = NULL) {
   #set seed if not null
   if (!is.null(seed)) {
@@ -193,11 +195,19 @@ madc2gmat <- function(madc_file,
   }
 
   # Apply the scaling function
-  markers_to_pivot <- scale_matrix(markers_to_pivot)
+  #markers_to_pivot <- scale_matrix(markers_to_pivot)
 
   #Making additive relationship matrix
-  MADC.mat <- A.mat(markers_to_pivot)
-
+  #(Need to write own formula to reduce dependencies) or obtain code from AGHmatrix directly
+  suppressMessages(
+  MADC.mat <- Gmatrix(markers_to_pivot,
+                      method = "VanRaden",
+                      missingValue = NA,
+                      ploidy = as.numeric(ploidy),
+                      ratio = TRUE,
+                      ploidy.correction = TRUE)
+  )
+  #Remove the markers_to_pivot object to free up memory
   rm(markers_to_pivot)
 
   #Save the output to disk if file name provided

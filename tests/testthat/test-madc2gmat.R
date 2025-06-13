@@ -11,11 +11,13 @@ test_that("test madc2gmat",{
   # Converting to additive relationship matrix
   gmat <- madc2gmat(madc_file,
                     seed = 123,
+                    ploidy = 2,
                     output.file = NULL)
 
   #When output a file
   madc2gmat(madc_file,
             seed = 123,
+            ploidy = 2,
             output.file = temp)
 
   #Test that a valid output was provided

@@ -4,7 +4,13 @@
 \alias{madc2gmat}
 \title{Convert MADC Files to an Additive Genomic Relationship Matrix}
 \usage{
-madc2gmat(madc_file, seed = NULL, method = "collapsed", output.file = NULL)
+madc2gmat(
+  madc_file,
+  seed = NULL,
+  method = "collapsed",
+  ploidy,
+  output.file = NULL
+)
 }
 \arguments{
 \item{madc_file}{Path to the MADC file to be filtered}
@@ -12,6 +18,8 @@ madc2gmat(madc_file, seed = NULL, method = "collapsed", output.file = NULL)
 \item{seed}{Optional seed for random number generation (default is NULL)}
 
 \item{method}{Method to use for processing the MADC data. Options are "unique" or "collapsed". Default is "collapsed".}
+
+\item{ploidy}{Numeric. Ploidy level of the samples (e.g., 2 for diploid, 4 for tetraploid)}
 
 \item{output.file}{Path to save the filtered data (if NULL, data will not be saved)}
 }

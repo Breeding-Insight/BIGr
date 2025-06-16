@@ -3,12 +3,11 @@
 #' Scale and normalize MADC read count data and convert it to an additive genomic relationship matrix.
 #'
 #'@details
-#' This function reads a MADC file, processes it to remove unnecessary columns, scales and normalizes the data, and
-#' then converts it into an additive genomic relationship matrix using the `A.mat` function from the `rrBLUP` package.
+#' This function reads a MADC file, processes it to remove unnecessary columns, and then
+#' converts it into an additive genomic relationship matrix using the first method proposed by VanRaden (2008).
 #' The resulting matrix can be used for genomic selection or other genetic analyses.
 #'
 #'@importFrom utils read.csv write.csv
-#'@importFrom AGHmatrix Gmatrix
 #'@import tibble stringr dplyr tidyr
 #'
 #'@param madc_file Path to the MADC file to be filtered
@@ -29,10 +28,11 @@
 #' # Converting to additive relationship matrix
 #' gmat <- madc2gmat(madc_file,
 #'                  seed = 123,
+#'                  ploidy=2,
 #'                  output.file = NULL)
 #'
-#'@references
-#'Endelman, J. B. (2011). Ridge regression and other kernels for genomic selection with R package rrBLUP. The Plant Genome, 4(3).
+#'@references VanRaden, P. M. (2008). Efficient methods to compute genomic predictions. Journal of Dairy Science, 91(11), 4414-4423
+#'@author Alexander M. Sandercock
 #'
 #'@export
 madc2gmat <- function(madc_file,
@@ -177,36 +177,50 @@ madc2gmat <- function(madc_file,
     stop("Invalid method specified. Use 'unique' or 'collapsed'.")
   }
 
-  #Scale and normalized data
-  message("Scaling and normalizing data to be -1,1")
-  # Function to scale a matrix to be between -1 and 1 for rrBLUP
-  scale_matrix <- function(mat) {
-    #min_val <- min(mat)
-    #max_val <- max(mat)
+  #VanRaden method
+  #This method is used to calculate the additive relationship matrix
+  compute_relationship_matrix <- function(mat,
+                                          ploidy,
+                                          method = "VanRaden",
+                                          impute = TRUE) {
+    ### Prepare matrix
+    #Remove any SNPs that are all NAs
+    mat <- mat[, colSums(is.na(mat)) < nrow(mat)]
+    #impute the missing values with the mean of the column
+    if (impute) {
+      mat <- data.frame(mat, check.names = FALSE, check.rows = FALSE) %>%
+        mutate_all(~ifelse(is.na(.x), mean(.x, na.rm = TRUE), .x)) %>%
+        as.matrix()
+    }
 
-    # Normalize to [0, 1]
-    #normalized <- (mat - min_val) / (max_val - min_val)
+    if (method == "VanRaden") {
+      # Calculate the additive relationship matrix using VanRaden's method
 
-    # Scale to [-1, 1]
-    #scaled <- 2 * normalized - 1
-    scaled <- 2 * mat - 1
+      #Calculate allele frequencies
+      p <- apply(mat, 2, mean, na.rm = TRUE)
+      q <- 1 - p
+      #Calculate the denominator
+      #Note: need to use 1/ploidy for ratios, where ploidy should be used for dosages.
+      #This is because the ratios are from 0-1, which is what you get when dosage/ploidy, whereas dosages are from 0 to ploidy
+      denominator <- (1/as.numeric(ploidy))*sum(p * q, na.rm = TRUE)
+      #Get the numerator
+      Z <- scale(mat, center = TRUE, scale = FALSE)
+      ZZ <- (Z %*% t(Z))
+      #Calculate the additive relationship matrix
+      A.mat <- ZZ / denominator
 
-    return(scaled)
+      return(A.mat)
+
+    } else {
+      stop("Unsupported method. Only 'VanRaden' is currently implemented.")
+    }
   }
+  #Calculate the additive relationship matrix
+  MADC.mat <- compute_relationship_matrix(markers_to_pivot,
+                                          ploidy = ploidy,
+                                          method = "VanRaden",
+                                          impute = TRUE)
 
-  # Apply the scaling function
-  #markers_to_pivot <- scale_matrix(markers_to_pivot)
-
-  #Making additive relationship matrix
-  #(Need to write own formula to reduce dependencies) or obtain code from AGHmatrix directly
-  suppressMessages(
-  MADC.mat <- Gmatrix(markers_to_pivot,
-                      method = "VanRaden",
-                      missingValue = NA,
-                      ploidy = as.numeric(ploidy),
-                      ratio = TRUE,
-                      ploidy.correction = TRUE)
-  )
   #Remove the markers_to_pivot object to free up memory
   rm(markers_to_pivot)
 

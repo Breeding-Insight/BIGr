@@ -332,8 +332,9 @@ compare <- function(one_tag, botloci, alignment_score_thr = 40){
 
             # If Match sequences have N, do not consider as polymorphism
             if(any(!alt_base %in% c("A", "T", "C", "G"))) {
-              alt_base <- alt_base[-which(!alt_base %in% c("A", "T", "C", "G"))]
               ref_base <- ref_base[-which(!alt_base %in% c("A", "T", "C", "G"))]
+              pos_ref_idx <- pos_ref_idx[-which(!alt_base %in% c("A", "T", "C", "G"))]
+              alt_base <- alt_base[-which(!alt_base %in% c("A", "T", "C", "G"))]
             }
 
             if(length(alt_base) >0){ # If the N is the only polymorphis found, the Match tag will be discarted
@@ -365,8 +366,8 @@ compare <- function(one_tag, botloci, alignment_score_thr = 40){
     return(list(update_tag = NULL,
                 rm_score = cloneID,
                 rm_N = NULL))
-
   }
+
 }
 
 #' Converts the fasta to a data.frame with first column the AlleleID and second the AlleleSequence

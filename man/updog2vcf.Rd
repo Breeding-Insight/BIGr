@@ -4,7 +4,13 @@
 \alias{updog2vcf}
 \title{Export Updog Results as VCF}
 \usage{
-updog2vcf(multidog.object, output.file, updog_version = NULL, compress = TRUE)
+updog2vcf(
+  multidog.object,
+  output.file,
+  updog_version = NULL,
+  RefAlt = NULL,
+  compress = TRUE
+)
 }
 \arguments{
 \item{multidog.object}{updog output object with class "multidog" from dosage calling}
@@ -12,6 +18,8 @@ updog2vcf(multidog.object, output.file, updog_version = NULL, compress = TRUE)
 \item{output.file}{output file name and path}
 
 \item{updog_version}{character defining updog package version used to generate the multidog object}
+
+\item{RefAlt}{optional data frame with four columns named "Chr", "Pos", "Ref", and "Alt" containing the reference and alternate alleles for each SNP in the same order as in the multidog object}
 
 \item{compress}{logical. If TRUE returns a vcf.gz file}
 }

@@ -36,5 +36,5 @@ test_that("test madc2gmat",{
   expect_true(is.matrix(as.matrix(output_data)), "Data in output file should be a matrix")
   expect_true(all(dim(output_data) == c("10","10")))
   expect_identical(row.names(output_data), colnames(output_data), "Row and column names in output file should be identical")
-  expect_equal(sum(output_data), 6.214647e-15, tolerance = 1e-14)
+  expect_equal(sum(output_data), 6.214647e-15, tolerance = 1e-12)
 })

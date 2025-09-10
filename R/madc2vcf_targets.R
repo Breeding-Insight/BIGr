@@ -97,6 +97,10 @@ madc2vcf_targets <- function(madc_file, output.file, botloci_file, get_REF_ALT =
     botloci <- checked_botloci[[1]]
     csv <- checked_botloci[[2]]
 
+    # FIXED: Store original sequences before any transformation
+    csv$OriginalAlleleSequence <- csv$AlleleSequence
+    
+    # Apply reverse complement to sequences for bottom strand markers
     idx <- which(csv$CloneID %in% botloci[,1])
     csv$AlleleSequence[idx] <- sapply(csv$AlleleSequence[idx], function(sequence) as.character(reverseComplement(DNAString(sequence))))
 
@@ -104,21 +108,44 @@ madc2vcf_targets <- function(madc_file, output.file, botloci_file, get_REF_ALT =
     ref_ord <- csv$CloneID[grep("\\|Ref.*", csv$AlleleID)]
     alt_seq <- csv$AlleleSequence[grep("\\|Alt.*", csv$AlleleID)]
     alt_ord <- csv$CloneID[grep("\\|Alt.*", csv$AlleleID)]
+    
+    # FIXED: Get original sequences for SNP calling
+    orig_ref_seq <- csv$OriginalAlleleSequence[grep("\\|Ref.*", csv$AlleleID)]
+    orig_alt_seq <- csv$OriginalAlleleSequence[grep("\\|Alt.*", csv$AlleleID)]
 
     if(all(sort(ref_ord) == sort(alt_ord))){
+      # Order sequences consistently
       ref_seq <- ref_seq[order(ref_ord)]
       alt_seq <- alt_seq[order(alt_ord)]
+      orig_ref_seq <- orig_ref_seq[order(ref_ord)]
+      orig_alt_seq <- orig_alt_seq[order(alt_ord)]
+      ordered_clone_ids <- sort(ref_ord)
 
       ref_base <- alt_base <- vector()
-      for(i in 1:length(ref_seq)){
-        temp_list <- strsplit(c(ref_seq[i], alt_seq[i]), "")
-        idx <- which(temp_list[[1]] != temp_list[[2]])
-        if(length(idx) >1) { # If finds more than one polymorphism between Ref and Alt sequences
+      for(i in 1:length(orig_ref_seq)){
+        # FIXED: Use original sequences for SNP calling
+        temp_list <- strsplit(c(orig_ref_seq[i], orig_alt_seq[i]), "")
+        idx_diff <- which(temp_list[[1]] != temp_list[[2]])
+        
+        if(length(idx_diff) > 1) { # If finds more than one polymorphism between Ref and Alt sequences
           ref_base[i] <- NA
           alt_base[i] <- NA
+        } else if(length(idx_diff) == 1) {
+          orig_ref_base <- temp_list[[1]][idx_diff]
+          orig_alt_base <- temp_list[[2]][idx_diff]
+          
+          # FIXED: Apply reverse complement to bases only if marker is in botloci
+          if(ordered_clone_ids[i] %in% botloci[,1]) {
+            ref_base[i] <- as.character(reverseComplement(DNAString(orig_ref_base)))
+            alt_base[i] <- as.character(reverseComplement(DNAString(orig_alt_base)))
+          } else {
+            ref_base[i] <- orig_ref_base
+            alt_base[i] <- orig_alt_base
+          }
         } else {
-          ref_base[i] <- temp_list[[1]][idx]
-          alt_base[i] <- temp_list[[2]][idx]
+          # No differences found
+          ref_base[i] <- NA
+          alt_base[i] <- NA
         }
       }
     } else {

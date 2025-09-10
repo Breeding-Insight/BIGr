@@ -76,7 +76,7 @@ allele_freq_poly <- function(geno, populations, ploidy = 2) {
 #' @references Funkhouser SA, Bates RO, Ernst CW, Newcom D, Steibel JP. Estimation of genome-wide and locus-specific
 #' breed composition in pigs. Transl Anim Sci. 2017 Feb 1;1(1):36-44.
 #'
-#' @export
+#' @noRd
 QPsolve <- function(Y, X) {
 
   # Remove NAs from Y and remove corresponding

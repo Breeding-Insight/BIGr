@@ -1,6 +1,8 @@
-# BIGr 0.6.0
+# BIGr 0.6.1
 
 - Added new functions for filtering MADC files and converting to relationship matrices
+- Added function thinSNPs to thin SNPs based on physical distance
+- Added bug fixes and improvements to existing functions
 
 # BIGr 0.5.5
 

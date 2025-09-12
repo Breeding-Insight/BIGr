@@ -103,24 +103,6 @@ madc2gmat <- function(madc_file,
     #rm unneeded objects
     rm(allele_freq_df)
 
-    #Step 3 is a robust transformation step, but probably not needed.
-    # --- Step 3: Reshape data into the Marker Matrix format ---
-    #marker_matrix_for_Amat <- markers_to_pivot %>%
-    #  pivot_longer(
-    #    cols = -MarkerID,
-    #    names_to = "SampleID",
-    #    values_to = "AlleleFreq"
-    #  ) %>%
-    #  mutate(SampleID = str_remove(SampleID, "_freq$")) %>%
-    #  pivot_wider(
-    #    names_from = MarkerID,
-    #    values_from = AlleleFreq,
-    # If a sample has zero reads for an allele, it won't appear after the filter.
-    # values_fill = 0 ensures these are explicitly set to zero frequency.
-    #    values_fill = 0
-    #  ) %>%
-    #  tibble::column_to_rownames("SampleID") %>%
-    #  as.matrix()
   } else if (method == "collapsed"){
 
     # This single pipeline calculates the final matrix.

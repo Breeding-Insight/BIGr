@@ -4,12 +4,22 @@
 \alias{madc2gmat}
 \title{Convert MADC Files to an Additive Genomic Relationship Matrix}
 \usage{
-madc2gmat(madc_file, seed = NULL, output.file = NULL)
+madc2gmat(
+  madc_file,
+  seed = NULL,
+  method = "collapsed",
+  ploidy,
+  output.file = NULL
+)
 }
 \arguments{
 \item{madc_file}{Path to the MADC file to be filtered}
 
 \item{seed}{Optional seed for random number generation (default is NULL)}
+
+\item{method}{Method to use for processing the MADC data. Options are "unique" or "collapsed". Default is "collapsed".}
+
+\item{ploidy}{Numeric. Ploidy level of the samples (e.g., 2 for diploid, 4 for tetraploid)}
 
 \item{output.file}{Path to save the filtered data (if NULL, data will not be saved)}
 }
@@ -20,8 +30,8 @@ data.frame or saved csv file
 Scale and normalize MADC read count data and convert it to an additive genomic relationship matrix.
 }
 \details{
-This function reads a MADC file, processes it to remove unnecessary columns, scales and normalizes the data, and
-then converts it into an additive genomic relationship matrix using the \code{A.mat} function from the \code{rrBLUP} package.
+This function reads a MADC file, processes it to remove unnecessary columns, and then
+converts it into an additive genomic relationship matrix using the first method proposed by VanRaden (2008).
 The resulting matrix can be used for genomic selection or other genetic analyses.
 }
 \examples{
@@ -34,9 +44,13 @@ temp <- tempfile()
 # Converting to additive relationship matrix
 gmat <- madc2gmat(madc_file,
                  seed = 123,
+                 ploidy=2,
                  output.file = NULL)
 
 }
 \references{
-Endelman, J. B. (2011). Ridge regression and other kernels for genomic selection with R package rrBLUP. The Plant Genome, 4(3).
+VanRaden, P. M. (2008). Efficient methods to compute genomic predictions. Journal of Dairy Science, 91(11), 4414-4423
+}
+\author{
+Alexander M. Sandercock
 }

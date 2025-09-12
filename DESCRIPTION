@@ -3,7 +3,7 @@ Title: Breeding Insight Genomics Functions for Polyploid and Diploid Species
 Version: 0.6.1
 Authors@R: c(person(given='Alexander M.',
                     family='Sandercock',
-                    email='ams866@cornell.edu',
+                    email='sandercock.alex@gmail.com',
                     role=c('cre','aut')),
              person(given='Cristiane',
                     family='Taniguti',
@@ -26,7 +26,7 @@ Authors@R: c(person(given='Alexander M.',
              person('Cornell', 'University',
                     role=c('cph'), 
                     comment = "Breeding Insight"))
-Maintainer: Alexander M. Sandercock <ams866@cornell.edu>
+Maintainer: Alexander M. Sandercock <sandercock.alex@gmail.com>
 Description: Functions developed within Breeding Insight to analyze
     diploid and polyploid breeding and genetic data. 'BIGr' provides the
     ability to filter variant call format (VCF) files, extract single nucleotide polymorphisms (SNPs) 

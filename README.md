@@ -2,6 +2,7 @@
 [![R-CMD-check](https://github.com/Breeding-Insight/BIGr/workflows/R-CMD-check/badge.svg)](https://github.com/Breeding-Insight/BIGr/actions)
 ![GitHub Release](https://img.shields.io/github/v/release/Breeding-Insight/BIGr)
 [![Development Status](https://img.shields.io/badge/development-active-blue.svg)](https://img.shields.io/badge/development-active-blue.svg)
+[![CRAN Status Badge](https://www.r-pkg.org/badges/version/BIGr)](https://cran.r-project.org/package=BIGr)
 ![GitHub License](https://img.shields.io/github/license/Breeding-Insight/BIGr)
 [![codecov](https://app.codecov.io/gh/Breeding-Insight/BIGr/graph/badge.svg?token=PJUZMRN1NF)](https://app.codecov.io/gh/Breeding-Insight/BIGr)
 

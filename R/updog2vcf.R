@@ -9,6 +9,7 @@
 #' @param multidog.object updog output object with class "multidog" from dosage calling
 #' @param output.file output file name and path
 #' @param updog_version character defining updog package version used to generate the multidog object
+#' @param RefAlt optional data frame with four columns named "Chr", "Pos", "Ref", and "Alt" containing the reference and alternate alleles for each SNP in the same order as in the multidog object
 #' @param compress logical. If TRUE returns a vcf.gz file
 #' @return A vcf file
 #' @import dplyr
@@ -37,7 +38,7 @@
 #' rm(temp_file)
 #'
 #' @export
-updog2vcf <- function(multidog.object, output.file, updog_version = NULL, compress = TRUE) {
+updog2vcf <- function(multidog.object, output.file, updog_version = NULL, RefAlt = NULL, compress = TRUE) {
   #Making the VCF (This is highly dependent on snps being in a format where the SNP IDs are the CHR_POS)
 
   mout <- multidog.object
@@ -134,14 +135,41 @@ updog2vcf <- function(multidog.object, output.file, updog_version = NULL, compre
     CHROM = new_df$CHROM,
     POS = new_df$POS,
     ID = mout$snpdf$snp,
-    REF = "A",
-    ALT = "B",
+    REF = ".",
+    ALT = ".",
     QUAL = ".",
     FILTER = ".",
     INFO = NA,
     FORMAT = NA,
     check.names=FALSE
   )
+
+  # Replace REF and ALT with actual alleles if RefAlt dataframe is provided
+  if (!is.null(RefAlt)) {
+    # Ensure RefAlt has the correct column names (case-insensitive)
+    colnames(RefAlt) <- tolower(colnames(RefAlt))
+    required_cols <- c("chr", "pos", "ref", "alt")
+    
+    if (all(required_cols %in% colnames(RefAlt))) {
+      # Create a matching key for both dataframes
+      vcf_df <- vcf_df %>%
+        mutate(match_key = paste(CHROM, POS, sep = "_"))
+      
+      RefAlt <- RefAlt %>%
+        mutate(match_key = paste(chr, pos, sep = "_"))
+      
+      # Join and replace REF/ALT values
+      vcf_df <- vcf_df %>%
+        left_join(RefAlt, by = "match_key") %>%
+        mutate(
+          REF = ifelse(!is.na(ref), ref, REF),
+          ALT = ifelse(!is.na(alt), alt, ALT)
+        ) %>%
+        select(-match_key, -chr, -pos, -ref, -alt)
+    } else {
+      warning("RefAlt dataframe must contain columns: chr, pos, ref, alt")
+    }
+  }
 
   #Add the INFO column for each SNP
   vcf_df$INFO <- paste0("DP=",depth_df$total_size,";",

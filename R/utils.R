@@ -1,9 +1,12 @@
 #Internal Functions
 
-globalVariables(c(
+utils::globalVariables(c(
   "ALT", "AlleleID", "CHROM", "Data", "ID", "MarkerName", "POS",
   "QPseparate", "QPsolve_par", "REF", "Var1", "Variant", "geno",
-  "ind", "ref", "row_name", "size", "snp"
+  "ind", "ref", "row_name", "size", "snp",
+  "CloneID", "Count", "qualifying_sites_count",
+  "MarkerID", "SampleID", "Dosage",
+  "pos", "alt", "match_key"
 ))
 
 #' Convert GT format to numeric dosage

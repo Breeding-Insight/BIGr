@@ -75,7 +75,7 @@ madc2vcf_all <- function(madc = NULL,
                       "out_vcf= ", out_vcf, ', ',
                       "verbose= ", verbose,')">')
 
-  if(!is.null(madc)) report <- read.csv(madc) else stop("Please provide a MADC file")
+  if(!is.null(madc)) report <- read.csv(madc, check.names = FALSE) else stop("Please provide a MADC file")
   if(!is.null(botloci_file)) botloci <- read.csv(botloci_file, header = F) else stop("Please provide a botloci file")
   if(!is.null(hap_seq_file)) hap_seq <- read.table(hap_seq_file, header = F) else hap_seq <- NULL
 
@@ -142,12 +142,12 @@ loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, align
   new.file <- data.frame("AlleleID" = report[,1],
                          "Chromosome" = NA, "SNP_position_in_Genome" = NA,
                          "Ref" = NA, "Alt" =NA,
-                         "CloneID" = report[,2], report[,3:ncol(report)])
+                         "CloneID" = report[,2], report[,3:ncol(report)], check.names = FALSE)
 
   by_cloneID <- split.data.frame(new.file, new.file$CloneID)
 
   clust <- makeCluster(n.cores)
-  #clusterExport(clust, c("hap_seq","add_ref_alt"))
+  #clusterExport(clust, c("hap_seq","add_ref_alt", "nsamples"))
   add_ref_alt_results <- parLapply(clust, by_cloneID, function(x) add_ref_alt(x, hap_seq, nsamples, verbose = verbose))
   stopCluster(clust)
 
@@ -169,7 +169,7 @@ loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, align
 
   clust <- makeCluster(n.cores)
   #clusterExport(clust, c("botloci", "compare", "nucleotideSubstitutionMatrix", "pairwiseAlignment", "DNAString", "reverseComplement"))
-  #clusterExport(clust, c("botloci"))
+  #clusterExport(clust, c("botloci", "alignment_score_thr"))
   compare_results <- parLapply(clust, updated_by_cloneID, function(x) compare(x, botloci, alignment_score_thr))
   stopCluster(clust)
 
@@ -209,7 +209,6 @@ loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, align
 #'
 #' @noRd
 add_ref_alt <- function(one_tag, hap_seq, nsamples, verbose = TRUE) {
-
   # Add ref and alt
   cloneID <- one_tag$CloneID[1]
   ref <- paste0(cloneID, "|Ref_0001")
@@ -281,13 +280,14 @@ add_ref_alt <- function(one_tag, hap_seq, nsamples, verbose = TRUE) {
 #'
 #' @noRd
 compare <- function(one_tag, botloci, alignment_score_thr = 40){
-  #one_tag <- updated_by_cloneID[[2]]
   cloneID <- one_tag$CloneID[1]
   isBotLoci <- cloneID %in% botloci[,1]
   # If marker is present in the botloc list, get the reverse complement sequence
   if(isBotLoci) one_tag$AlleleSequence <- sapply(one_tag$AlleleSequence, function(x) as.character(reverseComplement(DNAString(x))))
 
   chr <- sapply(strsplit(cloneID, "_"), function(x) x[-length(x)])
+  if(length(chr > 1)) chr <- paste(chr, collapse = "_")
+
   # Target SNP at the position in the ID
   ref_seq <- one_tag$AlleleSequence[grep("Ref_0001$",one_tag$AlleleID)]
   alt_seq <- one_tag$AlleleSequence[grep("Alt_0002$",one_tag$AlleleID)]
@@ -305,9 +305,9 @@ compare <- function(one_tag, botloci, alignment_score_thr = 40){
     alt_base <- substring(alt_seq, align@subject@mismatch@unlistData, align@subject@mismatch@unlistData)
 
     # If target alternative have N, discard whole tag
-    if(all(alt_base %in% c("A", "T", "C", "G"))) {
+    # Always only one polymorphism, if there are more than one, not sure which is the target
+    if(all(alt_base %in% c("A", "T", "C", "G")) & length(align@pattern@mismatch@unlistData) == 1) {
 
-      # Update with new info - always only one polymorphism, if there are more than one, not sure which is the target
       update_tag <- one_tag[grep("Ref_0001$",one_tag$AlleleID),]
       update_tag[,2:5] <- c(chr, pos_target, ref_base, alt_base)
       update_tag_temp <- one_tag[grep("Alt_0002$",one_tag$AlleleID),]
@@ -332,8 +332,9 @@ compare <- function(one_tag, botloci, alignment_score_thr = 40){
 
             # If Match sequences have N, do not consider as polymorphism
             if(any(!alt_base %in% c("A", "T", "C", "G"))) {
-              alt_base <- alt_base[-which(!alt_base %in% c("A", "T", "C", "G"))]
               ref_base <- ref_base[-which(!alt_base %in% c("A", "T", "C", "G"))]
+              pos_ref_idx <- pos_ref_idx[-which(!alt_base %in% c("A", "T", "C", "G"))]
+              alt_base <- alt_base[-which(!alt_base %in% c("A", "T", "C", "G"))]
             }
 
             if(length(alt_base) >0){ # If the N is the only polymorphis found, the Match tag will be discarted
@@ -366,6 +367,7 @@ compare <- function(one_tag, botloci, alignment_score_thr = 40){
                 rm_score = cloneID,
                 rm_N = NULL))
   }
+
 }
 
 #' Converts the fasta to a data.frame with first column the AlleleID and second the AlleleSequence
@@ -449,7 +451,11 @@ create_VCF_body <- function(csv,
   vcf_body$V3 <- as.numeric(vcf_body$V3)
   rownames(vcf_body) <- NULL
 
-  vcf_body$target <- paste0(sapply(strsplit(vcf_body$target, "_"),"[[", 1), "_",as.numeric(sapply(strsplit(vcf_body$target, "_"),"[[", 2)))
+  # Remove padding
+  sp <- strsplit(vcf_body$target, "_")
+  pos <- sapply(sp, function(x) x[length(x)])
+  chr <- sapply(sp, function(x) paste0(x[-length(x)], collapse = "_"))
+  vcf_body$target <- paste0(chr, "_",as.numeric(pos))
 
   # Dealing with repeated positions
   # discard the ones that are not the target and keep only the first if all are off-targets

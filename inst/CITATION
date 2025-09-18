@@ -1,6 +1,6 @@
 bibentry(
   bibtype = "Article",
-  author = personList(
+  author = c(
     person("Alexander M.", "Sandercock"),
     person("Michael D.", "Peel"),
     person("Cristiane H.", "Taniguti"),
@@ -19,7 +19,7 @@ bibentry(
   volume = "18",
   number = "3",
   pages = "e70067",
-  doi = "https://doi.org/10.1002/tpg2.70067",
+  doi = "10.1002/tpg2.70067",
   year = "2025"
 )
 
@@ -52,6 +52,6 @@ bibentry(
                     role=c('cph'),
                     comment = "Breeding Insight")),
   year     = "2025",
-  note     = "R package version 0.6.1",
+  note     = "R package version 0.6.2",
   url      = "https://github.com/Breeding-Insight/BIGr"
 )

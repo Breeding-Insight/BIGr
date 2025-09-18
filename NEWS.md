@@ -1,3 +1,7 @@
+# BIGr 0.6.2
+
+- Fixed the doi and name list in the CITATION file
+
 # BIGr 0.6.1
 
 - Added new functions for filtering MADC files and converting to relationship matrices

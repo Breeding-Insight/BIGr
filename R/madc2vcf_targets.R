@@ -1,45 +1,121 @@
 #' Format MADC Target Loci Read Counts Into VCF
 #'
-#' This function will extract the read count information from a MADC file target markers and convert to VCF file format.
+#' Convert DArTag MADC target read counts to a VCF
 #'
-#' The DArTag MADC file format is not commonly supported through existing tools. This function
-#' will extract the read count information from a MADC file for the target markers and convert it to a VCF file format for the
-#' genotyping panel target markers only
+#' @description
+#' Parses a DArTag **MADC** report and writes a **VCF v4.3** containing per-target
+#' read counts for the panel’s target loci. This is useful because MADC is not
+#' widely supported by general-purpose tools, while VCF is.
 #'
-#' @param madc_file Path to MADC file
-#' @param output.file output file name and path
-#' @param botloci_file A string specifying the path to the file containing the target IDs designed in the bottom strand.
-#' @param get_REF_ALT if TRUE recovers the reference and alternative bases by comparing the sequences. If more than one polymorphism are found for a tag, it is discarded.
+#' @details
+#' **What this function does**
+#' - Runs basic sanity checks on the MADC file (column presence, fixed allele IDs,
+#'   IUPAC/ambiguous bases, lowercase bases, indels).
+#' - Extracts reference and total read counts per sample and target.
+#' - Derives `AD` (ref,alt) by subtraction (alt = total − ref).
+#' - If `get_REF_ALT = TRUE`, attempts to recover true REF/ALT bases by comparing
+#'   the Ref/Alt probe sequences; targets with >1 polymorphism are discarded.
+#' - Optionally accepts a `markers_info` CSV to supply `CHROM`, `POS`, `REF`, `ALT`
+#'   (and `Type`, `Indel_pos` when indels are present), bypassing sequence-based
+#'   inference.
 #'
-#' @return A VCF file v4.3 with the target marker read count information
+#' **Output VCF layout**
+#' - `INFO` fields:
+#'   * `DP`   — total depth across all samples for the locus
+#'   * `ADS`  — total counts across samples in the order `ref,alt`
+#' - `FORMAT` fields (per sample):
+#'   * `DP`   — total reads (ref + alt)
+#'   * `RA`   — reads supporting the reference allele
+#'   * `AD`   — `"ref,alt"` counts
+#'
+#' **Strand handling**
+#' If a target ID appears in `botloci_file`, its probe sequences are reverse-
+#' complemented prior to base comparison so that REF/ALT are reported in the
+#' top-strand genomic orientation.
+#'
+#' **Sanity check behavior**
+#' - If required columns or fixed IDs are missing, the function `stop()`s.
+#' - If IUPAC/lowercase/indels are detected and `markers_info` is **not**
+#'   provided, the function `stop()`s with a diagnostic message explaining what to fix.
+#'
+#' @param madc_file character. Path to the input MADC CSV file.
+#' @param output.file character. Path to the output VCF file to write.
+#' @param botloci_file character. Path to a plain-text file listing target IDs
+#'   designed on the **bottom** strand (one ID per line). Required when
+#'   `get_REF_ALT = TRUE` and `markers_info` is not provided.
+#' @param markers_info character or `NULL`. Optional path to a CSV providing target
+#'   metadata. Required columns: `BI_markerID, Chr, Pos, Ref, Alt`. If indels are
+#'   present, also require `Type, Indel_pos`. When supplied, these values populate
+#'   `#CHROM, POS, REF, ALT` in the VCF directly.
+#' @param get_REF_ALT logical (default `FALSE`). If `TRUE`, attempts to infer REF/ALT
+#'   bases from the Ref/Alt probe sequences in the MADC file (with strand correction
+#'   using `botloci_file`). Targets with more than one difference between Ref/Alt
+#'   sequences are removed.
+#'
+#' @return (Invisibly) returns the path to `output.file`. The side effect is a
+#'   **VCF v4.3** written to disk containing one row per target and columns for all
+#'   samples in the MADC file.
+#'
+#' @section Dependencies:
+#' Uses **dplyr**, **tidyr**, **tibble**, **reshape2**, **Biostrings** and base
+#' **utils**. Helper functions expected in this package: `check_madc_sanity()`,
+#' `get_countsMADC()`, `get_counts()`, and `check_botloci()`.
+#'
+#' @examples
+#' # Example files shipped with the package
+#' madc_file <- system.file("example_MADC_FixedAlleleID.csv", package = "BIGr")
+#' bot_file  <- system.file("example_SNPs_DArTag-probe-design_f180bp.botloci",
+#'                          package = "BIGr")
+#' out_vcf <- tempfile(fileext = ".vcf")
+#'
+#' # Convert MADC to VCF (attempting to recover REF/ALT from probe sequences)
+#' \dontrun{
+#' madc2vcf_targets(
+#'   madc_file    = madc_file,
+#'   output.file  = out_vcf,
+#'   botloci_file = bot_file,
+#'   get_REF_ALT  = TRUE
+#' )
+#' }
+#'
+#' # Clean up (example)
+#' unlink(out_vcf)
+#'
+#' @seealso
+#' `check_madc_sanity()`, `get_countsMADC()`, `check_botloci()`
+#'
 #' @import dplyr
 #' @import tidyr
 #' @import tibble
-#' @importFrom Rdpack reprompt
 #' @importFrom reshape2 melt dcast
 #' @importFrom utils write.table
 #' @importFrom Biostrings DNAString reverseComplement
-#' @return A VCF file v4.3 with the target marker read count information
-#'
-#' @examples
-#' # Load example files
-#' madc_file <- system.file("example_MADC_FixedAlleleID.csv", package="BIGr")
-#' bot_file <- system.file("example_SNPs_DArTag-probe-design_f180bp.botloci", package="BIGr")
-#'
-#' #Temp location (only for example)
-#' output_file <- tempfile()
-#'
-#' # Convert MADC to VCF
-#' madc2vcf_targets(madc_file = madc_file,
-#'                  output.file = output_file,
-#'                  get_REF_ALT = TRUE,
-#'                  botloci_file = bot_file)
-#'
-#' rm(output_file)
 #'
 #' @export
-madc2vcf_targets <- function(madc_file, output.file, botloci_file, get_REF_ALT = FALSE) {
-  #Making the VCF (This is highly dependent on snps being in a format where the SNP IDs are the CHR_POS)
+madc2vcf_targets <- function(madc_file,
+                             output.file,
+                             botloci_file,
+                             markers_info = NULL,
+                             get_REF_ALT = FALSE) {
+
+  # MADC checks
+  report <- read.csv(madc_file)
+  checks <- check_madc_sanity(report)
+
+  messages_results <- mapply(function(check, message) {
+    if (check)  message[1] else message[2]
+  }, checks$checks, checks$messages)
+
+  if(any(!(checks$checks[c("Columns", "FixAlleleIDs")]))){
+    idx <- which(!(checks$checks[c("Columns", "FixAlleleIDs")]))
+    stop(paste("The MADC file does not pass the sanity checks:\n",
+               paste(messages_results[c("Columns", "FixAlleleIDs")[idx]], collapse = "\n")))
+  }
+
+  if(any(checks$checks[c("IUPACcodes", "LowerCase", "Indels")])){
+    idx <- which((checks$checks[c("IUPACcodes", "LowerCase", "Indels")]))
+    if(is.null(markers_info)) stop(paste(messages_results[c("IUPACcodes", "LowerCase", "Indels")[idx]], collapse = "\n"))
+  }
 
   matrices <- get_countsMADC(madc_file)
   ref_df <- data.frame(matrices[[1]], check.names = FALSE)
@@ -56,18 +132,124 @@ madc2vcf_targets <- function(madc_file, output.file, botloci_file, get_REF_ALT =
   row.names(ad_df) <- row.names(ref_df)
 
   #Obtaining Chr and Pos information from the row_names
-  new_df <- size_df %>%
-    rownames_to_column(var = "row_name") %>%
-    separate(row_name, into = c("CHROM", "POS"), sep = "_") %>%
-    select(CHROM, POS)
+  if(is.null(markers_info)){
+    new_df <- size_df %>%
+      rownames_to_column(var = "row_name") %>%
+      separate(row_name, into = c("CHROM", "POS"), sep = "_") %>%
+      select(CHROM, POS)
 
-  # Remove leading zeros from the POS column
-  new_df$POS <- sub("^0+", "", new_df$POS)
+    # Remove leading zeros from the POS column
+    new_df$POS <- sub("^0+", "", new_df$POS)
 
-  #Get read count sums
-  new_df$TotalRef <- rowSums(ref_df)
-  new_df$TotalAlt <- rowSums(alt_df)
-  new_df$TotalSize <- rowSums(size_df)
+    #Get read count sums
+    new_df$TotalRef <- rowSums(ref_df)
+    new_df$TotalAlt <- rowSums(alt_df)
+    new_df$TotalSize <- rowSums(size_df)
+
+    # Get REF and ALT
+    if(get_REF_ALT){
+      if(is.null(botloci_file)) stop("Please provide the botloci file to recover the reference and alternative bases.")
+      csv <- get_counts(madc_file)
+      # Keep only the ones that have alt and ref
+      csv <- csv[which(csv$CloneID %in% rownames(ad_df)),]
+
+      # Get reverse complement the tag is present in botloci
+      botloci <- read.table(botloci_file, header = FALSE)
+
+      # Check if the botloci file marker IDs match with the MADC file
+      checked_botloci <- check_botloci(botloci, csv)
+      botloci <- checked_botloci[[1]]
+      csv <- checked_botloci[[2]]
+
+      # FIXED: Store original sequences before any transformation
+      csv$OriginalAlleleSequence <- csv$AlleleSequence
+
+      # Apply reverse complement to sequences for bottom strand markers
+      idx <- which(csv$CloneID %in% botloci[,1])
+      csv$AlleleSequence[idx] <- sapply(csv$AlleleSequence[idx], function(sequence) as.character(reverseComplement(DNAString(sequence))))
+
+      ref_seq <- csv$AlleleSequence[grep("\\|Ref.*", csv$AlleleID)]
+      ref_ord <- csv$CloneID[grep("\\|Ref.*", csv$AlleleID)]
+      alt_seq <- csv$AlleleSequence[grep("\\|Alt.*", csv$AlleleID)]
+      alt_ord <- csv$CloneID[grep("\\|Alt.*", csv$AlleleID)]
+
+      # FIXED: Get original sequences for SNP calling
+      orig_ref_seq <- csv$OriginalAlleleSequence[grep("\\|Ref.*", csv$AlleleID)]
+      orig_alt_seq <- csv$OriginalAlleleSequence[grep("\\|Alt.*", csv$AlleleID)]
+
+      if(all(sort(ref_ord) == sort(alt_ord))){
+        # Order sequences consistently
+        ref_seq <- ref_seq[order(ref_ord)]
+        alt_seq <- alt_seq[order(alt_ord)]
+        orig_ref_seq <- orig_ref_seq[order(ref_ord)]
+        orig_alt_seq <- orig_alt_seq[order(alt_ord)]
+        ordered_clone_ids <- sort(ref_ord)
+
+        ref_base <- alt_base <- vector()
+        for(i in 1:length(orig_ref_seq)){
+          # FIXED: Use original sequences for SNP calling
+          temp_list <- strsplit(c(orig_ref_seq[i], orig_alt_seq[i]), "")
+          idx_diff <- which(temp_list[[1]] != temp_list[[2]])
+
+          if(length(idx_diff) > 1) { # If finds more than one polymorphism between Ref and Alt sequences
+            ref_base[i] <- NA
+            alt_base[i] <- NA
+          } else if(length(idx_diff) == 1) {
+            orig_ref_base <- temp_list[[1]][idx_diff]
+            orig_alt_base <- temp_list[[2]][idx_diff]
+
+            # FIXED: Apply reverse complement to bases only if marker is in botloci
+            if(ordered_clone_ids[i] %in% botloci[,1]) {
+              ref_base[i] <- as.character(reverseComplement(DNAString(orig_ref_base)))
+              alt_base[i] <- as.character(reverseComplement(DNAString(orig_alt_base)))
+            } else {
+              ref_base[i] <- orig_ref_base
+              alt_base[i] <- orig_alt_base
+            }
+          } else {
+            # No differences found
+            ref_base[i] <- NA
+            alt_base[i] <- NA
+          }
+        }
+      } else {
+        warning("There are missing reference or alternative sequence, the SNP bases could not be recovery.")
+        ref_base <- "."
+        alt_base <- "."
+      }
+
+    } else {
+      ref_base <- "."
+      alt_base <- "."
+    }
+  } else {
+    # Verify markers_info file
+    df <- read.csv(markers_info)
+    if(checks$checks["Indels"]){
+      if(!all(c("BI_markerID","Chr","Pos","Ref","Alt","Type", "Indel_pos") %in% colnames(df)))
+        stop("The markers_info dataframe must contain the following columns: BI_markerID, CHROM, POS, REF, ALT, Type, Indel_pos")
+    }
+    if(!all(c("BI_markerID","Chr","Pos","Ref","Alt") %in% colnames(df)))
+      stop("The markers_info dataframe must contain the following columns: BI_markerID, CHROM, POS, REF, ALT")
+
+    if(!all(rownames(ad_df)%in% df$BI_markerID))
+      warning("Not all MADC CloneID was found in the markers_info file. These markers will be removed.")
+
+    matched <- df[match(rownames(ad_df), df$BI_markerID),]
+
+    new_df <- data.frame(
+      CHROM = matched$Chr,
+      POS = matched$Pos
+    )
+
+    #Get read count sums
+    new_df$TotalRef <- rowSums(ref_df)
+    new_df$TotalAlt <- rowSums(alt_df)
+    new_df$TotalSize <- rowSums(size_df)
+
+    ref_base <- matched$Ref
+    alt_base <- matched$Alt
+  }
 
   #Make a header separate from the dataframe
   vcf_header <- c(
@@ -81,83 +263,6 @@ madc2vcf_targets <- function(madc_file, output.file, botloci_file, get_REF_ALT =
     '##FORMAT=<ID=RA,Number=1,Type=Integer,Description="Reference allele read depth">',
     '##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
   )
-
-  # Get REF and ALT
-  if(get_REF_ALT){
-    if(is.null(botloci_file)) stop("Please provide the botloci file to recover the reference and alternative bases.")
-    csv <- get_counts(madc_file)
-    # Keep only the ones that have alt and ref
-    csv <- csv[which(csv$CloneID %in% rownames(ad_df)),]
-
-    # Get reverse complement the tag is present in botloci
-    botloci <- read.table(botloci_file, header = FALSE)
-
-    # Check if the botloci file marker IDs match with the MADC file
-    checked_botloci <- check_botloci(botloci, csv)
-    botloci <- checked_botloci[[1]]
-    csv <- checked_botloci[[2]]
-
-    # FIXED: Store original sequences before any transformation
-    csv$OriginalAlleleSequence <- csv$AlleleSequence
-    
-    # Apply reverse complement to sequences for bottom strand markers
-    idx <- which(csv$CloneID %in% botloci[,1])
-    csv$AlleleSequence[idx] <- sapply(csv$AlleleSequence[idx], function(sequence) as.character(reverseComplement(DNAString(sequence))))
-
-    ref_seq <- csv$AlleleSequence[grep("\\|Ref.*", csv$AlleleID)]
-    ref_ord <- csv$CloneID[grep("\\|Ref.*", csv$AlleleID)]
-    alt_seq <- csv$AlleleSequence[grep("\\|Alt.*", csv$AlleleID)]
-    alt_ord <- csv$CloneID[grep("\\|Alt.*", csv$AlleleID)]
-    
-    # FIXED: Get original sequences for SNP calling
-    orig_ref_seq <- csv$OriginalAlleleSequence[grep("\\|Ref.*", csv$AlleleID)]
-    orig_alt_seq <- csv$OriginalAlleleSequence[grep("\\|Alt.*", csv$AlleleID)]
-
-    if(all(sort(ref_ord) == sort(alt_ord))){
-      # Order sequences consistently
-      ref_seq <- ref_seq[order(ref_ord)]
-      alt_seq <- alt_seq[order(alt_ord)]
-      orig_ref_seq <- orig_ref_seq[order(ref_ord)]
-      orig_alt_seq <- orig_alt_seq[order(alt_ord)]
-      ordered_clone_ids <- sort(ref_ord)
-
-      ref_base <- alt_base <- vector()
-      for(i in 1:length(orig_ref_seq)){
-        # FIXED: Use original sequences for SNP calling
-        temp_list <- strsplit(c(orig_ref_seq[i], orig_alt_seq[i]), "")
-        idx_diff <- which(temp_list[[1]] != temp_list[[2]])
-        
-        if(length(idx_diff) > 1) { # If finds more than one polymorphism between Ref and Alt sequences
-          ref_base[i] <- NA
-          alt_base[i] <- NA
-        } else if(length(idx_diff) == 1) {
-          orig_ref_base <- temp_list[[1]][idx_diff]
-          orig_alt_base <- temp_list[[2]][idx_diff]
-          
-          # FIXED: Apply reverse complement to bases only if marker is in botloci
-          if(ordered_clone_ids[i] %in% botloci[,1]) {
-            ref_base[i] <- as.character(reverseComplement(DNAString(orig_ref_base)))
-            alt_base[i] <- as.character(reverseComplement(DNAString(orig_alt_base)))
-          } else {
-            ref_base[i] <- orig_ref_base
-            alt_base[i] <- orig_alt_base
-          }
-        } else {
-          # No differences found
-          ref_base[i] <- NA
-          alt_base[i] <- NA
-        }
-      }
-    } else {
-      warning("There are missing reference or alternative sequence, the SNP bases could not be recovery.")
-      ref_base <- "."
-      alt_base <- "."
-    }
-
-  } else {
-    ref_base <- "."
-    alt_base <- "."
-  }
 
   #Make the header#Make the VCF df
   vcf_df <- data.frame(
@@ -233,12 +338,4 @@ madc2vcf_targets <- function(madc_file, output.file, botloci_file, get_REF_ALT =
   suppressWarnings(
     write.table(vcf_df, file = output.file, sep = "\t", quote = FALSE, row.names = FALSE, col.names = TRUE, append = TRUE)
   )
-  #Unload all items from memory
-  rm(matrices)
-  rm(ref_df)
-  rm(alt_df)
-  rm(size_df)
-  rm(ad_df)
-  rm(vcf_df)
-  rm(geno_df)
 }

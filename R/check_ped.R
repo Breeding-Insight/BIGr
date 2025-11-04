@@ -1,99 +1,142 @@
-#' Evaluate Pedigree File for Accuracy
+#' Check a pedigree file for accuracy and report/correct common errors
 #'
-#' Check a pedigree file for accuracy and output suspected errors
+#' `check_ped` reads a 3-column pedigree file (tab-separated, columns labeled `id`, `sire`, `dam` in any order)
+#' and performs quality checks, optionally correcting or flagging errors.
 #'
-#'check_ped takes a 3-column pedigree tab separated file with columns labeled as id sire dam in any order and checks for:
-#'* Ids that appear more than once in the id column
-#'* Ids that appear in both sire and dam columns
-#'* Direct (e.g. parent is a offspring of his own daughter) and indirect (e.g. a great grandparent is son of its grandchild) dependencies within the pedigree.
-#'* Individuals included in the pedigree as sire or dam but not on the id column and reports them back with unknown parents (0).
+#' The function checks for:
+#' * Exact duplicate rows and removes them (keeping one copy)
+#' * IDs that appear more than once with conflicting sire/dam assignments (sets sire/dam to "0")
+#' * IDs that appear in both sire and dam columns
+#' * Missing parents (IDs referenced as sire/dam but not in `id` column), adds them with sire/dam = "0"
+#' * Direct and indirect pedigree dependencies (cycles), such as a parent being its own descendant
 #'
-#'When using check_ped, do a first run to check for repeated ids and parents that appear as sire and dam.
-#'Once these errors are cleaned run the function again to check for dependencies as this will provide the most accurate report.
+#' After an initial run to clean exact duplicates and repeated IDs, you can run the function again to detect cycles more accurately.
 #'
-#'Note: This function does not change the input file but prints any errors found in the console.
+#' The function does **not** overwrite the input file. Instead, it prints findings to the console and optionally saves:
+#' * Corrected pedigree as a dataframe in the global environment
+#' * A report listing all detected issues
 #'
-#' @param ped.file path to pedigree text file. The pedigree file is a
-#' 3-column pedigree tab separated file with columns labeled as id sire dam in any order
-#' @param seed Optional seed for reproducibility
-#' @param verbose Logical. If TRUE, print the errors to the console.
-#' @return A list of data.frames of error types, and the output printed to the console
+#' @param ped.file Path to the pedigree text file.
+#' @param seed Optional seed for reproducibility.
+#' @param verbose Logical. If TRUE (default), prints errors and prompts for interactive saving.
+#'
+#' @return A list of data.frames containing detected issues:
+#' * `exact_duplicates`: rows that were exact duplicates
+#' * `repeated_ids_diff`: IDs appearing more than once with conflicting sire/dam
+#' * `messy_parents`: IDs appearing as both sire and dam
+#' * `missing_parents`: parents added to the pedigree with 0 as sire/dam
+#' * `dependencies`: detected cycles in the pedigree
+#'
 #' @examples
-#' ##Get list with a dataframe for each error type
-#' ped_file <- system.file("check_ped_test.txt", package="BIGr")
-#' ped_errors <- check_ped(ped.file = ped_file,
-#'                         seed = 101919)
+#' ped_file <- system.file("check_ped_test.txt", package = "BIGr")
+#' ped_errors <- check_ped(ped.file = ped_file, seed = 101919)
 #'
-#' ##Access the "messy parents" dataframe result
+#' # Access messy parents
 #' ped_errors$messy_parents
 #'
-#' ##Get list of sample IDs with messy parents error
-#' messy_parent_ids <- ped_errors$messy_parents$id
-#' print(messy_parent_ids)
+#' # IDs with messy parents
+#' messy_ids <- ped_errors$messy_parents$id
+#' print(messy_ids)
+#'
 #' @import dplyr
 #' @import janitor
 #' @importFrom stats setNames
 #' @importFrom utils read.table
 #' @export
 check_ped <- function(ped.file, seed = NULL, verbose = TRUE) {
-  #### Function to check for hierarchical errors missing parents and repeated ids ####
-  if(!is.null(seed)){
-    set.seed(seed)
-  }
-  #### read in data ####
-  data = utils::read.table(ped.file, header = T)
-  data <- data %>%
+
+  #### setup ####
+  if (!is.null(seed)) set.seed(seed)
+
+  # Read and clean data
+  data <- utils::read.table(ped.file, header = TRUE) %>%
     janitor::clean_names() %>%
     mutate(
       id = as.character(id),
       sire = as.character(sire),
       dam = as.character(dam)
-      )
-  #Missing parents dataframe initialize
-  missing_parents <- data.frame(id = character(), sire = character(), dam = character(), stringsAsFactors = FALSE)
+    )
+
+  original_data <- data
   errors <- list()
-  # repeated id checks
-  n_occur <- data.frame(table(data$id))
-  repeated_ids = n_occur[n_occur$Freq > 1,] %>%
-    rename(id = Var1)
-  # Check for ids that appear as both sire and dam ###This is possible for plants so maybe do not control for this or do not delete these rows just print them
-  messy_parents <- as.data.frame(intersect(data$sire, data$dam)) %>%
-    rename(id = 1) %>%
-    filter(id != 0)
-  # Missing parents check
+  missing_parents <- data.frame(id = character(), sire = character(), dam = character(), stringsAsFactors = FALSE)
+
+  #### check 1: exact duplicates ####
+  exact_duplicates <- data[duplicated(data), ]
+  if (nrow(exact_duplicates) > 0) {
+    data <- distinct(data)  # remove exact duplicates
+  }
+
+  #### check 2: repeated IDs with conflicting sire/dam ####
+  repeated_ids <- data %>%
+    group_by(id) %>%
+    filter(n() > 1) %>%
+    ungroup()
+
+  # Only IDs with actual conflicting sire/dam
+  conflicting_ids <- repeated_ids %>%
+    group_by(id) %>%
+    filter(n_distinct(sire) > 1 | n_distinct(dam) > 1) %>%
+    ungroup()
+
+  if (nrow(conflicting_ids) > 0) {
+    # Keep one row per ID, set sire/dam to "0"
+    data <- data %>%
+      group_by(id) %>%
+      summarize(
+        sire = if(n_distinct(sire) > 1) "0" else first(sire),
+        dam = if(n_distinct(dam) > 1) "0" else first(dam),
+        .groups = "drop"
+      )
+  }
+
+  repeated_ids_report <- conflicting_ids
+
+  #### check 3: missing parents ####
   for (i in 1:nrow(data)) {
     id <- data$id[i]
     sire <- data$sire[i]
     dam <- data$dam[i]
+
     if (sire != "0" && sire != id && !sire %in% data$id) {
       missing_parents <- rbind(missing_parents, data.frame(id = sire, sire = "0", dam = "0", stringsAsFactors = FALSE))
     }
     if (dam != "0" && dam != id && !dam %in% data$id) {
       missing_parents <- rbind(missing_parents, data.frame(id = dam, sire = "0", dam = "0", stringsAsFactors = FALSE))
     }
+
     if (sire == id || dam == id) {
       errors <- append(errors, paste("Dependency: Individual", id, "cannot be its own parent"))
     }
   }
-  # Remove duplicates
+
   missing_parents <- distinct(missing_parents)
-  # Combine original data with missing parents
-  corrected_data <- bind_rows(data, missing_parents)
-  # Function to detect cycles in the pedigree graph and identify the nodes involved
+  if (nrow(missing_parents) > 0) {
+    data <- bind_rows(data, missing_parents)
+  }
+
+  #### check 4: messy parents ####
+  sire_ids <- unique(data$sire[data$sire != "0"])
+  dam_ids <- unique(data$dam[data$dam != "0"])
+  messy_ids <- intersect(sire_ids, dam_ids)
+  messy_parents <- data %>% filter(id %in% messy_ids)
+
+  #### check 5: dependencies (cycles) ####
   detect_all_cycles <- function(data) {
-    # Create an adjacency list
-    adj_list <- list()
-    for (i in 1:nrow(data)) {
-      adj_list[[data$id[i]]] <- c(data$sire[i], data$dam[i])
-    }
-    # Helper function to perform DFS and detect cycles
+    adj_list <- lapply(data$id, function(x) {
+      row <- data[data$id == x, ]
+      c(row$sire, row$dam)
+    })
+    names(adj_list) <- data$id
+
     dfs <- function(node, visited, rec_stack, path) {
       visited[node] <- TRUE
       rec_stack[node] <- TRUE
       path <- append(path, node)
       cycles <- list()
+
       for (neighbor in adj_list[[node]]) {
-        if (neighbor != "0") {
+        if (neighbor %in% names(adj_list)) {
           if (!visited[neighbor]) {
             cycles <- append(cycles, dfs(neighbor, visited, rec_stack, path))
           } else if (rec_stack[neighbor]) {
@@ -102,14 +145,15 @@ check_ped <- function(ped.file, seed = NULL, verbose = TRUE) {
           }
         }
       }
+
       rec_stack[node] <- FALSE
       return(cycles)
     }
-    # Initialize visited and recursion stack
+
     visited <- stats::setNames(rep(FALSE, length(adj_list)), names(adj_list))
     rec_stack <- stats::setNames(rep(FALSE, length(adj_list)), names(adj_list))
     all_cycles <- list()
-    # Check for cycles in the graph and return the nodes involved
+
     for (node in names(adj_list)) {
       if (!visited[node]) {
         node_cycles <- dfs(node, visited, rec_stack, character())
@@ -120,75 +164,74 @@ check_ped <- function(ped.file, seed = NULL, verbose = TRUE) {
     }
     return(all_cycles)
   }
-  # Check for cycles in the corrected pedigree data
-  cycles <- detect_all_cycles(corrected_data)
+
+  cycles <- detect_all_cycles(data)
   if (length(cycles) > 0) {
-    cycle_number <- 1
     for (cycle_group in cycles) {
       cycle_ids <- unique(unlist(cycle_group))
       errors <- append(errors, paste("Cycle detected involving nodes:", paste(cycle_ids, collapse = " -> ")))
     }
   }
-  results <- list(missing_parents = missing_parents, dependencies = data.frame(Dependency = unlist(errors)), repeated_ids = repeated_ids, messy_parents = messy_parents)
-  repeated_ids <- results$repeated_ids
-  missing_parents <- results$missing_parents
-  messy_parents <- results$messy_parents
-  errors <- results$dependencies
-  # Adding the dataframes as an output list
-  output.results <- list()
-  #### Print errors and cycles ####
-  # Print repeated ids if any
-  if (nrow(repeated_ids) > 0) {
-    if (verbose) {
-      cat("Repeated ids found:\n")
-      message(repeated_ids)
+
+  #### compile findings ####
+  input_ped_report <- list(
+    exact_duplicates = exact_duplicates,
+    repeated_ids_diff = repeated_ids_report,
+    messy_parents = messy_parents,
+    missing_parents = missing_parents,
+    dependencies = data.frame(Dependency = unique(unlist(errors)))
+  )
+
+  #### file names ####
+  file_base <- tools::file_path_sans_ext(basename(ped.file))
+  corrected_name <- paste0(file_base, "_corrected")
+  report_name <- paste0(file_base, "_report")
+
+  #### output ####
+  if (verbose) {
+    cat("\n=== Pedigree Quality Check Report ===\n")
+
+    if (nrow(exact_duplicates) > 0) {
+      cat("\nExact duplicate rows detected and removed (only one copy kept):\n")
+      print(exact_duplicates)
+    } else cat("\nNo exact duplicate rows found.\n")
+
+    if (nrow(repeated_ids_report) > 0) {
+      cat("\nRepeated IDs with conflicting sire/dam (sire/dam set to 0 in corrected pedigree):\n")
+      print(repeated_ids_report)
+    } else cat("\nNo conflicting repeated IDs found.\n")
+
+    if (nrow(messy_parents) > 0) {
+      cat("\nIDs found as both sire and dam:\n")
+      print(messy_parents)
+    } else cat("\nNo IDs found as both sire and dam.\n")
+
+    if (nrow(missing_parents) > 0) {
+      cat("\nMissing parents were added to the pedigree with 0 as sire/dam:\n")
+      print(missing_parents)
+    } else cat("\nNo missing parents found.\n")
+
+    if (nrow(input_ped_report$dependencies) > 0) {
+      cat("\nDependencies detected:\n")
+      print(input_ped_report$dependencies)
+    } else cat("\nNo dependencies detected.\n")
+
+    #### interactive save ####
+    cat(paste0("\nDo you want to save the corrected pedigree as dataframe `", corrected_name, "`? (y/n): "))
+    ans <- tolower(trimws(readline()))
+    if (ans == "y") {
+      assign(corrected_name, data, envir = .GlobalEnv)
+      assign("input_ped_report", input_ped_report, envir = .GlobalEnv)
+      cat(paste0("Saved corrected pedigree as `", corrected_name, "` and report as `input_ped_report`.\n"))
+    } else {
+      cat("No corrected pedigree was saved.\n")
     }
-    output.results$repeated_ids <- repeated_ids
 
   } else {
-    if (verbose) {
-      cat("No repeated ids found.\n")
-    }
-  }
-  #Print parents that appear as male and female
-  if (nrow(messy_parents) > 0) {
-    if (verbose) {
-      cat("Ids found as male and female parent:\n")
-      message(messy_parents)
-    }
-    output.results$messy_parents <- messy_parents
-
-  } else {
-    if (verbose) {
-      cat("No ids found as male and female parent.\n")
-    }
-  }
-  # Print missing parents if any
-  if (nrow(missing_parents) > 0) {
-    if (verbose) {
-      cat("Missing parents found:\n")
-      message(missing_parents)
-    }
-    output.results$missing_parents <- missing_parents
-
-  } else {
-    if (verbose) {
-      cat("No missing parents found.\n")
-    }
-  }
-  # Print errors if any
-  if (nrow(errors) > 0) {
-    if (verbose) {
-      cat("Dependencies found:\n")
-      message(unique(errors$Dependency))
-    }
-    output.results$dependencies <- data.frame(Dependency = unlist(errors))
-
-  } else {
-    if (verbose) {
-      cat("No dependencies found.\n")
-    }
+    # Silent automatic mode
+    assign(corrected_name, data, envir = .GlobalEnv)
+    assign(report_name, input_ped_report, envir = .GlobalEnv)
   }
 
-  return(results)
+  invisible(input_ped_report)
 }

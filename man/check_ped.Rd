@@ -2,48 +2,58 @@
 % Please edit documentation in R/check_ped.R
 \name{check_ped}
 \alias{check_ped}
-\title{Evaluate Pedigree File for Accuracy}
+\title{Check a pedigree file for accuracy and report/correct common errors}
 \usage{
 check_ped(ped.file, seed = NULL, verbose = TRUE)
 }
 \arguments{
-\item{ped.file}{path to pedigree text file. The pedigree file is a
-3-column pedigree tab separated file with columns labeled as id sire dam in any order}
+\item{ped.file}{Path to the pedigree text file.}
 
-\item{seed}{Optional seed for reproducibility}
+\item{seed}{Optional seed for reproducibility.}
 
-\item{verbose}{Logical. If TRUE, print the errors to the console.}
+\item{verbose}{Logical. If TRUE (default), prints errors and prompts for interactive saving.}
 }
 \value{
-A list of data.frames of error types, and the output printed to the console
+A list of data.frames containing detected issues:
+\itemize{
+\item \code{exact_duplicates}: rows that were exact duplicates
+\item \code{repeated_ids_diff}: IDs appearing more than once with conflicting sire/dam
+\item \code{messy_parents}: IDs appearing as both sire and dam
+\item \code{missing_parents}: parents added to the pedigree with 0 as sire/dam
+\item \code{dependencies}: detected cycles in the pedigree
+}
 }
 \description{
-Check a pedigree file for accuracy and output suspected errors
+\code{check_ped} reads a 3-column pedigree file (tab-separated, columns labeled \code{id}, \code{sire}, \code{dam} in any order)
+and performs quality checks, optionally correcting or flagging errors.
 }
 \details{
-check_ped takes a 3-column pedigree tab separated file with columns labeled as id sire dam in any order and checks for:
+The function checks for:
 \itemize{
-\item Ids that appear more than once in the id column
-\item Ids that appear in both sire and dam columns
-\item Direct (e.g. parent is a offspring of his own daughter) and indirect (e.g. a great grandparent is son of its grandchild) dependencies within the pedigree.
-\item Individuals included in the pedigree as sire or dam but not on the id column and reports them back with unknown parents (0).
+\item Exact duplicate rows and removes them (keeping one copy)
+\item IDs that appear more than once with conflicting sire/dam assignments (sets sire/dam to "0")
+\item IDs that appear in both sire and dam columns
+\item Missing parents (IDs referenced as sire/dam but not in \code{id} column), adds them with sire/dam = "0"
+\item Direct and indirect pedigree dependencies (cycles), such as a parent being its own descendant
 }
 
-When using check_ped, do a first run to check for repeated ids and parents that appear as sire and dam.
-Once these errors are cleaned run the function again to check for dependencies as this will provide the most accurate report.
+After an initial run to clean exact duplicates and repeated IDs, you can run the function again to detect cycles more accurately.
 
-Note: This function does not change the input file but prints any errors found in the console.
+The function does \strong{not} overwrite the input file. Instead, it prints findings to the console and optionally saves:
+\itemize{
+\item Corrected pedigree as a dataframe in the global environment
+\item A report listing all detected issues
+}
 }
 \examples{
-##Get list with a dataframe for each error type
-ped_file <- system.file("check_ped_test.txt", package="BIGr")
-ped_errors <- check_ped(ped.file = ped_file,
-                        seed = 101919)
+ped_file <- system.file("check_ped_test.txt", package = "BIGr")
+ped_errors <- check_ped(ped.file = ped_file, seed = 101919)
 
-##Access the "messy parents" dataframe result
+# Access messy parents
 ped_errors$messy_parents
 
-##Get list of sample IDs with messy parents error
-messy_parent_ids <- ped_errors$messy_parents$id
-print(messy_parent_ids)
+# IDs with messy parents
+messy_ids <- ped_errors$messy_parents$id
+print(messy_ids)
+
 }

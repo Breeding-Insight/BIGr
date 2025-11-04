@@ -169,7 +169,7 @@ check_ped <- function(ped.file, seed = NULL, verbose = TRUE) {
   if (length(cycles) > 0) {
     for (cycle_group in cycles) {
       cycle_ids <- unique(unlist(cycle_group))
-      errors <- append(errors, paste("Cycle detected involving nodes:", paste(cycle_ids, collapse = " -> ")))
+      errors <- append(errors, paste("Cycle detected involving IDs:", paste(cycle_ids, collapse = " -> ")))
     }
   }
 
@@ -192,24 +192,25 @@ check_ped <- function(ped.file, seed = NULL, verbose = TRUE) {
     cat("\n=== Pedigree Quality Check Report ===\n")
 
     if (nrow(exact_duplicates) > 0) {
-      cat("\nExact duplicate rows detected and removed (only one copy kept):\n")
+      cat("\n Exact duplicate trios detected (only one copy will be kept in corrected pedigree):\n")
       print(exact_duplicates)
-    } else cat("\nNo exact duplicate rows found.\n")
+    } else cat("\nNo exact duplicate trios found.\n")
 
     if (nrow(repeated_ids_report) > 0) {
-      cat("\nRepeated IDs with conflicting sire/dam (sire/dam set to 0 in corrected pedigree):\n")
+      cat("\nConflicting trios detected (sire/dam set to 0 in corrected pedigree):\n")
       print(repeated_ids_report)
-    } else cat("\nNo conflicting repeated IDs found.\n")
+    } else cat("\nNo conflicting repeated trios found.\n")
+
+    if (nrow(missing_parents) > 0) {
+      cat("\n Parents missing as IDs found in the pedigree (will be added as founders in corrected pedigree):\n")
+      print(missing_parents)
+    } else cat("\nNo missing parents found.\n")
 
     if (nrow(messy_parents) > 0) {
-      cat("\nIDs found as both sire and dam:\n")
+      cat("\n IDs found as both sire and dam (is selfing or hermaphrodytism possible?):\n")
       print(messy_parents)
     } else cat("\nNo IDs found as both sire and dam.\n")
 
-    if (nrow(missing_parents) > 0) {
-      cat("\nMissing parents were added to the pedigree with 0 as sire/dam:\n")
-      print(missing_parents)
-    } else cat("\nNo missing parents found.\n")
 
     if (nrow(input_ped_report$dependencies) > 0) {
       cat("\nDependencies detected:\n")

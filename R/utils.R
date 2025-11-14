@@ -56,6 +56,7 @@ check_botloci <- function(botloci, report, verbose=TRUE){
         report$CloneID <- paste0(sub("_(.*)", "", report$CloneID), "_",
                                  sprintf(paste0("%0", pad_botloci, "d"), as.integer(sub(".*_", "", report$CloneID)))
         )
+        report$AlleleID <- paste0(report$CloneID, "|", sapply(strsplit(report$AlleleID, "[|]"), "[[",2))
       } else {
         botloci$V1 <- paste0(sub("_(.*)", "", botloci$V1), "_",
                              sprintf(paste0("%0", pad_madc, "d"), as.integer(sub(".*_", "", botloci$V1)))

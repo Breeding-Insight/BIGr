@@ -135,7 +135,7 @@ madc2vcf_all <- function(madc = NULL,
 loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, alignment_score_thr=40, verbose = TRUE){
 
   if(!is.null(hap_seq)){
-    hap_seq <- get_ref_alt_hap_seq(hap_seq)
+    hap_seq <- get_ref_alt_hap_seq(hap_seq, botloci)
   }
 
   nsamples <- ncol(report) - 3
@@ -376,7 +376,8 @@ compare <- function(one_tag, botloci, alignment_score_thr = 40){
 #' @param hap_seq haplotype db
 #'
 #' @noRd
-get_ref_alt_hap_seq <- function(hap_seq){
+get_ref_alt_hap_seq <- function(hap_seq, botloci){
+
   headers <- hap_seq$V1[grep(">",hap_seq$V1)]
   headers <- gsub(">", "", headers)
 
@@ -394,6 +395,17 @@ get_ref_alt_hap_seq <- function(hap_seq){
   seqs <- sapply(seqs, function(x) paste0(x, collapse = ""))
 
   hap_seq <- data.frame(AlleleID = headers, AlleleSequence = seqs)
+
+  # Check padding
+  hap_cloneID <- sapply(strsplit(hap_seq$AlleleID, "[|]"), function(x) x[1])
+  botloci_cloneID <- botloci$V1
+
+  pad_hap <- unique(nchar(sub(".*_", "", hap_cloneID)))
+  pad_botloci <- unique(nchar(sub(".*_", "", botloci_cloneID)))
+
+  if(length(pad_hap) > 1) stop("Check marker IDs in haplotype DB file. They should have the same padding.")
+  if(pad_hap != pad_botloci) stop("Check marker IDs padding in haplotype DB file. They should match the botloci file.")
+
   return(hap_seq)
 }
 

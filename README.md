@@ -36,11 +36,11 @@ if (!require("BiocManager", quietly = TRUE))
 BiocManager::install("Breeding-Insight/BIGr", dependencies = TRUE)
 library(BIGr)
 ```
-Note: This GitHub version of BIGr is in development. So, there could be bugs present, and the stable version of BIGr on CRAN should be viewed as more reliable.
+> Note: This GitHub version of BIGr is in development. So, there could be bugs present, and the stable version of BIGr on CRAN should be viewed as more reliable.
 
 ## Funding
 
-BIGr development is supported by [Breeding Insight](https://breedinginsight.org/), a USDA-funded initiative based at Cornell University.
+BIGr development is supported by [Breeding Insight](https://breedinginsight.org/), a USDA-funded initiative based at the University of Florida - IFAS.
 
 ## Citation
 

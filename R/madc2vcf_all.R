@@ -147,7 +147,7 @@ loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, align
   by_cloneID <- split.data.frame(new.file, new.file$CloneID)
 
   clust <- makeCluster(n.cores)
-  #clusterExport(clust, c("hap_seq","add_ref_alt", "nsamples"))
+  clusterExport(clust, c("hap_seq","add_ref_alt", "nsamples"))
   add_ref_alt_results <- parLapply(clust, by_cloneID, function(x) add_ref_alt(x, hap_seq, nsamples, verbose = verbose))
   stopCluster(clust)
 
@@ -168,8 +168,8 @@ loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, align
   }
 
   clust <- makeCluster(n.cores)
-  #clusterExport(clust, c("botloci", "compare", "nucleotideSubstitutionMatrix", "pairwiseAlignment", "DNAString", "reverseComplement"))
-  #clusterExport(clust, c("botloci", "alignment_score_thr"))
+  clusterExport(clust, c("botloci", "compare", "nucleotideSubstitutionMatrix", "pairwiseAlignment", "DNAString", "reverseComplement"))
+  clusterExport(clust, c("botloci", "alignment_score_thr"))
   compare_results <- parLapply(clust, updated_by_cloneID, function(x) compare(x, botloci, alignment_score_thr))
   stopCluster(clust)
 
@@ -180,10 +180,13 @@ loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, align
   rm_score <- unlist(rm_score)
   rm_N <- sapply(compare_results, "[[", 3)
   rm_N <- unlist(rm_N)
+  rm_indels <- sapply(compare_results, "[[", 4)
+  rm_indels <- unlist(rm_indels)
 
   if(verbose){
     cat("Number of tags removed because of low alignment score:", length(rm_score),"tags\n")
     cat("Number of tags removed because of N in the alternative sequence:", length(rm_N),"tags\n")
+    cat("Number of tags removed because of indels as targets (not yet supported):", length(rm_indels),"tags\n")
   }
 
   rownames(my_results_csv) <- NULL
@@ -301,6 +304,13 @@ compare <- function(one_tag, botloci, alignment_score_thr = 40){
   # The score is a bit different from the python script despite same weights
   if(align@score > alignment_score_thr){ # if score for the target sequence is smaller than the threshold, the tag will be discarted
     pos_target_idx <- align@pattern@mismatch@unlistData
+    if(length(align@pattern@mismatch@unlistData) == 0){
+      #No polymorphisms found between ref and alt sequences - or just indels
+      return(list(update_tag = NULL,
+                  rm_score = NULL,
+                  rm_N = NULL,
+                  rm_indels= cloneID))
+    }
     ref_base <- substring(ref_seq, align@pattern@mismatch@unlistData, align@pattern@mismatch@unlistData)
     alt_base <- substring(alt_seq, align@subject@mismatch@unlistData, align@subject@mismatch@unlistData)
 
@@ -356,18 +366,20 @@ compare <- function(one_tag, botloci, alignment_score_thr = 40){
       }
       return(list(update_tag = update_tag, # updated data.frame, NULL if discarted
                   rm_score = NULL,         # cloneID if removed because of low alignment score, NULL if kept
-                  rm_N = NULL))            # cloneID if removed because of N in the target alternative, NULL if kept
+                  rm_N = NULL,
+                  rm_indels = NULL))            # cloneID if removed because of N in the target alternative, NULL if kept
     } else {
       return(list(update_tag = NULL,
                   rm_score = NULL,
-                  rm_N = cloneID))
+                  rm_N = cloneID,
+                  rm_indels = NULL))
     }
   } else{
     return(list(update_tag = NULL,
                 rm_score = cloneID,
-                rm_N = NULL))
+                rm_N = NULL,
+                rm_indels = NULL))
   }
-
 }
 
 #' Converts the fasta to a data.frame with first column the AlleleID and second the AlleleSequence

@@ -147,7 +147,7 @@ loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, align
   by_cloneID <- split.data.frame(new.file, new.file$CloneID)
 
   clust <- makeCluster(n.cores)
-  clusterExport(clust, c("hap_seq","add_ref_alt", "nsamples"))
+  #clusterExport(clust, c("hap_seq","add_ref_alt", "nsamples"))
   add_ref_alt_results <- parLapply(clust, by_cloneID, function(x) add_ref_alt(x, hap_seq, nsamples, verbose = verbose))
   stopCluster(clust)
 
@@ -168,8 +168,8 @@ loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, align
   }
 
   clust <- makeCluster(n.cores)
-  clusterExport(clust, c("botloci", "compare", "nucleotideSubstitutionMatrix", "pairwiseAlignment", "DNAString", "reverseComplement"))
-  clusterExport(clust, c("botloci", "alignment_score_thr"))
+  #clusterExport(clust, c("botloci", "compare", "nucleotideSubstitutionMatrix", "pairwiseAlignment", "DNAString", "reverseComplement"))
+  #clusterExport(clust, c("botloci", "alignment_score_thr"))
   compare_results <- parLapply(clust, updated_by_cloneID, function(x) compare(x, botloci, alignment_score_thr))
   stopCluster(clust)
 

@@ -1,3 +1,7 @@
+# BIGr 0.6.3
+
+- Ignore tags when targets are indels
+
 # BIGr 0.6.2
 
 - Fixed the doi and name list in the CITATION file

@@ -68,36 +68,66 @@ filterVCF <- function(vcf.file,
   # pre‑filtering quality rates
 
   if (quality.rates) {
+    ## Extract genotypes, depth and DP matrix
     gt_orig <- extract.gt(vcf_orig, element = "GT", as.numeric = FALSE)
 
     dfmt  <- strsplit(vcf_orig@gt[1, "FORMAT"], ":")[[1]]
     if ("DP" %in% dfmt) {
       dp_orig <- extract.gt(vcf_orig, element = "DP", as.numeric = TRUE)
     } else {
-      dp_orig <- matrix(NA_real_, nrow = nrow(gt_orig), ncol = ncol(gt_orig),
+      dp_orig <- matrix(NA_real_,
+                        nrow = nrow(gt_orig), ncol = ncol(gt_orig),
                         dimnames = dimnames(gt_orig))
     }
 
-    # Per‑marker
+
+    # 1.  Observed heterozygosity (per‑marker & per‑sample)
+
+    # Helper: TRUE if a genotype is heterozygous (any two different
+    # alleles, excluding missing "./.")
+    is_het <- function(g) {
+      if (is.na(g) || g == "./.") return(FALSE)
+      alleles <- strsplit(g, split = "[/|]")[[1]]
+      return(length(unique(alleles)) > 1)
+    }
+    #matrix of heterozygous calls
+    het_mat  <- apply(gt_orig, c(1, 2), is_het)
+
+    #Observed heterozygosity per marker and per sample
+    obs_het_marker <- rowMeans(het_mat, na.rm = TRUE)
+    obs_het_sample <- colMeans(het_mat, na.rm = TRUE)
+
+
+    #Per‑marker stats
+
     mean_depth_marker   <- rowMeans(dp_orig, na.rm = TRUE)
     genotype_present    <- !is.na(gt_orig)
     genotyping_rate_marker <- rowMeans(genotype_present)
+
     markers_df <- data.frame(
       marker = vcf_orig@fix[, "ID"],
-      mean_depth = round(mean_depth_marker,2),
-      genotyping_rate = round(genotyping_rate_marker,2),
+      mean_depth = round(mean_depth_marker, 2),
+      genotyping_rate = round(genotyping_rate_marker, 2),
+      obs_het = round(obs_het_marker, 2),
       stringsAsFactors = FALSE
     )
 
-    # Per‑sample
+
+    #Per‑sample stats
+
     mean_depth_sample   <- colMeans(dp_orig, na.rm = TRUE)
     genotyping_rate_sample <- colMeans(genotype_present)
+
     samples_df <- data.frame(
       sample = colnames(gt_orig),
-      mean_depth = round(mean_depth_sample,2),
-      genotyping_rate = round(genotyping_rate_sample,2),
+      mean_depth = round(mean_depth_sample, 2),
+      genotyping_rate = round(genotyping_rate_sample, 2),
+      obs_het = round(obs_het_sample, 2),
       stringsAsFactors = FALSE
     )
+
+
+    #Write CSV
 
     base_name <- if (!is.null(output.file)) output.file else "pre_filter"
     write.csv(markers_df, paste0(base_name, "_marker_stats.csv"),

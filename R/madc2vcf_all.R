@@ -60,7 +60,10 @@ madc2vcf_all <- function(madc = NULL,
                          multiallelic_SNP_sample_thr = 0,
                          alignment_score_thr = 40,
                          out_vcf = NULL,
+                         markers_info = NULL,
                          verbose = TRUE){
+
+  vmsg("Checking inputs", verbose = verbose, level = 0, type = ">>")
 
   # Input checks
   if(!is.null(madc) & !file.exists(madc)) stop("MADC file not found. Please provide a valid path.")
@@ -85,8 +88,8 @@ madc2vcf_all <- function(madc = NULL,
   bigr_meta <- paste0('##BIGrCommandLine.madc2vcf_all=<ID=madc2vcf_all,Version="',
                       packageVersion("BIGr"), '",Data="',
                       Sys.time(),'", CommandLine="> madc2vcf_all(',deparse(substitute(madc)),', ',
-                      "botloci= ", botloci_file, ', ',
-                      "hap_seq= ", hap_seq_file, ', ',
+                      "botloci_file= ", botloci_file, ', ',
+                      "hap_seq_file= ", hap_seq_file, ', ',
                       "n.cores= ", n.cores, ', ',
                       "rm_multiallelic_SNP= ", rm_multiallelic_SNP, ', ',
                       "multiallelic_SNP_dp_thr= ", multiallelic_SNP_dp_thr, ', ',
@@ -95,7 +98,24 @@ madc2vcf_all <- function(madc = NULL,
                       "out_vcf= ", out_vcf, ', ',
                       "verbose= ", verbose,')">')
 
-  if(!is.null(madc)) report <- read.csv(madc, check.names = FALSE) else stop("Please provide a MADC file")
+  report <- read.csv(madc, check.names = FALSE) 
+  checks <- check_madc_sanity(report)
+
+  messages_results <- mapply(function(check, message) {
+    if (check)  message[1] else message[2]
+  }, checks$checks, checks$messages)
+
+  if(any(!(checks$checks[c("Columns", "FixAlleleIDs")]))){
+    idx <- which(!(checks$checks[c("Columns", "FixAlleleIDs")]))
+    stop(paste("The MADC file does not pass the sanity checks:\n",
+               paste(messages_results[c("Columns", "FixAlleleIDs")[idx]], collapse = "\n")))
+  }
+
+  if(any(checks$checks[c("IUPACcodes", "LowerCase", "Indels")])){
+    idx <- which((checks$checks[c("IUPACcodes", "LowerCase", "Indels")]))
+    if(is.null(markers_info)) stop(paste(messages_results[c("IUPACcodes", "LowerCase", "Indels")[idx]], collapse = "\n"))
+  }
+
   if(!is.null(botloci_file)) botloci <- read.csv(botloci_file, header = F) else stop("Please provide a botloci file")
   if(!is.null(hap_seq_file)) hap_seq <- read.table(hap_seq_file, header = F) else hap_seq <- NULL
 

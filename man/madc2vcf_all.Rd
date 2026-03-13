@@ -14,6 +14,7 @@ madc2vcf_all(
   multiallelic_SNP_sample_thr = 0,
   alignment_score_thr = 40,
   out_vcf = NULL,
+  markers_info = NULL,
   verbose = TRUE
 )
 }

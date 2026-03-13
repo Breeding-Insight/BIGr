@@ -9,7 +9,9 @@ madc2vcf_targets(
   output.file,
   botloci_file,
   markers_info = NULL,
-  get_REF_ALT = FALSE
+  get_REF_ALT = FALSE,
+  collapse_matches_counts = FALSE,
+  verbose = FALSE
 )
 }
 \arguments{
@@ -22,14 +24,18 @@ designed on the \strong{bottom} strand (one ID per line). Required when
 \code{get_REF_ALT = TRUE} and \code{markers_info} is not provided.}
 
 \item{markers_info}{character or \code{NULL}. Optional path to a CSV providing target
-metadata. Required columns: \verb{BI_markerID, Chr, Pos, Ref, Alt}. If indels are
-present, also require \verb{Type, Indel_pos}. When supplied, these values populate
-\verb{#CHROM, POS, REF, ALT} in the VCF directly.}
+metadata. Required columns: \verb{CloneID, Chr, Pos, Ref, Alt}. This file is required in
+case your MADC CloneID column doesn't have the format CHR_POS. If indels are
+present, columns \verb{Type, Indel_pos} are also required.}
 
 \item{get_REF_ALT}{logical (default \code{FALSE}). If \code{TRUE}, attempts to infer REF/ALT
 bases from the Ref/Alt probe sequences in the MADC file (with strand correction
 using \code{botloci_file}). Targets with more than one difference between Ref/Alt
 sequences are removed.}
+
+\item{collapse_matches_counts}{logical (default \code{FALSE}). If \code{TRUE}, counts for targets with identical \code{CHROM_POS} are summed together. This is useful when the MADC file contains multiple rows per target (e.g., due to multiple alleles or technical replicates) and you want to aggregate them into a single entry per unique target.}
+
+\item{verbose}{logical (default \code{FALSE}). If \code{TRUE}, prints detailed messages about}
 }
 \value{
 (Invisibly) returns the path to \code{output.file}. The side effect is a

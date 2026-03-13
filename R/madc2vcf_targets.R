@@ -44,13 +44,15 @@
 #'   designed on the **bottom** strand (one ID per line). Required when
 #'   `get_REF_ALT = TRUE` and `markers_info` is not provided.
 #' @param markers_info character or `NULL`. Optional path to a CSV providing target
-#'   metadata. Required columns: `BI_markerID, Chr, Pos, Ref, Alt`. If indels are
-#'   present, also require `Type, Indel_pos`. When supplied, these values populate
-#'   `#CHROM, POS, REF, ALT` in the VCF directly.
+#'   metadata. Required columns: `CloneID, Chr, Pos, Ref, Alt`. This file is required in
+#'   case your MADC CloneID column doesn't have the format CHR_POS. If indels are
+#'   present, columns `Type, Indel_pos` are also required.
 #' @param get_REF_ALT logical (default `FALSE`). If `TRUE`, attempts to infer REF/ALT
 #'   bases from the Ref/Alt probe sequences in the MADC file (with strand correction
 #'   using `botloci_file`). Targets with more than one difference between Ref/Alt
 #'   sequences are removed.
+#' @param collapse_matches_counts logical (default `FALSE`). If `TRUE`, counts for targets with identical `CHROM_POS` are summed together. This is useful when the MADC file contains multiple rows per target (e.g., due to multiple alleles or technical replicates) and you want to aggregate them into a single entry per unique target.
+#' @param verbose logical (default `FALSE`). If `TRUE`, prints detailed messages about
 #'
 #' @return (Invisibly) returns the path to `output.file`. The side effect is a
 #'   **VCF v4.3** written to disk containing one row per target and columns for all
@@ -96,7 +98,31 @@ madc2vcf_targets <- function(madc_file,
                              output.file,
                              botloci_file,
                              markers_info = NULL,
-                             get_REF_ALT = FALSE) {
+                             get_REF_ALT = FALSE,
+                             collapse_matches_counts = FALSE,
+                             verbose = FALSE) {
+
+  vmsg("Checking inputs", verbose = verbose, level = 0, type = ">>")
+
+  # Input checks
+  if(!file.exists(madc_file)) stop("The MADC file does not exist.")
+  if(!is.character(output.file)) stop("output.file must be a character string.")
+  if(get_REF_ALT && is.null(botloci_file)) stop("Please provide the botloci file to recover the reference and alternative bases.")
+  if(get_REF_ALT && !file.exists(botloci_file)) stop("The botloci file does not exist.")
+  if(!is.null(markers_info) && !file.exists(markers_info)) stop("The markers_info file does not exist.")
+  if(!is.null(markers_info) && !is.character(markers_info)) stop("markers_info must be a character string or NULL.")
+  if(!is.logical(get_REF_ALT)) stop("get_REF_ALT must be a logical value (TRUE or FALSE).")
+  if(!is.logical(verbose)) stop("verbose must be a logical value (TRUE or FALSE).")
+
+  # Create a VCF header line with metadata about the command and its parameters
+  bigr_meta <- paste0('##BIGrCommandLine.madc2vcf_targets=<ID=madc2vcf_targets,Version="',
+                      packageVersion("BIGr"), '",Data="',
+                      Sys.time(),'", CommandLine="> madc2vcf_targets(',deparse(substitute(madc)),', ',
+                      "output.file= ", output.file, ', ',
+                      "botloci_file= ", botloci_file, ', ',
+                      "markers_info= ", markers_info, ', ',
+                      "get_REF_ALT= ", get_REF_ALT, ', ',
+                      "verbose= ", verbose,')">')
 
   # MADC checks
   report <- read.csv(madc_file)
@@ -105,6 +131,9 @@ madc2vcf_targets <- function(madc_file,
   messages_results <- mapply(function(check, message) {
     if (check)  message[1] else message[2]
   }, checks$checks, checks$messages)
+
+  for(i in 1:length(messages_results))
+    vmsg(messages_results[i], verbose = verbose, level = 1, type = ">>")
 
   if(any(!(checks$checks[c("Columns", "FixAlleleIDs")]))){
     idx <- which(!(checks$checks[c("Columns", "FixAlleleIDs")]))
@@ -117,7 +146,19 @@ madc2vcf_targets <- function(madc_file,
     if(is.null(markers_info)) stop(paste(messages_results[c("IUPACcodes", "LowerCase", "Indels")[idx]], collapse = "\n"))
   }
 
-  matrices <- get_countsMADC(madc_file)
+  # Check marker names compatibility between MADC and botloci
+  if(!is.null(botloci_file)){
+    botloci <- read.csv(botloci_file, header = F)
+    checked_botloci <- check_botloci(botloci, report)
+    botloci <- checked_botloci[[1]]
+    report <- checked_botloci[[2]]
+  }
+
+  vmsg("Input checks done", verbose = verbose, level = 1, type = ">>")
+
+  vmsg("Extracting depth information", verbose = verbose, level = 0, type = ">>")
+
+  matrices <- get_countsMADC(madc_object = report, collapse_matches_counts = collapse_matches_counts)
   ref_df <- data.frame(matrices[[1]], check.names = FALSE)
   alt_df <- data.frame(matrices[[2]]-matrices[[1]], check.names = FALSE)
   size_df <- data.frame(matrices[[2]], check.names = FALSE)
@@ -148,8 +189,7 @@ madc2vcf_targets <- function(madc_file,
 
     # Get REF and ALT
     if(get_REF_ALT){
-      if(is.null(botloci_file)) stop("Please provide the botloci file to recover the reference and alternative bases.")
-      csv <- get_counts(madc_file)
+      csv <- get_counts(madc_object = report, collapse_matches_counts = collapse_matches_counts)
       # Keep only the ones that have alt and ref
       csv <- csv[which(csv$CloneID %in% rownames(ad_df)),]
 
@@ -261,7 +301,8 @@ madc2vcf_targets <- function(madc_file,
     '##INFO=<ID=ADS,Number=R,Type=Integer,Description="Depths for the ref and each alt allele in the order listed">',
     '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read depth">',
     '##FORMAT=<ID=RA,Number=1,Type=Integer,Description="Reference allele read depth">',
-    '##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'
+    '##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">',
+    bigr_meta
   )
 
   #Make the header#Make the VCF df

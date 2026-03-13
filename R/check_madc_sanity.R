@@ -88,18 +88,18 @@ check_madc_sanity <- function(report) {
 
   } else indels <- NULL
 
-  messages[["Columns"]] <- c("Required columns are present\n",
-                           "One or more required columns missing. Verify if your file has columns: CloneID, AlleleID, AlleleSequence\n")
-  messages[["FixAlleleIDs"]] <- c("Fixed Allele IDs look good\n",
-                               "MADC not processed by BI. Please contact us to assign allele IDs to your MADC according to the specie haplotype dabatase. This guarantee reproducibility between diferent datasets\n")
-  messages[["IUPACcodes"]] <- c("IUPAC (non-ATCG) codes found in AlleleSequence. This codes are not currently supported\n",
-                             "No IUPAC (non-ATCG) codes found in AlleleSequence\n")
-  messages[["LowerCase"]] <- c("Lowercase bases found in AlleleSequence\n",
-                            "No lowercase bases found in AlleleSequence\n")
+  messages[["Columns"]] <- c("Required columns are present",
+                           "One or more required columns missing. Verify if your file has columns: CloneID, AlleleID, AlleleSequence")
+  messages[["FixAlleleIDs"]] <- c("Fixed Allele IDs look good",
+                               "MADC not processed by BI. Please contact us to assign allele IDs to your MADC according to the specie haplotype dabatase. This guarantee reproducibility between diferent datasets")
+  messages[["IUPACcodes"]] <- c("IUPAC (non-ATCG) codes found in AlleleSequence. This codes are not currently supported",
+                             "No IUPAC (non-ATCG) codes found in AlleleSequence")
+  messages[["LowerCase"]] <- c("Lowercase bases found in AlleleSequence",
+                            "No lowercase bases found in AlleleSequence")
   messages[["Indels"]] <- c(paste("Indels found (ref/alt lengths differ) for the CloneIDs:",paste(indels, collapse = " ")),
-                         "No indels found (ref/alt lengths match) for all CloneIDs\n")
-  messages[["ChromPos"]] <- c("Chromosome and Position format in CloneID look good\n",
-                             "CloneID does not have the expected Chromosome_Position format. Please check your CloneIDs or provide a file with this information\n")
+                         "No indels found (ref/alt lengths match) for all CloneIDs")
+  messages[["ChromPos"]] <- c("Chromosome and Position format in CloneID look good",
+                             "CloneID does not have the expected Chromosome_Position format. Please check your CloneIDs or provide a file with this information")
 
   list(checks = checks, messages = messages, indel_clone_ids = indels)
 }

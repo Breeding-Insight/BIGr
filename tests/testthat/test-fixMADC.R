@@ -241,9 +241,9 @@ test_that("fixMADC correctly handles multiple rows per CloneID (Ref/Alt pairs)",
 })
 
 
-# ── 2. Preprocessed MADC (no filler rows) triggers warning ──────────────────
+# ── 2. Preprocessed MADC (no filler rows) triggers error ────────────────────
 
-test_that("fixMADC warns when MADC appears preprocessed (no filler rows)", {
+test_that("fixMADC errors when MADC appears preprocessed (no filler rows)", {
   madc_path   <- tempfile(fileext = ".csv")
   marker_path <- tempfile(fileext = ".csv")
 

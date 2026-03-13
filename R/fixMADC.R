@@ -75,8 +75,7 @@ fixMADC <- function(madc.file,
 
   }
   #Check for extra columns
-  #Save the three columns for later adding to the output
-  saved_columns <- filtered_df[,1:3]
+  #Save the three columns for later adding to the output (currently unused)
 
   if (!is.null(n.summary.columns)) {
     #Remove the first n.summary.columns columns

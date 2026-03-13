@@ -114,25 +114,25 @@ counts_matrix <- data.frame(
 )
 
 
-# ══════════════════════════════════════════════════════════════════════════════
-# NOTE: The current source has a parameter-name bug.
-#
-#   The function signature declares  madc.file  (with a dot)
-#   but the body references          madc_file  (with an underscore).
-#
-# R does NOT auto-convert dots to underscores.  Every call that reaches
-#   read.csv(madc_file, ...)
-# will fail with:
-#   Error in read.csv(madc_file, ...) : object 'madc_file' not found
-#
-# The same issue does NOT affect marker.file because the code reassigns:
-#   marker_file <- read.csv(marker.file, ...)
-#
-# Until this is fixed, all tests that call fixMADC() will error.
-# The tests below are written against the INTENDED behaviour so they
-# will pass once the bug is corrected (replace madc_file -> madc.file
-# in the function body, or rename the parameter to madc_file).
-# ══════════════════════════════════════════════════════════════════════════════
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # ── 1. Basic happy-path with raw MADC (7 filler rows) ───────────────────────

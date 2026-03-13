@@ -1,3 +1,7 @@
+# BIGr 0.7.0
+
+- Added a new function fixMADC to format raw MADC files is a user supplied Chr and Pos file
+
 # BIGr 0.6.3
 
 - Ignore tags when targets are indels

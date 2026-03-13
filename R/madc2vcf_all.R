@@ -62,6 +62,26 @@ madc2vcf_all <- function(madc = NULL,
                          out_vcf = NULL,
                          verbose = TRUE){
 
+  # Input checks
+  if(!is.null(madc) & !file.exists(madc)) stop("MADC file not found. Please provide a valid path.")
+  if(!is.null(botloci_file) & !file.exists(botloci_file)) stop("Botloci file not found. Please provide a valid path.")
+  if(!is.null(hap_seq_file) & !file.exists(hap_seq_file)) stop("Haplotype sequence file not found. Please provide a valid path.")
+
+  ## n.cores as integer
+  if(!is.numeric(n.cores) | n.cores < 1) stop("n.cores should be a positive integer.")
+
+  ## alignment_score_thr, multiallelic_SNP_dp_thr, multiallelic_SNP_sample_thr as numeric
+  if(!is.numeric(alignment_score_thr)) stop("alignment_score_thr should be numeric.")
+  if(!is.numeric(multiallelic_SNP_dp_thr)) stop("multiallelic_SNP_dp_thr should be numeric.")
+  if(!is.numeric(multiallelic_SNP_sample_thr)) stop("multiallelic_SNP_sample_thr should be numeric.")
+
+  ## out_vcf as string
+  if(!is.null(out_vcf) & !is.character(out_vcf)) stop("out_vcf should be a string specifying the output file name.")
+
+  ## rm_multiallelic_SNP and verbose as logical
+  if(!is.logical(rm_multiallelic_SNP)) stop("rm_multiallelic_SNP should be logical.")
+  if(!is.logical(verbose)) stop("verbose should be logical.")
+
   bigr_meta <- paste0('##BIGrCommandLine.madc2vcf_all=<ID=madc2vcf_all,Version="',
                       packageVersion("BIGr"), '",Data="',
                       Sys.time(),'", CommandLine="> madc2vcf_all(',deparse(substitute(madc)),', ',

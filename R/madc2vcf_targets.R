@@ -100,7 +100,7 @@ madc2vcf_targets <- function(madc_file,
                              markers_info = NULL,
                              get_REF_ALT = FALSE,
                              collapse_matches_counts = FALSE,
-                             verbose = FALSE) {
+                             verbose = TRUE) {
 
   vmsg("Checking inputs", verbose = verbose, level = 0, type = ">>")
 
@@ -132,7 +132,7 @@ madc2vcf_targets <- function(madc_file,
     if (check)  message[1] else message[2]
   }, checks$checks, checks$messages)
 
-  for(i in 1:length(messages_results))
+  for(i in seq_along(messages_results))
     vmsg(messages_results[i], verbose = verbose, level = 1, type = ">>")
 
   if(any(!(checks$checks[c("Columns", "FixAlleleIDs")]))){
@@ -143,7 +143,9 @@ madc2vcf_targets <- function(madc_file,
 
   if(any(checks$checks[c("IUPACcodes", "LowerCase", "Indels")])){
     idx <- which((checks$checks[c("IUPACcodes", "LowerCase", "Indels")]))
-    if(is.null(markers_info)) stop(paste(messages_results[c("IUPACcodes", "LowerCase", "Indels")[idx]], collapse = "\n"))
+    if(is.null(markers_info)) stop("Please provide a markers_info file to proceed. The MADC file does not pass the sanity checks:\n",
+                                  paste(messages_results[c("IUPACcodes", "LowerCase", "Indels")[idx]], collapse = "\n"))
+    else vmsg("MADC file has some issues (IUPAC codes, lowercase bases, indels), but a markers_info file is provided, so proceeding with VCF generation.", verbose = verbose, level = 1, type = ">>")
   }
 
   # Check marker names compatibility between MADC and botloci
@@ -158,7 +160,7 @@ madc2vcf_targets <- function(madc_file,
 
   vmsg("Extracting depth information", verbose = verbose, level = 0, type = ">>")
 
-  matrices <- get_countsMADC(madc_object = report, collapse_matches_counts = collapse_matches_counts)
+  matrices <- get_countsMADC(madc_object = report, collapse_matches_counts = collapse_matches_counts, verbose = verbose)
   ref_df <- data.frame(matrices[[1]], check.names = FALSE)
   alt_df <- data.frame(matrices[[2]]-matrices[[1]], check.names = FALSE)
   size_df <- data.frame(matrices[[2]], check.names = FALSE)
@@ -172,8 +174,11 @@ madc2vcf_targets <- function(madc_file,
   )
   row.names(ad_df) <- row.names(ref_df)
 
+  vmsg("Depth information extracted", verbose = verbose, level = 1, type = ">>")
+
   #Obtaining Chr and Pos information from the row_names
   if(is.null(markers_info)){
+    vmsg("No markers_info file provided. Attempting to recover CHROM and POS from CloneID...", verbose = verbose, level = 0, type = ">>")
     new_df <- size_df %>%
       rownames_to_column(var = "row_name") %>%
       separate(row_name, into = c("CHROM", "POS"), sep = "_") %>%
@@ -187,9 +192,11 @@ madc2vcf_targets <- function(madc_file,
     new_df$TotalAlt <- rowSums(alt_df)
     new_df$TotalSize <- rowSums(size_df)
 
+    vmsg("CHROM and POS recovered from CloneID", verbose = verbose, level = 1, type = ">>")
     # Get REF and ALT
     if(get_REF_ALT){
-      csv <- get_counts(madc_object = report, collapse_matches_counts = collapse_matches_counts)
+      vmsg("get_REF_ALT = TRUE. Attempting to recover REF and ALT bases from probe sequences...", verbose = verbose, level = 0, type = ">>")
+      csv <- get_counts(madc_object = report, collapse_matches_counts = collapse_matches_counts, verbose = FALSE)
       # Keep only the ones that have alt and ref
       csv <- csv[which(csv$CloneID %in% rownames(ad_df)),]
 
@@ -225,8 +232,9 @@ madc2vcf_targets <- function(madc_file,
         orig_alt_seq <- orig_alt_seq[order(alt_ord)]
         ordered_clone_ids <- sort(ref_ord)
 
+        more_poly <- no_diff <- 0
         ref_base <- alt_base <- vector()
-        for(i in 1:length(orig_ref_seq)){
+        for(i in seq_along(orig_ref_seq)){
           # FIXED: Use original sequences for SNP calling
           temp_list <- strsplit(c(orig_ref_seq[i], orig_alt_seq[i]), "")
           idx_diff <- which(temp_list[[1]] != temp_list[[2]])
@@ -234,6 +242,7 @@ madc2vcf_targets <- function(madc_file,
           if(length(idx_diff) > 1) { # If finds more than one polymorphism between Ref and Alt sequences
             ref_base[i] <- NA
             alt_base[i] <- NA
+            more_poly <- more_poly + 1
           } else if(length(idx_diff) == 1) {
             orig_ref_base <- temp_list[[1]][idx_diff]
             orig_alt_base <- temp_list[[2]][idx_diff]
@@ -250,32 +259,50 @@ madc2vcf_targets <- function(madc_file,
             # No differences found
             ref_base[i] <- NA
             alt_base[i] <- NA
+            no_diff <- no_diff + 1
           }
         }
+        if(more_poly > 0) vmsg(paste(more_poly, "markers removed because more than one polymorphism was found between Ref and Alt sequences"), verbose = verbose, level = 2, type = ">>")
+        if(no_diff > 0) vmsg(paste(no_diff, "markers removed because no differences were found between Ref and Alt sequences"), verbose = verbose, level = 2, type = ">>")
+
       } else {
-        warning("There are missing reference or alternative sequence, the SNP bases could not be recovery.")
         ref_base <- "."
         alt_base <- "."
+        vmsg(paste("REF and ALT bases could not be recovered because of missing reference or alternative sequences"), verbose = verbose, level = 1, type = ">>")
       }
-
     } else {
       ref_base <- "."
       alt_base <- "."
+      vmsg(paste("REF and ALT bases not recovered because get_REF_ALT = FALSE"), verbose = verbose, level = 1, type = ">>")
     }
   } else {
+    vmsg("markers_info file provided. Using CHROM, POS, REF and ALT from the file.", verbose = verbose, level = 0, type = ">>")
     # Verify markers_info file
     df <- read.csv(markers_info)
-    if(checks$checks["Indels"]){
-      if(!all(c("BI_markerID","Chr","Pos","Ref","Alt","Type", "Indel_pos") %in% colnames(df)))
-        stop("The markers_info dataframe must contain the following columns: BI_markerID, CHROM, POS, REF, ALT, Type, Indel_pos")
+
+    # Accept either CloneID or BI_markerID as the marker ID column
+    if ("BI_markerID" %in% colnames(df)) {
+      id_col <- "BI_markerID"
+    } else if ("CloneID" %in% colnames(df)) {
+      id_col <- "CloneID"
+    } else {
+      stop("The markers_info file must contain a marker ID column named either 'CloneID' or 'BI_markerID'.")
     }
-    if(!all(c("BI_markerID","Chr","Pos","Ref","Alt") %in% colnames(df)))
-      stop("The markers_info dataframe must contain the following columns: BI_markerID, CHROM, POS, REF, ALT")
 
-    if(!all(rownames(ad_df)%in% df$BI_markerID))
+    if(checks$checks["Indels"]){
+      vmsg("Indels detected in MADC file. Checking for required columns in markers_info...", verbose = verbose, level = 1, type = ">>")
+      if(!all(c(id_col,"Chr","Pos","Ref","Alt","Type", "Indel_pos") %in% colnames(df)))
+        stop(paste0("The markers_info dataframe must contain the following columns: ", id_col, ", Chr, Pos, Ref, Alt, Type, Indel_pos"))
+    }
+    if(!all(c(id_col,"Chr","Pos","Ref","Alt") %in% colnames(df)))
+      stop(paste0("The markers_info dataframe must contain the following columns: ", id_col, ", Chr, Pos, Ref, Alt"))
+
+    if(!all(rownames(ad_df) %in% df[[id_col]])){
+      miss_CloneIDs <- rownames(ad_df)[!rownames(ad_df) %in% df[[id_col]]]
+      vmsg(paste("Not all MADC CloneID was found in the markers_info file. These markers will be removed:", paste(miss_CloneIDs, collapse = " ")), verbose = verbose, level = 2, type = ">>")
       warning("Not all MADC CloneID was found in the markers_info file. These markers will be removed.")
-
-    matched <- df[match(rownames(ad_df), df$BI_markerID),]
+    }
+    matched <- df[match(rownames(ad_df), df[[id_col]]),]
 
     new_df <- data.frame(
       CHROM = matched$Chr,
@@ -291,6 +318,9 @@ madc2vcf_targets <- function(madc_file,
     alt_base <- matched$Alt
   }
 
+  vmsg("CHROM, POS, REF and ALT columns prepared", verbose = verbose, level = 1, type = ">>")
+
+  vmsg("Preparing VCF dataframe", verbose = verbose, level = 0, type = ">>")
   #Make a header separate from the dataframe
   vcf_header <- c(
     "##fileformat=VCFv4.3",
@@ -351,6 +381,7 @@ madc2vcf_targets <- function(madc_file,
     rownames(combined_wide) <- combined_wide$Row
     combined_wide$Row <- NULL
     colnames(combined_wide) <- colnames(matrices[[1]])
+    vmsg("Sample columns formatted for VCF", verbose = verbose, level = 1, type = ">>")
 
     return(as.matrix(combined_wide))
   }
@@ -360,6 +391,7 @@ madc2vcf_targets <- function(madc_file,
 
   #Combine the dataframes together
   vcf_df <- cbind(vcf_df,geno_df)
+  vmsg("VCF dataframe prepared", verbose = verbose, level = 1, type = ">>")
 
   # Add # to the CHROM column name
   colnames(vcf_df)[1] <- "#CHROM"
@@ -368,6 +400,7 @@ madc2vcf_targets <- function(madc_file,
   vcf_df <- vcf_df[order(vcf_df[,1],as.numeric(as.character(vcf_df[,2]))),]
 
   if(sum(is.na(vcf_df$REF)) >1) {
+    vmsg(paste(sum(is.na(vcf_df$REF)), "markers removed because of presence of more than one polymorphism between ref and alt sequences."), verbose = verbose, level = 1, type = ">>")
     warning(paste("Markers removed because of presence of more than one polymorphism between ref and alt sequences:",sum(is.na(vcf_df$REF))))
     vcf_df <- vcf_df[-which(is.na(vcf_df$REF)),]
   }
@@ -379,4 +412,5 @@ madc2vcf_targets <- function(madc_file,
   suppressWarnings(
     write.table(vcf_df, file = output.file, sep = "\t", quote = FALSE, row.names = FALSE, col.names = TRUE, append = TRUE)
   )
+  vmsg(paste("VCF file written to", output.file), verbose = verbose, level = 0, type = ">>")
 }

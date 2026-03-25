@@ -7,11 +7,11 @@
 madc2vcf_targets(
   madc_file,
   output.file,
-  botloci_file,
+  botloci_file = NULL,
   markers_info = NULL,
   get_REF_ALT = FALSE,
   collapse_matches_counts = FALSE,
-  verbose = FALSE
+  verbose = TRUE
 )
 }
 \arguments{
@@ -19,14 +19,15 @@ madc2vcf_targets(
 
 \item{output.file}{character. Path to the output VCF file to write.}
 
-\item{botloci_file}{character. Path to a plain-text file listing target IDs
-designed on the \strong{bottom} strand (one ID per line). Required when
-\code{get_REF_ALT = TRUE} and \code{markers_info} is not provided.}
+\item{botloci_file}{character or \code{NULL} (default \code{NULL}). Path to a plain-text
+file listing target IDs designed on the \strong{bottom} strand (one ID per line).
+Required only when \code{get_REF_ALT = TRUE} and \code{markers_info} does not supply
+\code{Ref} and \code{Alt} columns.}
 
 \item{markers_info}{character or \code{NULL}. Optional path to a CSV providing target
-metadata. Required columns: \verb{CloneID, Chr, Pos, Ref, Alt}. This file is required in
-case your MADC CloneID column doesn't have the format CHR_POS. If indels are
-present, columns \verb{Type, Indel_pos} are also required.}
+metadata. Minimum required columns: \code{CloneID} (or \code{BI_markerID}), \code{Chr}, \code{Pos}.
+When \code{get_REF_ALT = TRUE}, also requires \code{Ref} and \code{Alt} (replaces probe-sequence
+inference). \code{Type} and \code{Indel_pos} are never required by this function.}
 
 \item{get_REF_ALT}{logical (default \code{FALSE}). If \code{TRUE}, attempts to infer REF/ALT
 bases from the Ref/Alt probe sequences in the MADC file (with strand correction
@@ -35,7 +36,7 @@ sequences are removed.}
 
 \item{collapse_matches_counts}{logical (default \code{FALSE}). If \code{TRUE}, counts for targets with identical \code{CHROM_POS} are summed together. This is useful when the MADC file contains multiple rows per target (e.g., due to multiple alleles or technical replicates) and you want to aggregate them into a single entry per unique target.}
 
-\item{verbose}{logical (default \code{FALSE}). If \code{TRUE}, prints detailed messages about}
+\item{verbose}{logical (default \code{TRUE}). If \code{TRUE}, prints detailed progress messages about each processing step.}
 }
 \value{
 (Invisibly) returns the path to \code{output.file}. The side effect is a
@@ -59,8 +60,7 @@ IUPAC/ambiguous bases, lowercase bases, indels).
 \item If \code{get_REF_ALT = TRUE}, attempts to recover true REF/ALT bases by comparing
 the Ref/Alt probe sequences; targets with >1 polymorphism are discarded.
 \item Optionally accepts a \code{markers_info} CSV to supply \code{CHROM}, \code{POS}, \code{REF}, \code{ALT}
-(and \code{Type}, \code{Indel_pos} when indels are present), bypassing sequence-based
-inference.
+bypassing sequence-based inference.
 }
 
 \strong{Output VCF layout}

@@ -69,6 +69,8 @@ get_countsMADC <- function(madc_file = NULL, madc_object = NULL, collapse_matche
   } else {
     update_df <- get_counts(madc_object = madc_object, collapse_matches_counts = collapse_matches_counts, verbose = verbose)
   }
+  # Ensure plain data.frame so row.names<- does not trigger tibble deprecation warning
+  update_df <- as.data.frame(update_df)
 
   # Filter rows where 'AlleleID' ends with 'Ref'
   ref_df <- subset(update_df, grepl("Ref$", AlleleID))

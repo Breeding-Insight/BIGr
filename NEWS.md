@@ -1,9 +1,9 @@
 # BIGr 0.6.3
 
-- New function to check MADC file: check_madc_sanity. By now, it checks presence of required columns, if fixed allele IDs were assigned, presence of IUPAC codes, lower case sequences bases, indels, and chromosome and position information.
-- Add new arguments markers_info for users to add CSV file with marker information such as CHROM, POS, Marker Type and position of indels. For BI species, these information is at https://github.com/Breeding-Insight/BIGapp-PanelHub
-- Check inputs for madc2vcf_all
-- Update affiliation on DESCRIPTION
+- New function to check MADC files: `check_madc_sanity`. Currently, it checks for the presence of required columns, whether fixed allele IDs were assigned, the presence of IUPAC codes, lowercase sequence bases, indels, and chromosome and position information.
+- Added new argument `markers_info`, which allows users to provide a CSV file with marker information such as CHROM, POS, marker type, and position of indels. For BI species, this information is available from [PanelHub](https://github.com/Breeding-Insight/BIGapp-PanelHub).
+- Checked inputs for `madc2vcf_all`.
+- Updated affiliation in `DESCRIPTION`.
 
 # BIGr 0.6.2
 

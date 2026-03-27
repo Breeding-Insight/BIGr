@@ -93,7 +93,7 @@ check_ped <- function(ped.file, seed = NULL, verbose = TRUE) {
   repeated_ids_report <- conflicting_ids
 
   #### check 3: missing parents ####
-  for (i in 1:nrow(data)) {
+  for (i in seq_len(nrow(data))) {
     id <- data$id[i]
     sire <- data$sire[i]
     dam <- data$dam[i]

@@ -91,8 +91,8 @@ check_madc_sanity <- function(report) {
   messages[["Columns"]] <- c("Required columns are present\n",
                            "One or more required columns missing. Verify if your file has columns: CloneID, AlleleID, AlleleSequence\n")
   messages[["FixAlleleIDs"]] <- c("Fixed Allele IDs look good\n",
-                               "MADC not processed by BI. Please contact us to assign allele IDs to your MADC according to the specie haplotype dabatase. This guarantee reproducibility between diferent datasets\n")
-  messages[["IUPACcodes"]] <- c("IUPAC (non-ATCG) codes found in AlleleSequence. This codes are not currently supported\n",
+                               "MADC was not processed by BI. Please contact us to assign allele IDs to your MADC using the species haplotype database. This guarantees reproducibility across different datasets.\n")
+  messages[["IUPACcodes"]] <- c("IUPAC (non-ATCG) codes found in AlleleSequence. These codes are not currently supported\n",
                              "No IUPAC (non-ATCG) codes found in AlleleSequence\n")
   messages[["LowerCase"]] <- c("Lowercase bases found in AlleleSequence\n",
                             "No lowercase bases found in AlleleSequence\n")

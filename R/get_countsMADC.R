@@ -223,7 +223,14 @@ get_counts <- function(madc_file = NULL, madc_object = NULL, collapse_matches_co
 
   if(collapse_matches_counts){
     filtered_df <- madc_df[order(madc_df$AlleleID),] %>%
-      mutate(Type = ifelse(grepl("Alt", AlleleID), "Alt", "Ref")) %>%
+      # Keep only Ref/Alt alleles and their Match variants; drop other allele types
+      dplyr::filter(grepl("\\|(Ref|Alt)(Match)?\\b", AlleleID)) %>%
+      mutate(
+        Type = dplyr::case_when(
+          grepl("\\|Alt(Match)?\\b", AlleleID) ~ "Alt",
+          grepl("\\|Ref(Match)?\\b", AlleleID) ~ "Ref"
+        )
+      ) %>%
       group_by(CloneID, Type) %>%
       summarise(
         AlleleID = paste0(unique(CloneID), "|", unique(Type)),

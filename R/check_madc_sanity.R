@@ -147,7 +147,7 @@ check_madc_sanity <- function(report) {
 
     # --- All NA ----
     checks["allNArow"] <- any(apply(report, 1, function(x) all(is.na(x) | x == "")))
-    checks["allNAcol"] <- any(apply(report, 2, function(x) all(is.na(x)) | x == ""))
+    checks["allNAcol"] <- any(apply(report, 2, function(x) all(is.na(x) | x == "")))
 
     # ---- Chrom Pos ----
     if(!any(is.na(report$CloneID))) {

@@ -2,8 +2,8 @@
 #'
 #' This function processes a MADC file to generate a VCF file containing both target and off-target SNPs. It includes options for filtering multiallelic SNPs and parallel processing to improve performance.
 #'
-#' @param madc A string specifying the path to the MADC file.
-#' @param botloci_file A string specifying the path to the file containing the target IDs designed in the bottom strand.
+#' @param madc Required. A string specifying the path or URL to the MADC file.
+#' @param botloci_file Required. A string specifying the path or URL to the file containing the target IDs designed in the bottom strand.
 #' @param hap_seq_file A string specifying the path to the haplotype database fasta file.
 #' @param rm_multiallelic_SNP A logical value. If TRUE, SNPs with more than one alternative base are removed. If FALSE, the thresholds specified by `multiallelic_SNP_dp_thr` and `multiallelic_SNP_sample_thr` are used to filter low-frequency SNP alleles. Default is FALSE.
 #' @param multiallelic_SNP_dp_thr A numeric value specifying the minimum depth by tag threshold for filtering low-frequency SNP alleles when `rm_multiallelic_SNP` is FALSE. Default is 0.
@@ -51,8 +51,8 @@
 #' @import vcfR
 #'
 #' @export
-madc2vcf_all <- function(madc = NULL,
-                         botloci_file = NULL,
+madc2vcf_all <- function(madc,
+                         botloci_file,
                          hap_seq_file = NULL,
                          n.cores = 1,
                          rm_multiallelic_SNP = FALSE,
@@ -66,9 +66,9 @@ madc2vcf_all <- function(madc = NULL,
   vmsg("Checking inputs", verbose = verbose, level = 0, type = ">>")
 
   # Input checks
-  if(!is.null(madc) & !file.exists(madc)) stop("MADC file not found. Please provide a valid path.")
-  if(!is.null(botloci_file) & !file.exists(botloci_file)) stop("Botloci file not found. Please provide a valid path.")
-  if(!is.null(hap_seq_file) & !file.exists(hap_seq_file)) stop("Haplotype sequence file not found. Please provide a valid path.")
+  if(!(file.exists(madc) | url_exists(madc))) stop("MADC file not found. Please provide a valid path or URL.")
+  if(!(file.exists(botloci_file) | url_exists(botloci_file))) stop("Botloci file not found. Please provide a valid path or URL.")
+  if(!is.null(hap_seq_file) & !(file.exists(hap_seq_file) | url_exists(hap_seq_file))) stop("Haplotype sequence file not found. Please provide a valid path or URL.")
 
   ## n.cores as integer
   if(!is.numeric(n.cores) | n.cores < 1) stop("n.cores should be a positive integer.")
@@ -105,6 +105,9 @@ madc2vcf_all <- function(madc = NULL,
     if (check)  message[1] else message[2]
   }, checks$checks, checks$messages)
 
+  for(i in seq_along(messages_results))
+    vmsg(messages_results[i], verbose = verbose, level = 1, type = ">>")
+
   if(any(!(checks$checks[c("Columns", "FixAlleleIDs")]))){
     idx <- which(!(checks$checks[c("Columns", "FixAlleleIDs")]))
     stop(paste("The MADC file does not pass the sanity checks:\n",
@@ -116,11 +119,31 @@ madc2vcf_all <- function(madc = NULL,
     stop(paste(messages_results[c("IUPACcodes")[idx]], collapse = "\n"))
   }
 
+  # Check whether markers_info is present and contains Ref + Alt columns
+  if(!is.null(markers_info)) {
+    mi_df <- read.csv(markers_info)
+    # Standardize marker ID column to CloneID
+    if(!"CloneID" %in% colnames(mi_df) && "BI_markerID" %in% colnames(mi_df)) {
+      colnames(mi_df)[colnames(mi_df) == "BI_markerID"] <- "CloneID"
+      vmsg("markers_info: 'BI_markerID' column renamed to 'CloneID' for internal use.", verbose = verbose, level = 1)
+    } else if(!"CloneID" %in% colnames(mi_df) && !"BI_markerID" %in% colnames(mi_df)) {
+      stop("markers_info must contain a marker ID column named either 'CloneID' or 'BI_markerID'.")
+    }
+    # Validate CloneID values
+    if(any(is.na(mi_df$CloneID) | mi_df$CloneID == ""))
+      stop("markers_info CloneID column contains empty or NA values. Please check your markers_info file.")
+    if(!any(mi_df$CloneID %in% report$CloneID))
+      stop("None of the markers_info CloneID values match the MADC CloneID column. Please make sure they use the same marker IDs.")
+    n_match <- sum(mi_df$CloneID %in% report$CloneID)
+    n_total <- length(unique(report$CloneID))
+    if(n_match < n_total)
+      vmsg("%s of %s MADC CloneIDs found in markers_info. Unmatched markers will be removed.", verbose = verbose, level = 1, n_match, n_total)
+  } else mi_df <- NULL
+
   if(any(!checks$checks[c("ChromPos")])){
     if(is.null(markers_info)) {
       stop(paste(messages_results[c("ChromPos")], collapse = "\n"))
     } else {
-      mi_df <- read.csv(markers_info)
       if(!all(c("Chr", "Pos") %in% colnames(mi_df)))
         stop("ChromPos check failed: CloneID values do not follow the Chr_Position format. ",
              "The markers_info file must contain 'Chr' and 'Pos' columns to supply CHROM and POS.")
@@ -130,13 +153,20 @@ madc2vcf_all <- function(madc = NULL,
   if(any(checks$checks[c("Indels")])){
     idx <- which((checks$checks[c("Indels")]))
     if(is.null(markers_info)) {
-      stop(paste(messages_results[c("Indels")[idx]], collapse = "\n"))
+      vmsg("The MADC file contains indels and markers_info file is not provided. Tags with indels as targets will be flagged with warnings and removed from the analysis. Provide markers_info with REF/ALT/Indel_pos if you want to include the targets indels.",verbose = verbose, level = 1, type = ">>>")
     } else {
-      mi_df <- read.csv(markers_info)
       if(checks$checks["Indels"] &&
          !all(c("Ref", "Alt", "Indel_pos") %in% colnames(mi_df)))
         stop("Indels detected in MADC file. ",
              "The markers_info file must contain 'Ref', 'Alt', and 'Indel_pos' columns.")
+      if(!"Type" %in% colnames(mi_df)) {
+        mi_df$Type <- ifelse(nchar(as.character(mi_df$Ref)) > 1 | nchar(as.character(mi_df$Alt)) > 1,
+                             "Indel", "SNP")
+        vmsg("markers_info: 'Type' column not found. Derived from Ref/Alt lengths (%s SNPs, %s Indels).",
+             verbose = verbose, level = 1,
+             sum(mi_df$Type == "SNP"), sum(mi_df$Type == "Indel"))
+      }
+      vmsg("The MADC file contains indels and markers_info file was provided with all required columns. Target indels will be exported, but no off-targets are extracted from these tags due to higher likelihood of pairwise alignment errors.",verbose = verbose, level = 1, type = ">>>")
     }
   }
 
@@ -145,20 +175,33 @@ madc2vcf_all <- function(madc = NULL,
     report$AlleleSequence <- toupper(report$AlleleSequence)
   }
 
-  if(!is.null(botloci_file)) botloci <- read.csv(botloci_file, header = F) else stop("Please provide a botloci file")
+  if(!checks$checks["RefAltSeqs"] && is.null(hap_seq_file)){
+    vmsg("Not all Ref sequences have a corresponding Alt or vice-verse. Provide hap_seq_file for this function to recover the missing tags or tags with missing pairs will be discarded.", verbose = verbose, level = 1)
+  }
+
+  botloci <- read.csv(botloci_file, header = F)
   if(!is.null(hap_seq_file)) hap_seq <- read.table(hap_seq_file, header = F) else hap_seq <- NULL
 
   # Check marker names compatibility between MADC and botloci
-  checked_botloci <- check_botloci(botloci, report)
+  checked_botloci <- check_botloci(botloci, report, ChromPos = checks$checks["ChromPos"], mi_df = mi_df, verbose = verbose)
   botloci <- checked_botloci[[1]]
   report <- checked_botloci[[2]]
+
+  vmsg("Input checks done!", verbose = verbose, level = 1, type = ">>")
+
+  vmsg("Starting conversion...", verbose = verbose, level = 0, type = ">>")
 
   my_results_csv <- loop_though_dartag_report(report,
                                               botloci,
                                               hap_seq,
                                               n.cores=n.cores,
                                               alignment_score_thr = alignment_score_thr,
+                                              mi_df = mi_df,
                                               verbose = verbose)
+
+  vmsg("All information gathered!", verbose = verbose, level = 1, type = ">>")
+
+  vmsg("Adding information to a VCF body...", verbose = verbose, level = 0, type = ">>")
 
   vcf_body <- create_VCF_body(csv = my_results_csv,
                               n.cores = n.cores,
@@ -201,9 +244,9 @@ madc2vcf_all <- function(madc = NULL,
 #' @import parallel
 #'
 #' @noRd
-loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, alignment_score_thr=40, verbose = TRUE){
+loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, alignment_score_thr=40, checks = NULL, mi_df = NULL, verbose = TRUE){
 
-  if(!is.null(hap_seq)){
+  if(!is.null(hap_seq) & (is.null(checks) | !isTRUE(checks$checks["RefAltSeqs"]))){
     hap_seq <- get_ref_alt_hap_seq(hap_seq, botloci)
   }
 
@@ -217,7 +260,7 @@ loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, align
 
   clust <- makeCluster(n.cores)
   #clusterExport(clust, c("hap_seq","add_ref_alt", "nsamples"))
-  add_ref_alt_results <- parLapply(clust, by_cloneID, function(x) add_ref_alt(x, hap_seq, nsamples, verbose = verbose))
+  add_ref_alt_results <- parLapply(clust, by_cloneID, function(x) add_ref_alt(x, hap_seq, nsamples, verbose = FALSE))
   stopCluster(clust)
 
   ref_index <- sapply(add_ref_alt_results, "[[",2)
@@ -229,18 +272,24 @@ loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, align
 
   updated_by_cloneID <- lapply(add_ref_alt_results, "[[",1)
 
-  if(verbose){
-    cat("The Ref_0001 sequence had to be added for:", sum(ref_index==1),"tags\n")
-    cat("The Alt_0002 sequence had to be added for:", sum(alt_index==1),"tags\n")
-    cat("Tags discarded due to lack of Ref_0001 sequence:", sum(ref_index==-1),"tags\n")
-    cat("Tags discarded due to lack of Alt_0002 sequence:", sum(alt_index==-1),"tags\n")
+  if(!is.null(hap_seq)){
+    vmsg("The haplotype database was provided and used to recover missing Ref_0001 and Alt_0002 sequences.", verbose = verbose, level = 1)
+  } else {
+    vmsg("The haplotype database was not provided. Tags with missing Ref_0001 or Alt_0002 sequences were flagged with warnings and removed from the analysis.", verbose = verbose, level = 1)
   }
+  vmsg("The Ref_0001 sequence were added for: %s tags", verbose = verbose, level = 2, type = ">>>", sum(ref_index==1))
+  vmsg("The Alt_0002 sequence were added for: %s tags", verbose = verbose, level = 2, type = ">>>", sum(alt_index==1))
+  vmsg("Tags discarded due to lack of Ref_0001 sequence: %s tags", verbose = verbose, level = 2, type = ">>>", sum(ref_index==-1))
+  vmsg("Tags discarded due to lack of Alt_0002 sequence: %s tags", verbose = verbose, level = 2, type = ">>>", sum(alt_index==-1))
 
+  vmsg("Pairwise alignments of sequences to recover SNP position, reference and alternative bases...", verbose = verbose, level = 1)
   clust <- makeCluster(n.cores)
   #clusterExport(clust, c("botloci", "compare", "nucleotideSubstitutionMatrix", "pairwiseAlignment", "DNAString", "reverseComplement"))
-  #clusterExport(clust, c("botloci", "alignment_score_thr"))
-  compare_results <- parLapply(clust, updated_by_cloneID, function(x) compare(x, botloci, alignment_score_thr))
+  #clusterExport(clust, c("botloci", "alignment_score_thr", "mi_df"))
+  compare_results <- parLapply(clust, updated_by_cloneID, function(x) compare(x, botloci, alignment_score_thr, mi_df, verbose = FALSE))
   stopCluster(clust)
+
+  vmsg("Pairwise alignments concluded.", verbose = verbose, level = 1)
 
   my_results_csv <- lapply(compare_results, "[[", 1)
   my_results_csv <- do.call(rbind, my_results_csv)
@@ -252,11 +301,9 @@ loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, align
   rm_indels <- sapply(compare_results, "[[", 4)
   rm_indels <- unlist(rm_indels)
 
-  if(verbose){
-    cat("Number of tags removed because of low alignment score:", length(rm_score),"tags\n")
-    cat("Number of tags removed because of N in the alternative sequence:", length(rm_N),"tags\n")
-    cat("Number of tags removed because of indels as targets (not yet supported):", length(rm_indels),"tags\n")
-  }
+  vmsg("Number of tags removed because of low alignment score: %s tags", verbose = verbose, level = 2, type = ">>>", length(rm_score))
+  vmsg("Number of tags removed because of N in the alternative sequence: %s tags", verbose = verbose, level = 2, type = ">>>", length(rm_N))
+  vmsg("Number of tags removed because of indels as targets (not yet supported): %s tags", verbose = verbose, level = 2, type = ">>>", length(rm_indels))
 
   rownames(my_results_csv) <- NULL
   return(my_results_csv)
@@ -351,10 +398,44 @@ add_ref_alt <- function(one_tag, hap_seq, nsamples, verbose = TRUE) {
 #' @importFrom pwalign pairwiseAlignment nucleotideSubstitutionMatrix
 #'
 #' @noRd
-compare <- function(one_tag, botloci, alignment_score_thr = 40){
+compare <- function(one_tag, botloci, alignment_score_thr = 40, mi_df= NULL, verbose = FALSE){
+  # for(i in 1507:length(updated_by_cloneID)){
+  # one_tag <- updated_by_cloneID[[i]]
+
   cloneID <- one_tag$CloneID[1]
+
   isBotLoci <- cloneID %in% botloci[,1]
-  # If marker is present in the botloc list, get the reverse complement sequence
+  if(!is.null(mi_df)) {
+    one_mi_df <- mi_df[which(mi_df$CloneID %in% cloneID), ]
+    # Handle duplicate CloneIDs in markers_info
+    if(nrow(one_mi_df) > 1) {
+      key_cols <- intersect(c("CloneID", "Chr", "Pos", "Ref", "Alt", "Type"), colnames(one_mi_df))
+      if(nrow(unique(one_mi_df[, key_cols])) == 1) {
+        warning("Duplicate CloneID '", cloneID, "' found in markers_info with identical key columns. Keeping the first entry.")
+        one_mi_df <- one_mi_df[1, ]
+      } else {
+        stop("Duplicate CloneID '", cloneID, "' found in markers_info with differing values in key columns (CloneID, Chr, Pos, Ref, Alt, Type). Please resolve the conflict in your markers_info file.")
+      }
+    }
+    isIndel <- tolower(one_mi_df$Type) == "indel"
+  } else {
+    isIndel <- FALSE
+  }
+
+  if(isIndel){
+    update_tag <- one_tag[grep("Ref_0001$",one_tag$AlleleID),]
+    update_tag[,2:5] <- c(one_mi_df$Chr, one_mi_df$Pos, one_mi_df$Ref, one_mi_df$Alt)
+    update_tag_temp <- one_tag[grep("Alt_0002$",one_tag$AlleleID),]
+    update_tag_temp[,2:5] <- c(one_mi_df$Chr, one_mi_df$Pos, one_mi_df$Ref, one_mi_df$Alt)
+    update_tag <- rbind(update_tag, update_tag_temp)
+
+    return(list(update_tag = update_tag,
+                rm_score = NULL,
+                rm_N = NULL,
+                rm_indels = NULL))
+  }
+
+  # If marker is present in the botloci list, get the reverse complement sequence
   if(isBotLoci) one_tag$AlleleSequence <- sapply(one_tag$AlleleSequence, function(x) as.character(reverseComplement(DNAString(x))))
 
   chr <- sapply(strsplit(cloneID, "_"), function(x) x[-length(x)])
@@ -368,7 +449,10 @@ compare <- function(one_tag, botloci, alignment_score_thr = 40){
   sigma <- nucleotideSubstitutionMatrix(match = 1, mismatch = -0.5, baseOnly = FALSE) # baseOnly = FALSE avoid breaking when N is present (they will be filtered after))
   align <- pairwiseAlignment(ref_seq,
                              alt_seq,
-                             substitutionMatrix = sigma,gapOpening=-1.4, gapExtension=-0.1, type = "global")
+                             substitutionMatrix = sigma,
+                             gapOpening=-1.4,
+                             gapExtension=-0.1,
+                             type = "global")
 
   # The score is a bit different from the python script despite same weights
   if(align@score > alignment_score_thr){ # if score for the target sequence is smaller than the threshold, the tag will be discarted
@@ -529,9 +613,7 @@ create_VCF_body <- function(csv,
   vcf_tag_list1 <- lapply(vcf_tag_list, "[[", 1)
   rm_mks <- sapply(vcf_tag_list, "[[" ,2)
 
-  if(verbose){
-    print(paste("SNP removed because presented more than one allele:", sum(rm_mks)))
-  }
+  vmsg("SNP removed because presented more than one allele: %s", verbose = verbose, level = 2, type = ">>>",sum(rm_mks))
 
   for(i in seq_along(vcf_tag_list1)) {
     if(is.vector(vcf_tag_list1[[i]])) {
@@ -555,9 +637,7 @@ create_VCF_body <- function(csv,
   if(length(which(duplicated(vcf_body[,3]))) > 0){
     repeated <- vcf_body[which(duplicated(vcf_body[,3])), 4]
 
-    if(verbose){
-      print(paste("Different primers pair capture same SNP positions in", length(repeated), "locations. The repeated were discarded."))
-    }
+    vmsg("Different primers pair capture same SNP positions in %s locations. The repeated were discarded.", verbose = verbose, level = 2, length(repeated))
 
     repeated_tab <- vcf_body[which(vcf_body[,4] %in% repeated),]
     vcf_body_new <- vcf_body[-which(vcf_body[,4] %in% repeated),]

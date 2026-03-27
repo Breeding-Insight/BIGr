@@ -21,22 +21,33 @@ madc2vcf_targets(
 
 \item{botloci_file}{character or \code{NULL} (default \code{NULL}). Path to a plain-text
 file listing target IDs designed on the \strong{bottom} strand (one ID per line).
-Required only when \code{get_REF_ALT = TRUE} and \code{markers_info} does not supply
-\code{Ref} and \code{Alt} columns.}
+Used for strand-correcting probe sequences when \code{get_REF_ALT = TRUE} and
+\code{markers_info} does not supply \code{Ref} and \code{Alt} columns. Also required when
+\code{ChromPos} is invalid and \code{markers_info} does not provide \code{Ref}/\code{Alt}.}
 
 \item{markers_info}{character or \code{NULL}. Optional path to a CSV providing target
-metadata. Minimum required columns: \code{CloneID} (or \code{BI_markerID}), \code{Chr}, \code{Pos}.
-When \code{get_REF_ALT = TRUE}, also requires \code{Ref} and \code{Alt} (replaces probe-sequence
-inference). \code{Type} and \code{Indel_pos} are never required by this function.}
+metadata. Accepted columns:
+\itemize{
+\item \code{CloneID} or \code{BI_markerID} (required as marker identifier);
+\item \code{Chr}, \code{Pos} — required when \code{CloneID} does not follow the \code{Chr_Pos} format;
+\item \code{Ref}, \code{Alt} — required when \code{get_REF_ALT = TRUE} and probe-sequence
+inference is not possible (IUPAC codes, indels, or unfixed allele IDs).
+}}
 
-\item{get_REF_ALT}{logical (default \code{FALSE}). If \code{TRUE}, attempts to infer REF/ALT
-bases from the Ref/Alt probe sequences in the MADC file (with strand correction
-using \code{botloci_file}). Targets with more than one difference between Ref/Alt
-sequences are removed.}
+\item{get_REF_ALT}{logical (default \code{FALSE}). If \code{TRUE}, attempts to recover
+REF/ALT bases. The source is chosen automatically: \code{markers_info} \code{Ref}/\code{Alt}
+columns take priority; otherwise probe sequences from the MADC are compared
+(with \code{botloci_file} for strand correction). Targets with more than one
+difference between Ref/Alt sequences are removed. When \code{FALSE}, REF and ALT
+are set to \code{"."} in the output VCF.}
 
-\item{collapse_matches_counts}{logical (default \code{FALSE}). If \code{TRUE}, counts for targets with identical \code{CHROM_POS} are summed together. This is useful when the MADC file contains multiple rows per target (e.g., due to multiple alleles or technical replicates) and you want to aggregate them into a single entry per unique target.}
+\item{collapse_matches_counts}{logical (default \code{FALSE}). If \code{TRUE}, counts for
+\verb{|AltMatch} and \verb{|RefMatch} rows are summed into their corresponding \verb{|Ref}
+and \verb{|Alt} rows before building the matrices. Useful when the MADC contains
+multiple allele rows per target that should be aggregated.}
 
-\item{verbose}{logical (default \code{TRUE}). If \code{TRUE}, prints detailed progress messages about each processing step.}
+\item{verbose}{logical (default \code{TRUE}). If \code{TRUE}, prints detailed progress
+messages about each processing step.}
 }
 \value{
 (Invisibly) returns the path to \code{output.file}. The side effect is a
@@ -53,14 +64,17 @@ Convert DArTag MADC target read counts to a VCF
 
 \strong{What this function does}
 \itemize{
-\item Runs basic sanity checks on the MADC file (column presence, fixed allele IDs,
-IUPAC/ambiguous bases, lowercase bases, indels).
+\item Runs basic sanity checks on the MADC file via \code{check_madc_sanity()} (column
+presence, fixed allele IDs, IUPAC/ambiguous bases, lowercase bases, indels,
+chromosome/position format, all-NA rows/columns, Ref/Alt sequence presence).
 \item Extracts reference and total read counts per sample and target.
 \item Derives \code{AD} (ref,alt) by subtraction (alt = total − ref).
-\item If \code{get_REF_ALT = TRUE}, attempts to recover true REF/ALT bases by comparing
-the Ref/Alt probe sequences; targets with >1 polymorphism are discarded.
-\item Optionally accepts a \code{markers_info} CSV to supply \code{CHROM}, \code{POS}, \code{REF}, \code{ALT}
-bypassing sequence-based inference.
+\item If \code{get_REF_ALT = TRUE}, recovers REF/ALT bases either from \code{markers_info}
+(when \code{Ref}/\code{Alt} columns are present) or by comparing the Ref/Alt probe
+sequences in the MADC file (with strand correction via \code{botloci_file}).
+Targets with >1 polymorphism between sequences are discarded.
+\item Optionally accepts a \code{markers_info} CSV to supply \code{CHROM}, \code{POS}, \code{REF},
+\code{ALT}, bypassing sequence-based inference.
 }
 
 \strong{Output VCF layout}
@@ -83,11 +97,30 @@ If a target ID appears in \code{botloci_file}, its probe sequences are reverse-
 complemented prior to base comparison so that REF/ALT are reported in the
 top-strand genomic orientation.
 
-\strong{Sanity check behavior}
-\itemize{
-\item If required columns or fixed IDs are missing, the function \code{stop()}s.
-\item If IUPAC/lowercase/indels are detected and \code{markers_info} is \strong{not}
-provided, the function \code{stop()}s with a diagnostic message explaining what to fix.
+\strong{Sanity check behaviour and requirements}
+
+The function always stops if required columns (\code{CloneID}, \code{AlleleID},
+\code{AlleleSequence}) are missing.
+
+For the remaining checks the required inputs depend on the combination of
+check result and \code{get_REF_ALT}:\tabular{llll}{
+   Check \tab Status \tab \code{get_REF_ALT} \tab Required \cr
+   \strong{IUPAC codes} \tab detected \tab \code{TRUE} \tab \code{markers_info} with \code{Ref}/\code{Alt} \cr
+    \tab detected \tab \code{FALSE} \tab — \cr
+    \tab not detected \tab \code{TRUE} \tab \code{botloci_file} \strong{or} \code{markers_info} with \code{Ref}/\code{Alt} \cr
+    \tab not detected \tab \code{FALSE} \tab — \cr
+   \strong{Indels} \tab detected \tab \code{TRUE} \tab \code{markers_info} with \code{Ref}/\code{Alt} \cr
+    \tab detected \tab \code{FALSE} \tab — \cr
+    \tab not detected \tab \code{TRUE} \tab \code{botloci_file} \strong{or} \code{markers_info} with \code{Ref}/\code{Alt} \cr
+    \tab not detected \tab \code{FALSE} \tab — \cr
+   \strong{ChromPos} \tab valid \tab \code{TRUE} \tab \code{botloci_file} \strong{or} \code{markers_info} with \code{Ref}/\code{Alt} \cr
+    \tab valid \tab \code{FALSE} \tab — \cr
+    \tab invalid \tab \code{TRUE} \tab \code{markers_info} with \code{Chr}/\code{Pos}/\code{Ref}/\code{Alt} \strong{or} \code{markers_info} with \code{Chr}/\code{Pos} + \code{botloci_file} \cr
+    \tab invalid \tab \code{FALSE} \tab \code{markers_info} with \code{Chr}/\code{Pos} \cr
+   \strong{FixAlleleIDs} \tab fixed \tab \code{TRUE} \tab \code{botloci_file} \strong{or} \code{markers_info} with \code{Ref}/\code{Alt} \cr
+    \tab fixed \tab \code{FALSE} \tab — \cr
+    \tab not fixed \tab \code{TRUE} \tab \code{markers_info} with \code{Ref}/\code{Alt} \cr
+    \tab not fixed \tab \code{FALSE} \tab — \cr
 }
 }
 \section{Dependencies}{

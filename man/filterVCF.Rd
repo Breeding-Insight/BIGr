@@ -6,7 +6,7 @@
 \usage{
 filterVCF(
   vcf.file,
-  quality.rates = F,
+  quality.rates = FALSE,
   filter.OD = NULL,
   filter.BIAS.min = NULL,
   filter.BIAS.max = NULL,

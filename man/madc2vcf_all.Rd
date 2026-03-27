@@ -5,8 +5,8 @@
 \title{Converts MADC file to VCF recovering target and off-target SNPs}
 \usage{
 madc2vcf_all(
-  madc = NULL,
-  botloci_file = NULL,
+  madc,
+  botloci_file,
   hap_seq_file = NULL,
   n.cores = 1,
   rm_multiallelic_SNP = FALSE,
@@ -19,9 +19,9 @@ madc2vcf_all(
 )
 }
 \arguments{
-\item{madc}{A string specifying the path to the MADC file.}
+\item{madc}{Required. A string specifying the path or URL to the MADC file.}
 
-\item{botloci_file}{A string specifying the path to the file containing the target IDs designed in the bottom strand.}
+\item{botloci_file}{Required. A string specifying the path or URL to the file containing the target IDs designed in the bottom strand.}
 
 \item{hap_seq_file}{A string specifying the path to the haplotype database fasta file.}
 

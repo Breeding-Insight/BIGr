@@ -14,23 +14,30 @@ If \code{FixAlleleIDs} is \code{FALSE} (raw DArT format), the first 7 rows are
 treated as header filler and skipped before further checks are run.}
 }
 \value{
-A named list with three elements:
+A named list with five elements:
 \describe{
-\item{checks}{Named logical vector with eight entries:
+\item{checks}{Named logical vector with nine entries:
 \code{Columns}, \code{FixAlleleIDs}, \code{IUPACcodes}, \code{LowerCase}, \code{Indels},
-\code{ChromPos}, \code{allNAcol}, \code{allNArow}.
-\code{TRUE} means the condition was detected (or passed for \code{Columns} and
-\code{FixAlleleIDs}); \code{NA} means the check was skipped.}
+\code{ChromPos}, \code{allNAcol}, \code{allNArow}, \code{RefAltSeqs}.
+\code{TRUE} means the condition was detected (or passed for \code{Columns},
+\code{FixAlleleIDs}, \code{ChromPos}, and \code{RefAltSeqs}); \code{NA} means the check
+was skipped.}
 \item{messages}{Named list of length-2 character vectors, one per check.
 Element \verb{[[1]]} is the message when the check is \code{TRUE}, element \verb{[[2]]}
 when it is \code{FALSE}. Indexed by the same names as \code{checks}.}
 \item{indel_clone_ids}{Character vector of \code{CloneID}s where ref/alt
 lengths differ. Returns \code{character(0)} if none are found, or \code{NULL}
 when required columns are missing.}
+\item{missRef}{Character vector of \code{CloneID}s that have no \code{Ref} allele
+row. Returns \code{character(0)} if all \code{CloneID}s have a \code{Ref} row, or
+\code{NULL} when required columns are missing.}
+\item{missAlt}{Character vector of \code{CloneID}s that have no \code{Alt} allele
+row. Returns \code{character(0)} if all \code{CloneID}s have an \code{Alt} row, or
+\code{NULL} when required columns are missing.}
 }
 }
 \description{
-Performs eight quick validations on an allele report:
+Performs nine quick validations on an allele report:
 \enumerate{
 \item \strong{Columns} - required columns are present (\code{CloneID}, \code{AlleleID}, \code{AlleleSequence});
 \item \strong{FixAlleleIDs} - first column's first up-to-6 rows are not all blank or \code{"*"}
@@ -41,27 +48,39 @@ Performs eight quick validations on an allele report:
 or a \code{"-"} character is present in \code{AlleleSequence};
 \item \strong{ChromPos} - all \code{CloneID} values follow the \code{Chr_Position} format
 (prefix matches \code{"chr"} case-insensitively, suffix is a positive integer);
-\item \strong{allNAcol} - at least one column contains only \code{NA} values;
-\item \strong{allNArow} - at least one row contains only \code{NA} values.
+\item \strong{allNAcol} - at least one column contains only \code{NA} or empty values;
+\item \strong{allNArow} - at least one row contains only \code{NA} or empty values;
+\item \strong{RefAltSeqs} - every \code{CloneID} has at least one \code{Ref} and one \code{Alt} allele row.
 }
 }
 \details{
 \itemize{
-\item \strong{FixAlleleIDs:} When the check fails (raw DArT format), row 7 is used as
-the column header and the first 7 rows are dropped before subsequent checks.
+\item \strong{FixAlleleIDs:} When the first six rows of the first column are all blank
+or \code{"*"} (raw DArT format), row 7 is promoted to column headers and the
+first 7 rows are dropped before subsequent checks are run. The check is
+\code{TRUE} when the file has already been processed by HapApp (fixed IDs with
+\verb{_0001}/\verb{_0002} suffixes).
 \item \strong{IUPAC check:} Flags any character outside \code{A}, \code{T}, \code{C}, \code{G} and \code{"-"}
 (case-insensitive), which includes ambiguity codes (\code{N}, \code{R}, \code{Y}, etc.).
 \item \strong{Indels:} Rows are split by \code{AlleleID} containing \code{"Ref_0001"} vs
-\code{"Alt_0002"}, merged by \code{CloneID}, and the lengths of \code{AlleleSequence}
-are compared. A \code{"-"} anywhere in \code{AlleleSequence} is also treated as
-evidence of an indel.
+\code{"Alt_0002"}, merged by \code{CloneID}, and flagged as indels if either (a) the
+lengths of \code{AlleleSequence} differ, (b) the sequences have the same length
+but more than one character differs between them (complex indel / local
+rearrangement), or (c) a \code{"-"} character is present anywhere in
+\code{AlleleSequence}.
 \item \strong{ChromPos:} Each \code{CloneID} is split on \code{"_"} into exactly two parts; the
 first part must match \code{"Chr"} (case-insensitive) and the second must be a
 positive integer. Returns \code{FALSE} when any \code{CloneID} is \code{NA}.
 \item \strong{allNAcol / allNArow:} Detected via \code{apply()} over columns/rows
-respectively; useful for flagging empty or corrupt entries.
+respectively; a cell is treated as missing when it is \code{NA} or an empty
+string (\code{""}). Useful for flagging empty or corrupt entries.
+\item \strong{RefAltSeqs:} For each unique \code{CloneID}, checks whether at least one row
+with a \code{Ref} (\verb{|Ref_} when \code{FixAlleleIDs = TRUE}, \verb{|Ref$} otherwise) and
+one row with an \code{Alt} (\verb{|Alt_} / \verb{|Alt$}) allele exist. \code{CloneID}s that
+lack a \code{Ref} row are stored in \code{missRef}; those lacking an \code{Alt} row in
+\code{missAlt}. The check is \code{TRUE} when both sets are empty.
 \item If required columns are missing (\code{Columns = FALSE}), only \code{Columns} and
 \code{FixAlleleIDs} are evaluated; all other checks remain \code{NA} and
-\code{indel_clone_ids} is returned as \code{NULL}.
+\code{indel_clone_ids}, \code{missRef}, and \code{missAlt} are returned as \code{NULL}.
 }
 }

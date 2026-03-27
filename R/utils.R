@@ -69,6 +69,20 @@ vmsg <- function(text, verbose = FALSE, level = 1, type = ">>", ...) {
   message(formatted_msg)
 }
 
+
+#' Check Whether a URL Is Accessible
+#'
+#' Attempts to open a connection to the given URL and returns `TRUE` if
+#' successful, `FALSE` otherwise. Errors and warnings are both treated as
+#' inaccessible.
+#'
+#' @param u character. The URL to test.
+#'
+#' @return A single logical: `TRUE` if the URL can be opened, `FALSE` if not.
+#'
+#' @keywords internal
+#' @noRd
+#' @export 
 url_exists <- function(u) {
   tryCatch({
     con <- url(u, open = "rb")

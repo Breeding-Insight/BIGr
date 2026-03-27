@@ -137,7 +137,7 @@ check_madc_sanity <- function(report) {
         indel_mask[same_len] <- n_diffs > 1
       }
 
-      checks["Indels"] <- any(indel_mask) | any(grepl("-", report$AlleleSequence))
+      checks["Indels"] <- any(indel_mask) | any(grepl("-", report$AlleleSequence), na.rm = TRUE)
       indels <- if (any(indel_mask)) merged$CloneID[indel_mask] else character(0)
 
     } else {

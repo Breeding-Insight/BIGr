@@ -9,14 +9,17 @@
 #'
 #' @details
 #' **What this function does**
-#' - Runs basic sanity checks on the MADC file (column presence, fixed allele IDs,
-#'   IUPAC/ambiguous bases, lowercase bases, indels).
+#' - Runs basic sanity checks on the MADC file via `check_madc_sanity()` (column
+#'   presence, fixed allele IDs, IUPAC/ambiguous bases, lowercase bases, indels,
+#'   chromosome/position format, all-NA rows/columns, Ref/Alt sequence presence).
 #' - Extracts reference and total read counts per sample and target.
 #' - Derives `AD` (ref,alt) by subtraction (alt = total − ref).
-#' - If `get_REF_ALT = TRUE`, attempts to recover true REF/ALT bases by comparing
-#'   the Ref/Alt probe sequences; targets with >1 polymorphism are discarded.
-#' - Optionally accepts a `markers_info` CSV to supply `CHROM`, `POS`, `REF`, `ALT`
-#'   bypassing sequence-based inference.
+#' - If `get_REF_ALT = TRUE`, recovers REF/ALT bases either from `markers_info`
+#'   (when `Ref`/`Alt` columns are present) or by comparing the Ref/Alt probe
+#'   sequences in the MADC file (with strand correction via `botloci_file`).
+#'   Targets with >1 polymorphism between sequences are discarded.
+#' - Optionally accepts a `markers_info` CSV to supply `CHROM`, `POS`, `REF`,
+#'   `ALT`, bypassing sequence-based inference.
 #'
 #' **Output VCF layout**
 #' - `INFO` fields:
@@ -32,27 +35,58 @@
 #' complemented prior to base comparison so that REF/ALT are reported in the
 #' top-strand genomic orientation.
 #'
-#' **Sanity check behavior**
-#' - If required columns or fixed IDs are missing, the function `stop()`s.
-#' - If IUPAC/lowercase/indels are detected and `markers_info` is **not**
-#'   provided, the function `stop()`s with a diagnostic message explaining what to fix.
+#' **Sanity check behaviour and requirements**
+#'
+#' The function always stops if required columns (`CloneID`, `AlleleID`,
+#' `AlleleSequence`) are missing.
+#'
+#' For the remaining checks the required inputs depend on the combination of
+#' check result and `get_REF_ALT`:
+#'
+#' | Check | Status | `get_REF_ALT` | Required |
+#' |---|---|---|---|
+#' | **IUPAC codes** | detected | `TRUE` | `markers_info` with `Ref`/`Alt` |
+#' | | detected | `FALSE` | — |
+#' | | not detected | `TRUE` | `botloci_file` **or** `markers_info` with `Ref`/`Alt` |
+#' | | not detected | `FALSE` | — |
+#' | **Indels** | detected | `TRUE` | `markers_info` with `Ref`/`Alt` |
+#' | | detected | `FALSE` | — |
+#' | | not detected | `TRUE` | `botloci_file` **or** `markers_info` with `Ref`/`Alt` |
+#' | | not detected | `FALSE` | — |
+#' | **ChromPos** | valid | `TRUE` | `botloci_file` **or** `markers_info` with `Ref`/`Alt` |
+#' | | valid | `FALSE` | — |
+#' | | invalid | `TRUE` | `markers_info` with `Chr`/`Pos`/`Ref`/`Alt` **or** `markers_info` with `Chr`/`Pos` + `botloci_file` |
+#' | | invalid | `FALSE` | `markers_info` with `Chr`/`Pos` |
+#' | **FixAlleleIDs** | fixed | `TRUE` | `botloci_file` **or** `markers_info` with `Ref`/`Alt` |
+#' | | fixed | `FALSE` | — |
+#' | | not fixed | `TRUE` | `markers_info` with `Ref`/`Alt` |
+#' | | not fixed | `FALSE` | — |
 #'
 #' @param madc_file character. Path to the input MADC CSV file.
 #' @param output.file character. Path to the output VCF file to write.
 #' @param botloci_file character or `NULL` (default `NULL`). Path to a plain-text
 #'   file listing target IDs designed on the **bottom** strand (one ID per line).
-#'   Required only when `get_REF_ALT = TRUE` and `markers_info` does not supply
-#'   `Ref` and `Alt` columns.
+#'   Used for strand-correcting probe sequences when `get_REF_ALT = TRUE` and
+#'   `markers_info` does not supply `Ref` and `Alt` columns. Also required when
+#'   `ChromPos` is invalid and `markers_info` does not provide `Ref`/`Alt`.
 #' @param markers_info character or `NULL`. Optional path to a CSV providing target
-#'   metadata. Minimum required columns: `CloneID` (or `BI_markerID`), `Chr`, `Pos`.
-#'   When `get_REF_ALT = TRUE`, also requires `Ref` and `Alt` (replaces probe-sequence
-#'   inference). `Type` and `Indel_pos` are never required by this function.
-#' @param get_REF_ALT logical (default `FALSE`). If `TRUE`, attempts to infer REF/ALT
-#'   bases from the Ref/Alt probe sequences in the MADC file (with strand correction
-#'   using `botloci_file`). Targets with more than one difference between Ref/Alt
-#'   sequences are removed.
-#' @param collapse_matches_counts logical (default `FALSE`). If `TRUE`, counts for targets with identical `CHROM_POS` are summed together. This is useful when the MADC file contains multiple rows per target (e.g., due to multiple alleles or technical replicates) and you want to aggregate them into a single entry per unique target.
-#' @param verbose logical (default `TRUE`). If `TRUE`, prints detailed progress messages about each processing step.
+#'   metadata. Accepted columns:
+#'   - `CloneID` or `BI_markerID` (required as marker identifier);
+#'   - `Chr`, `Pos` — required when `CloneID` does not follow the `Chr_Pos` format;
+#'   - `Ref`, `Alt` — required when `get_REF_ALT = TRUE` and probe-sequence
+#'     inference is not possible (IUPAC codes, indels, or unfixed allele IDs).
+#' @param get_REF_ALT logical (default `FALSE`). If `TRUE`, attempts to recover
+#'   REF/ALT bases. The source is chosen automatically: `markers_info` `Ref`/`Alt`
+#'   columns take priority; otherwise probe sequences from the MADC are compared
+#'   (with `botloci_file` for strand correction). Targets with more than one
+#'   difference between Ref/Alt sequences are removed. When `FALSE`, REF and ALT
+#'   are set to `"."` in the output VCF.
+#' @param collapse_matches_counts logical (default `FALSE`). If `TRUE`, counts for
+#'   `|AltMatch` and `|RefMatch` rows are summed into their corresponding `|Ref`
+#'   and `|Alt` rows before building the matrices. Useful when the MADC contains
+#'   multiple allele rows per target that should be aggregated.
+#' @param verbose logical (default `TRUE`). If `TRUE`, prints detailed progress
+#'   messages about each processing step.
 #'
 #' @return (Invisibly) returns the path to `output.file`. The side effect is a
 #'   **VCF v4.3** written to disk containing one row per target and columns for all
@@ -133,18 +167,18 @@ madc2vcf_targets <- function(madc_file,
   for(i in seq_along(messages_results))
     vmsg(messages_results[i], verbose = verbose, level = 1, type = ">>")
 
-  if(any(!(checks$checks[c("Columns", "FixAlleleIDs")]))){
-    idx <- which(!(checks$checks[c("Columns", "FixAlleleIDs")]))
+  if(any(!(checks$checks[c("Columns")]))){
+    idx <- which(!(checks$checks[c("Columns")]))
     if(length(idx) > 0)
     stop(paste("The MADC file does not pass the sanity checks:\n",
-               paste(messages_results[c("Columns", "FixAlleleIDs")[idx]], collapse = "\n")))
+               paste(messages_results[c("Columns")[idx]], collapse = "\n")))
   }
 
   if(any(checks$checks[c("IUPACcodes", "Indels")]) && get_REF_ALT){
     idx <- which((checks$checks[c("IUPACcodes", "Indels")]))
     if(is.null(markers_info)) stop(paste("Please provide a markers_info file to proceed. The MADC file does not pass the sanity checks:",
                                   paste(messages_results[c("IUPACcodes", "Indels")[idx]], collapse = "\n")))
-    else vmsg("MADC file has some issues (IUPAC codes, indels), but a markers_info file is provided, so proceeding with VCF generation.", verbose = verbose, level = 1, type = ">>")
+    else vmsg("MADC file has IUPAC codes and/or indels, but a markers_info file is provided, so proceeding with VCF generation.", verbose = verbose, level = 1, type = ">>")
   }
 
   if(checks$checks["LowerCase"]){
@@ -161,6 +195,35 @@ madc2vcf_targets <- function(madc_file,
   if(!is.null(markers_info)) {
     mi_df          <- read.csv(markers_info)
     mi_has_ref_alt <- all(c("Ref", "Alt") %in% colnames(mi_df))
+  }
+
+  if(!checks$checks["FixAlleleIDs"]){
+    vmsg("MADC file has not been processed by HapApp.", verbose = verbose, level = 1)
+    if(get_REF_ALT){
+      if(!mi_has_ref_alt) stop("MADC file has not been processed by HapApp. BIGr only provide results if get_REF_ALT is set to FALSE or if is TRUE but a marker_info with REF and ALT information is provided.")
+    }
+    # The check points to FALSE if the 6 initial rows exist or if there are no fixed allele ID (aka _0001, _0002, etc)
+    n <- nrow(report)
+    idx <- seq_len(min(6L, n))
+    first_col_vals <- report[[1]][idx]
+    all_blank_or_star <- all(first_col_vals %in% c("", "*"), na.rm = TRUE)
+    # Also require that both _0001 and _0002 appear in AlleleID
+    if(all_blank_or_star) {
+      colnames(report) <- report[7,]
+      report <- report[-c(1:7),]
+    }
+  }
+
+  if(checks$checks["allNArow"]){
+    idx <- apply(report, 1, function(x) all(is.na(x) | x == ""))
+    report <- report[!idx, ]
+    vmsg("MADC contains rows with all NA values. Rows %s will be removed.", verbose = verbose, level = 1, type = ">>", paste(which(idx), collapse = ", "))
+  }
+
+  if(checks$checks["allNAcol"]){
+    idx <- apply(report, 2, function(x) all(is.na(x) | x == ""))
+    report <- report[, !idx]
+    vmsg("MADC contains columns with all NA values. Columns %s will be removed.", verbose = verbose, level = 1,  type = ">>", paste0(which(idx), collapse = ","))
   }
 
   if(!isTRUE(checks$checks["ChromPos"])) {
@@ -201,11 +264,21 @@ madc2vcf_targets <- function(madc_file,
     }
   }
 
+  # Throw message if OtherAlleles are present
+  if(checks$checks["OtherAlleles"]) {
+    vmsg("AlleleID contains alleles other than Ref and Alt. These will be ignored in the VCF output. Use function madc2vcf_all to include them.", verbose = verbose, level = 1, type = ">>")
+  }
+
+  # Make sure counts are numeric
+  count_cols <- setdiff(colnames(report), c("CloneID", "AlleleID", "AlleleSequence"))
+  report[count_cols] <- lapply(report[count_cols], function(x) as.numeric(as.character(x)))
+
   vmsg("Input checks done!", verbose = verbose, level = 1, type = ">>")
 
   vmsg("Extracting depth information", verbose = verbose, level = 0, type = ">>")
 
   matrices <- get_countsMADC(madc_object = report, collapse_matches_counts = collapse_matches_counts, verbose = verbose)
+
   ref_df <- data.frame(matrices[[1]], check.names = FALSE)
   alt_df <- data.frame(matrices[[2]]-matrices[[1]], check.names = FALSE)
   size_df <- data.frame(matrices[[2]], check.names = FALSE)
@@ -230,7 +303,7 @@ madc2vcf_targets <- function(madc_file,
       stop("The markers_info file must contain a marker ID column named either 'CloneID' or 'BI_markerID'.")
 
     if(checks$checks["Indels"])
-      vmsg("Indels detected in MADC file. Since Ref and Alt are provided in markers_info, Type and Indel_pos are not required.",
+      vmsg("Indels detected in MADC file. But it is okay because Ref and Alt are provided in markers_info.",
            verbose = verbose, level = 1, type = ">>")
 
     if(!all(c(id_col, "Chr", "Pos", "Ref", "Alt") %in% colnames(mi_df)))

@@ -1,7 +1,7 @@
 #' Run basic sanity checks on a MADC-style allele report
 #'
 #' @description
-#' Performs eight quick validations on an allele report:
+#' Performs nine quick validations on an allele report:
 #' 1) **Columns** - required columns are present (`CloneID`, `AlleleID`, `AlleleSequence`);
 #' 2) **FixAlleleIDs** - first column's first up-to-6 rows are not all blank or `"*"`
 #'    *and* both `_0001` and `_0002` appear in `AlleleID`;
@@ -11,8 +11,9 @@
 #'    or a `"-"` character is present in `AlleleSequence`;
 #' 6) **ChromPos** - all `CloneID` values follow the `Chr_Position` format
 #'    (prefix matches `"chr"` case-insensitively, suffix is a positive integer);
-#' 7) **allNAcol** - at least one column contains only `NA` values;
-#' 8) **allNArow** - at least one row contains only `NA` values.
+#' 7) **allNAcol** - at least one column contains only `NA` or empty values;
+#' 8) **allNArow** - at least one row contains only `NA` or empty values;
+#' 9) **RefAltSeqs** - every `CloneID` has at least one `Ref` and one `Alt` allele row.
 #'
 #' @param report A `data.frame` with at least the columns
 #'   `CloneID`, `AlleleID`, and `AlleleSequence`. The first column is also
@@ -21,44 +22,64 @@
 #'   treated as header filler and skipped before further checks are run.
 #'
 #' @details
-#' - **FixAlleleIDs:** When the check fails (raw DArT format), row 7 is used as
-#'   the column header and the first 7 rows are dropped before subsequent checks.
+#' - **FixAlleleIDs:** When the first six rows of the first column are all blank
+#'   or `"*"` (raw DArT format), row 7 is promoted to column headers and the
+#'   first 7 rows are dropped before subsequent checks are run. The check is
+#'   `TRUE` when the file has already been processed by HapApp (fixed IDs with
+#'   `_0001`/`_0002` suffixes).
 #' - **IUPAC check:** Flags any character outside `A`, `T`, `C`, `G` and `"-"`
 #'   (case-insensitive), which includes ambiguity codes (`N`, `R`, `Y`, etc.).
 #' - **Indels:** Rows are split by `AlleleID` containing `"Ref_0001"` vs
-#'   `"Alt_0002"`, merged by `CloneID`, and the lengths of `AlleleSequence`
-#'   are compared. A `"-"` anywhere in `AlleleSequence` is also treated as
-#'   evidence of an indel.
+#'   `"Alt_0002"`, merged by `CloneID`, and flagged as indels if either (a) the
+#'   lengths of `AlleleSequence` differ, (b) the sequences have the same length
+#'   but more than one character differs between them (complex indel / local
+#'   rearrangement), or (c) a `"-"` character is present anywhere in
+#'   `AlleleSequence`.
 #' - **ChromPos:** Each `CloneID` is split on `"_"` into exactly two parts; the
 #'   first part must match `"Chr"` (case-insensitive) and the second must be a
 #'   positive integer. Returns `FALSE` when any `CloneID` is `NA`.
 #' - **allNAcol / allNArow:** Detected via `apply()` over columns/rows
-#'   respectively; useful for flagging empty or corrupt entries.
+#'   respectively; a cell is treated as missing when it is `NA` or an empty
+#'   string (`""`). Useful for flagging empty or corrupt entries.
+#' - **RefAltSeqs:** For each unique `CloneID`, checks whether at least one row
+#'   with a `Ref` (`|Ref_` when `FixAlleleIDs = TRUE`, `|Ref$` otherwise) and
+#'   one row with an `Alt` (`|Alt_` / `|Alt$`) allele exist. `CloneID`s that
+#'   lack a `Ref` row are stored in `missRef`; those lacking an `Alt` row in
+#'   `missAlt`. The check is `TRUE` when both sets are empty.
 #' - If required columns are missing (`Columns = FALSE`), only `Columns` and
 #'   `FixAlleleIDs` are evaluated; all other checks remain `NA` and
-#'   `indel_clone_ids` is returned as `NULL`.
+#'   `indel_clone_ids`, `missRef`, and `missAlt` are returned as `NULL`.
 #'
-#' @return A named list with three elements:
+#' @return A named list with five elements:
 #' \describe{
-#'   \item{checks}{Named logical vector with eight entries:
+#'   \item{checks}{Named logical vector with nine entries:
 #'     `Columns`, `FixAlleleIDs`, `IUPACcodes`, `LowerCase`, `Indels`,
-#'     `ChromPos`, `allNAcol`, `allNArow`.
-#'     `TRUE` means the condition was detected (or passed for `Columns` and
-#'     `FixAlleleIDs`); `NA` means the check was skipped.}
+#'     `ChromPos`, `allNAcol`, `allNArow`, `RefAltSeqs`.
+#'     `TRUE` means the condition was detected (or passed for `Columns`,
+#'     `FixAlleleIDs`, `ChromPos`, and `RefAltSeqs`); `NA` means the check
+#'     was skipped.}
 #'   \item{messages}{Named list of length-2 character vectors, one per check.
 #'     Element `[[1]]` is the message when the check is `TRUE`, element `[[2]]`
 #'     when it is `FALSE`. Indexed by the same names as `checks`.}
 #'   \item{indel_clone_ids}{Character vector of `CloneID`s where ref/alt
 #'     lengths differ. Returns `character(0)` if none are found, or `NULL`
 #'     when required columns are missing.}
+#'   \item{missRef}{Character vector of `CloneID`s that have no `Ref` allele
+#'     row. Returns `character(0)` if all `CloneID`s have a `Ref` row, or
+#'     `NULL` when required columns are missing.}
+#'   \item{missAlt}{Character vector of `CloneID`s that have no `Alt` allele
+#'     row. Returns `character(0)` if all `CloneID`s have an `Alt` row, or
+#'     `NULL` when required columns are missing.}
 #' }
 #'
 #' @export
 check_madc_sanity <- function(report) {
 
   # Initialize
-  checks <- c(Columns = NA, FixAlleleIDs = NA, IUPACcodes = NA, LowerCase = NA, Indels = NA, ChromPos = NA, allNAcol = NA, allNArow = NA)
-  messages <-  list(Columns = NA, FixAlleleIDs = NA, IUPACcodes = NA, LowerCase = NA, Indels = NA, ChromPos = NA, allNAcol = NA, allNArow = NA)
+  checks <- c(Columns = NA, FixAlleleIDs = NA, IUPACcodes = NA, LowerCase = NA, Indels = NA,
+              ChromPos = NA, allNAcol = NA, allNArow = NA, RefAltSeqs = NA, OtherAlleles = NA)
+  messages <-  list(Columns = NA, FixAlleleIDs = NA, IUPACcodes = NA, LowerCase = NA, Indels = NA,
+                    ChromPos = NA, allNAcol = NA, allNArow = NA, RefAltSeqs = NA, OtherAlleles = NA)
 
   # ---- FixAlleleIDs ----
   # Check if first up-to-6 entries in the *first column* are all "" or "*"
@@ -67,14 +88,13 @@ check_madc_sanity <- function(report) {
   first_col_vals <- report[[1]][idx]
   all_blank_or_star <- all(first_col_vals %in% c("", "*"), na.rm = TRUE)
   # Also require that both _0001 and _0002 appear in AlleleID
-  has_0001 <- any(grepl("_0001", report$AlleleID, fixed = TRUE), na.rm = TRUE)
-  has_0002 <- any(grepl("_0002", report$AlleleID, fixed = TRUE), na.rm = TRUE)
-  checks["FixAlleleIDs"] <- (!all_blank_or_star) & has_0001 & has_0002
-
-  if(!checks["FixAlleleIDs"]){
+  if(all_blank_or_star) {
     colnames(report) <- report[7,]
     report <- report[-c(1:7),]
   }
+  has_0001 <- any(grepl("_0001", report$AlleleID, fixed = TRUE), na.rm = TRUE)
+  has_0002 <- any(grepl("_0002", report$AlleleID, fixed = TRUE), na.rm = TRUE)
+  checks["FixAlleleIDs"] <- (!all_blank_or_star) & has_0001 & has_0002
 
   # Validate required columns
   required <- c("CloneID", "AlleleID", "AlleleSequence")
@@ -102,47 +122,89 @@ check_madc_sanity <- function(report) {
       ref_len <- nchar(merged$AlleleSequence_ref, keepNA = TRUE)
       alt_len <- nchar(merged$AlleleSequence_alt, keepNA = TRUE)
       cmp_ok <- !is.na(ref_len) & !is.na(alt_len)
+
+      # Classic indel: different lengths
       indel_mask <- cmp_ok & (ref_len != alt_len)
+
+      # Complex indel: same length but >1 character difference between sequences
+      same_len <- cmp_ok & (ref_len == alt_len)
+      if (any(same_len)) {
+        n_diffs <- mapply(function(r, a) {
+          r_chars <- strsplit(r, "")[[1]]
+          a_chars <- strsplit(a, "")[[1]]
+          sum(r_chars != a_chars)
+        }, merged$AlleleSequence_ref[same_len], merged$AlleleSequence_alt[same_len])
+        indel_mask[same_len] <- n_diffs > 1
+      }
+
       checks["Indels"] <- any(indel_mask) | any(grepl("-", report$AlleleSequence))
       indels <- if (any(indel_mask)) merged$CloneID[indel_mask] else character(0)
+
     } else {
       checks["Indels"] <- FALSE
       indels <- character(0)
     }
 
     # --- All NA ----
-    checks["allNArow"] <- any(apply(report, 1, function(x) all(is.na(x))))
-    checks["allNAcol"] <- any(apply(report, 2, function(x) all(is.na(x))))
+    checks["allNArow"] <- any(apply(report, 1, function(x) all(is.na(x) | x == "")))
+    checks["allNAcol"] <- any(apply(report, 2, function(x) all(is.na(x)) | x == ""))
 
     # ---- Chrom Pos ----
     if(!any(is.na(report$CloneID))) {
       pos <- strsplit(report$CloneID, "_")
       format <- all(sapply(pos, length) == 2)
-      first <- all(grepl("Chr", sapply(pos, "[", 1), ignore.case = TRUE))
+      first <- all(grepl("^[A-Za-z]", sapply(pos, "[", 1)))
       second <- suppressWarnings(all(sapply(pos, function(x) as.numeric(x[2])) > 0))
       checks["ChromPos"] <- all(format, first, second)
     } else checks["ChromPos"] <- FALSE
 
-  } else indels <- NULL
+    # ---- RefAltSeqs ----
+    all_clones <- unique(report$CloneID)
+    if (isTRUE(checks["FixAlleleIDs"])) {
+      has_ref <- unique(report$CloneID[grepl("\\|Ref_",  report$AlleleID)])
+      has_alt <- unique(report$CloneID[grepl("\\|Alt_",  report$AlleleID)])
+    } else {
+      has_ref <- unique(report$CloneID[grepl("\\|Ref$",  report$AlleleID)])
+      has_alt <- unique(report$CloneID[grepl("\\|Alt$",  report$AlleleID)])
+    }
+    missRef <- setdiff(all_clones, has_ref)
+    missAlt <- setdiff(all_clones, has_alt)
+    checks["RefAltSeqs"] <- length(missRef) == 0 & length(missAlt) == 0
+
+    # ---- OtherAlleles ----
+    checks["OtherAlleles"] <- any(grepl("[|]Other", report$AlleleID))
+
+  } else {
+    indels  <- NULL
+    missRef <- NULL
+    missAlt <- NULL
+  }
 
   messages[["Columns"]] <- c("Required columns are present",
                              "One or more required columns missing. Verify if your file has columns: CloneID, AlleleID, AlleleSequence")
   messages[["FixAlleleIDs"]] <- c("Fixed Allele IDs look good",
-                                  "MADC not processed by HapApp. Please, run the MADC through HapApp to fix Allele IDs before using it in BIGr/BIGapp.")
+                                  "MADC not processed by HapApp.")
   messages[["IUPACcodes"]] <- c("IUPAC (non-ATCG) codes found in AlleleSequence. This codes are not currently supported",
                                 "No IUPAC (non-ATCG) codes found in AlleleSequence")
   messages[["LowerCase"]] <- c("Lowercase bases found in AlleleSequence",
                                "No lowercase bases found in AlleleSequence")
-  messages[["Indels"]] <- c(paste("Indels found (ref/alt lengths differ) for the CloneIDs:",paste(indels, collapse = " ")),
-                            "No indels found (ref/alt lengths match) for all CloneIDs")
+  messages[["Indels"]] <- c(paste("Indels found (ref/alt lengths differ or >1 mismatch between same-length sequences) for the CloneIDs:",paste(indels, collapse = " ")),
+                            "No indels found (ref/alt lengths match and at most 1 mismatch) for all CloneIDs")
   messages[["ChromPos"]] <- c("Chromosome and Position format in CloneID look good",
                               "CloneID does not have the expected Chromosome_Position format. Please check your CloneIDs or provide a file with this information")
   messages[["allNArow"]] <- c("One or more rows contain all NA values.",
                               "No rows with all NA values")
   messages[["allNAcol"]] <- c("One or more columns contain all NA values.",
                               "No columns with all NA values")
+  messages[["RefAltSeqs"]] <- c("All CloneIDs have both Ref and Alt alleles",
+                                paste0("Some CloneIDs are missing Ref and/or Alt alleles. ",
+                                       "Missing Ref: ", paste(missRef, collapse = " "), ". ",
+                                       "Missing Alt: ", paste(missAlt, collapse = " "), "."))
+  messages[["OtherAlleles"]] <- c("Alleles other than Ref and Alt were found in AlleleID.",
+                                  "No alleles other than Ref and Alt found in AlleleID.")
 
-  list(checks = checks, messages = messages, indel_clone_ids = indels)
+  list(checks = checks, messages = messages, indel_clone_ids = indels,
+       missRef = missRef, missAlt = missAlt)
 }
 
 #' Check and Adjust Botloci and MADC Marker Compatibility

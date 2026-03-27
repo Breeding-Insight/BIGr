@@ -98,7 +98,7 @@ madc2vcf_all <- function(madc = NULL,
                       "out_vcf= ", out_vcf, ', ',
                       "verbose= ", verbose,')">')
 
-  report <- read.csv(madc, check.names = FALSE) 
+  report <- read.csv(madc, check.names = FALSE)
   checks <- check_madc_sanity(report)
 
   messages_results <- mapply(function(check, message) {
@@ -111,9 +111,38 @@ madc2vcf_all <- function(madc = NULL,
                paste(messages_results[c("Columns", "FixAlleleIDs")[idx]], collapse = "\n")))
   }
 
-  if(any(checks$checks[c("IUPACcodes", "LowerCase", "Indels")])){
-    idx <- which((checks$checks[c("IUPACcodes", "LowerCase", "Indels")]))
-    if(is.null(markers_info)) stop(paste(messages_results[c("IUPACcodes", "LowerCase", "Indels")[idx]], collapse = "\n"))
+  if(any(checks$checks[c("IUPACcodes")])){
+    idx <- which((checks$checks[c("IUPACcodes")]))
+    stop(paste(messages_results[c("IUPACcodes")[idx]], collapse = "\n"))
+  }
+
+  if(any(!checks$checks[c("ChromPos")])){
+    if(is.null(markers_info)) {
+      stop(paste(messages_results[c("ChromPos")], collapse = "\n"))
+    } else {
+      mi_df <- read.csv(markers_info)
+      if(!all(c("Chr", "Pos") %in% colnames(mi_df)))
+        stop("ChromPos check failed: CloneID values do not follow the Chr_Position format. ",
+             "The markers_info file must contain 'Chr' and 'Pos' columns to supply CHROM and POS.")
+    }
+  }
+
+  if(any(checks$checks[c("Indels")])){
+    idx <- which((checks$checks[c("Indels")]))
+    if(is.null(markers_info)) {
+      stop(paste(messages_results[c("Indels")[idx]], collapse = "\n"))
+    } else {
+      mi_df <- read.csv(markers_info)
+      if(checks$checks["Indels"] &&
+         !all(c("Ref", "Alt", "Indel_pos") %in% colnames(mi_df)))
+        stop("Indels detected in MADC file. ",
+             "The markers_info file must contain 'Ref', 'Alt', and 'Indel_pos' columns.")
+    }
+  }
+
+  if(checks$checks["LowerCase"]){
+    vmsg("MADC Allele Sequences presented lower case characters. They were converted to upper case.", verbose = verbose, level = 1)
+    report$AlleleSequence <- toupper(report$AlleleSequence)
   }
 
   if(!is.null(botloci_file)) botloci <- read.csv(botloci_file, header = F) else stop("Please provide a botloci file")

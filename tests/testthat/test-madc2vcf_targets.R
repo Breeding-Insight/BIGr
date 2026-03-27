@@ -642,8 +642,81 @@ test_that("simu alfalfa",{
     expect_error(
       madc2vcf_targets(madc_file = alfalfa_madc_raw,
                        output.file = out,
-                       get_REF_ALT = FALSE,
+                       get_REF_ALT = TRUE,
                        verbose = FALSE)
     )
+
+    expect_error(
+      madc2vcf_targets(madc_file = alfalfa_madc_raw,
+                       output.file = out,
+                       get_REF_ALT = TRUE,
+                       botloci_file = alfalfa_botloci,
+                       verbose = FALSE)
+    )
+
+    madc2vcf_targets(madc_file = alfalfa_madc_raw,
+                     output.file = out,
+                     get_REF_ALT = FALSE,
+                     verbose = FALSE)
+
+    vcf <- read.vcfR(out, verbose = FALSE)
+    lut <- read.csv(alfalfa_markers_info)
+    vcf_infos <- vcf@fix[,c(1:5)]
+    lut_infos <- lut[match(vcf@fix[,3],lut$BI_markerID),c(2:6)]
+    check <- cbind(vcf_infos,lut_infos)
+    expect_equal(as.numeric(check$POS), check$Pos)
+    dp <- extract.gt(vcf, "DP", as.numeric = TRUE)
+    expect_equal(sum(dp[,10]), 43691)
+
+    madc2vcf_targets(madc_file = alfalfa_madc_raw,
+                     output.file = out,
+                     get_REF_ALT = FALSE,
+                     collapse_matches_counts = TRUE,
+                     verbose = FALSE)
+
+    vcf <- read.vcfR(out, verbose = FALSE)
+    expect_s4_class(vcf, "vcfR")
+    expect_true(all(is.na(vcf@fix[, "REF"])))
+    expect_true(all(is.na(vcf@fix[, "ALT"])))
+    DP <- extract.gt(vcf, "DP", as.numeric = TRUE)
+    expect_equal(sum(DP[1,]), 4534)
+    expect_equal(sum(DP[,5]), 56547)
+
+    madc2vcf_targets(madc_file = alfalfa_madc_raw,
+                     output.file = out,
+                     get_REF_ALT = TRUE,
+                     markers_info = alfalfa_markers_info,
+                     collapse_matches_counts = FALSE,
+                     verbose = FALSE)
+
+    vcf <- read.vcfR(out, verbose = FALSE)
+    lut <- read.csv(alfalfa_markers_info)
+    vcf_infos <- vcf@fix[,c(1:5)]
+    lut_infos <- lut[match(vcf@fix[,3],lut$BI_markerID),c(2:6)]
+    check <- cbind(vcf_infos,lut_infos)
+    expect_equal(check$REF, check$Ref)
+    expect_equal(check$ALT, check$Alt)
+    expect_equal(as.numeric(check$POS), check$Pos)
+    dp <- extract.gt(vcf, "DP", as.numeric = TRUE)
+    expect_equal(sum(dp[,10]), 43691)
+
+    madc2vcf_targets(madc_file = alfalfa_madc_raw,
+                     output.file = out,
+                     get_REF_ALT = TRUE,
+                     markers_info = alfalfa_markers_info,
+                     collapse_matches_counts = TRUE,
+                     verbose = FALSE)
+
+    vcf <- read.vcfR(out, verbose = FALSE)
+    lut <- read.csv(alfalfa_markers_info)
+    vcf_infos <- vcf@fix[,c(1:5)]
+    lut_infos <- lut[match(vcf@fix[,3],lut$BI_markerID),c(2:6)]
+    check <- cbind(vcf_infos,lut_infos)
+    expect_equal(check$REF, check$Ref)
+    expect_equal(check$ALT, check$Alt)
+    expect_equal(as.numeric(check$POS), check$Pos)
+    dp <- extract.gt(vcf, "DP", as.numeric = TRUE)
+    expect_equal(sum(DP[1,]), 4534)
+    expect_equal(sum(DP[,5]), 56547)
   })
 })

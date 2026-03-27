@@ -523,8 +523,21 @@ madc2vcf_targets <- function(madc_file,
   }
 
   if(sum(is.na(vcf_df$REF)) > 0) {
-    vmsg(paste(sum(is.na(vcf_df$REF)), "markers removed because of presence of more than one polymorphism between ref and alt sequences."), verbose = verbose, level = 1, type = ">>")
-    warning(paste("Markers removed because of presence of more than one polymorphism between ref and alt sequences:",sum(is.na(vcf_df$REF))))
+    vmsg(
+      paste(
+        sum(is.na(vcf_df$REF)),
+        "markers removed because REF could not be reliably determined (e.g., multiple polymorphisms or no difference between probe sequences)."
+      ),
+      verbose = verbose,
+      level = 1,
+      type = ">>"
+    )
+    warning(
+      paste(
+        "Markers removed because REF could not be reliably determined (e.g., multiple polymorphisms or no difference between probe sequences):",
+        sum(is.na(vcf_df$REF))
+      )
+    )
     vcf_df <- vcf_df[-which(is.na(vcf_df$REF)),]
   }
 

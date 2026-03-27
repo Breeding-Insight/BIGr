@@ -1,3 +1,11 @@
+# BIGr 0.6.4
+
+- Add function `vmsg` to organize messages printed on the console
+- Add metadata to VCF header from madc2vcf_targets
+- Add argument `madc_object` to `get_countsMADC` to avoid reading the MADC file twice and to get directly the MADC fixed padding output from `check_botloci`
+- Organize messages from `madc2vcf_targets` checks
+- Add argument `collapse_matches_counts` and `verbose` to `madc2vcf_targets` function
+
 # BIGr 0.6.3
 
 - New function to check MADC files: `check_madc_sanity`. Currently, it checks for the presence of required columns, whether fixed allele IDs were assigned, the presence of IUPAC codes, lowercase sequence bases, indels, and chromosome and position information.

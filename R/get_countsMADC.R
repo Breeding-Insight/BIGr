@@ -235,7 +235,7 @@ get_counts <- function(madc_file = NULL, madc_object = NULL, collapse_matches_co
       summarise(
         AlleleID = paste0(unique(CloneID), "|", unique(Type)),
         AlleleSequence = first(AlleleSequence),
-        across(where(is.numeric), sum),
+        across(where(is.numeric), ~ sum(.x, na.rm = TRUE)),
         .groups = "drop"
       ) %>%
       select(AlleleID, CloneID, AlleleSequence, everything(), -Type)

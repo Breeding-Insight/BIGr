@@ -66,9 +66,9 @@ madc2vcf_all <- function(madc,
   vmsg("Checking inputs", verbose = verbose, level = 0, type = ">>")
 
   # Input checks
-  if(!(file.exists(madc) | url_exists(madc))) stop("MADC file not found. Please provide a valid path or URL.")
-  if(!(file.exists(botloci_file) | url_exists(botloci_file))) stop("Botloci file not found. Please provide a valid path or URL.")
-  if(!is.null(hap_seq_file) & !(file.exists(hap_seq_file) | url_exists(hap_seq_file))) stop("Haplotype sequence file not found. Please provide a valid path or URL.")
+  if(is.null(madc) || !(file.exists(madc) | url_exists(madc))) stop("MADC file not found. Please provide a valid path or URL.")
+  if(is.null(botloci_file) || !(file.exists(botloci_file) | url_exists(botloci_file))) stop("Botloci file not found. Please provide a valid path or URL.")
+  if(!is.null(hap_seq_file) && !(file.exists(hap_seq_file) | url_exists(hap_seq_file))) stop("Haplotype sequence file not found. Please provide a valid path or URL.")
 
   ## n.cores as integer
   if(!is.numeric(n.cores) | n.cores < 1) stop("n.cores should be a positive integer.")
@@ -153,7 +153,7 @@ madc2vcf_all <- function(madc,
   if(any(checks$checks[c("Indels")])){
     idx <- which((checks$checks[c("Indels")]))
     if(is.null(markers_info)) {
-      vmsg("The MADC file contains indels and markers_info file is not provided. Tags with indels as targets will be flagged with warnings and removed from the analysis. Provide markers_info with REF/ALT/Indel_pos if you want to include the targets indels.",verbose = verbose, level = 1, type = ">>>")
+      vmsg("The MADC file contains indels and markers_info file is not provided. Tags with indels as targets will be flagged with warnings and removed from the analysis. Provide markers_info with REF/ALT/Indel_pos if you want to include the targets indels.",verbose = verbose, level = 1, type = ">>")
     } else {
       if(checks$checks["Indels"] &&
          !all(c("Ref", "Alt", "Indel_pos") %in% colnames(mi_df)))
@@ -166,7 +166,7 @@ madc2vcf_all <- function(madc,
              verbose = verbose, level = 1,
              sum(mi_df$Type == "SNP"), sum(mi_df$Type == "Indel"))
       }
-      vmsg("The MADC file contains indels and markers_info file was provided with all required columns. Target indels will be exported, but no off-targets are extracted from these tags due to higher likelihood of pairwise alignment errors.",verbose = verbose, level = 1, type = ">>>")
+      vmsg("The MADC file contains indels and markers_info file was provided with all required columns. Target indels will be exported, but no off-targets are extracted from these tags due to higher likelihood of pairwise alignment errors.",verbose = verbose, level = 1, type = ">>")
     }
   }
 
@@ -186,28 +186,35 @@ madc2vcf_all <- function(madc,
   checked_botloci <- check_botloci(botloci, report, ChromPos = checks$checks["ChromPos"], mi_df = mi_df, verbose = verbose)
   botloci <- checked_botloci[[1]]
   report <- checked_botloci[[2]]
+  mi_df <- checked_botloci[[3]]
+
+ # Derive position padding width from CloneIDs in the original report
+  pad_width <- unique(nchar(sub(".*_", "", unique(report$CloneID))))
+  if(length(pad_width) != 1) warning("CloneIDs in the MADC report have inconsistent position padding widths. IDs in the VCF may be inconsistent.")
+  pad_width <- pad_width[1]
 
   vmsg("Input checks done!", verbose = verbose, level = 1, type = ">>")
 
-  vmsg("Starting conversion...", verbose = verbose, level = 0, type = ">>")
+  vmsg("Initial filters and inputs adjustments...", verbose = verbose, level = 0, type = ">>")
 
   my_results_csv <- loop_though_dartag_report(report,
                                               botloci,
                                               hap_seq,
                                               n.cores=n.cores,
                                               alignment_score_thr = alignment_score_thr,
+                                              checks = checks,
                                               mi_df = mi_df,
+                                              pad_width = pad_width,
                                               verbose = verbose)
 
-  vmsg("All information gathered!", verbose = verbose, level = 1, type = ">>")
-
-  vmsg("Adding information to a VCF body...", verbose = verbose, level = 0, type = ">>")
+  vmsg("All information gathered!", verbose = verbose, level = 0, type = ">>")
 
   vcf_body <- create_VCF_body(csv = my_results_csv,
                               n.cores = n.cores,
                               rm_multiallelic_SNP = rm_multiallelic_SNP,
                               multiallelic_SNP_dp_thr = multiallelic_SNP_dp_thr,
                               multiallelic_SNP_sample_thr = multiallelic_SNP_sample_thr,
+                              pad_width = pad_width,
                               verbose = verbose)
 
   #Make a header separate from the dataframe
@@ -225,6 +232,8 @@ madc2vcf_all <- function(madc,
 
   vcf_term <- sapply(strsplit(out_vcf, "[.]"), function(x) x[length(x)])
   if(length(vcf_term) != 0) if(vcf_term != "vcf") out_vcf <- paste0(out_vcf,".vcf")
+
+  vmsg("VCF ready! Output written to: %s", verbose = verbose, level = 0, type = ">>", out_vcf)
 
   writeLines(vcf_header, con = out_vcf)
   suppressWarnings(
@@ -244,7 +253,8 @@ madc2vcf_all <- function(madc,
 #' @import parallel
 #'
 #' @noRd
-loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, alignment_score_thr=40, checks = NULL, mi_df = NULL, verbose = TRUE){
+loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, alignment_score_thr=40,
+                                      checks = NULL, mi_df = NULL, pad_width = NULL,verbose = TRUE){
 
   if(!is.null(hap_seq) & (is.null(checks) | !isTRUE(checks$checks["RefAltSeqs"]))){
     hap_seq <- get_ref_alt_hap_seq(hap_seq, botloci)
@@ -274,22 +284,20 @@ loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, align
 
   if(!is.null(hap_seq)){
     vmsg("The haplotype database was provided and used to recover missing Ref_0001 and Alt_0002 sequences.", verbose = verbose, level = 1)
+    vmsg("The Ref_0001 sequence were added for: %s tags", verbose = verbose, level = 2, type = ">>", sum(ref_index==1))
+    vmsg("The Alt_0002 sequence were added for: %s tags", verbose = verbose, level = 2, type = ">>", sum(alt_index==1))
   } else {
     vmsg("The haplotype database was not provided. Tags with missing Ref_0001 or Alt_0002 sequences were flagged with warnings and removed from the analysis.", verbose = verbose, level = 1)
   }
-  vmsg("The Ref_0001 sequence were added for: %s tags", verbose = verbose, level = 2, type = ">>>", sum(ref_index==1))
-  vmsg("The Alt_0002 sequence were added for: %s tags", verbose = verbose, level = 2, type = ">>>", sum(alt_index==1))
-  vmsg("Tags discarded due to lack of Ref_0001 sequence: %s tags", verbose = verbose, level = 2, type = ">>>", sum(ref_index==-1))
-  vmsg("Tags discarded due to lack of Alt_0002 sequence: %s tags", verbose = verbose, level = 2, type = ">>>", sum(alt_index==-1))
+  vmsg("Tags discarded due to lack of Ref_0001 sequence: %s tags", verbose = verbose, level = 2, type = ">>", sum(ref_index==-1))
+  vmsg("Tags discarded due to lack of Alt_0002 sequence: %s tags", verbose = verbose, level = 2, type = ">>", sum(alt_index==-1))
 
-  vmsg("Pairwise alignments of sequences to recover SNP position, reference and alternative bases...", verbose = verbose, level = 1)
+  vmsg("Pairwise alignments of sequences to recover SNP position, reference and alternative bases...", verbose = verbose, level = 0)
   clust <- makeCluster(n.cores)
   #clusterExport(clust, c("botloci", "compare", "nucleotideSubstitutionMatrix", "pairwiseAlignment", "DNAString", "reverseComplement"))
   #clusterExport(clust, c("botloci", "alignment_score_thr", "mi_df"))
   compare_results <- parLapply(clust, updated_by_cloneID, function(x) compare(x, botloci, alignment_score_thr, mi_df, verbose = FALSE))
   stopCluster(clust)
-
-  vmsg("Pairwise alignments concluded.", verbose = verbose, level = 1)
 
   my_results_csv <- lapply(compare_results, "[[", 1)
   my_results_csv <- do.call(rbind, my_results_csv)
@@ -301,9 +309,19 @@ loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, align
   rm_indels <- sapply(compare_results, "[[", 4)
   rm_indels <- unlist(rm_indels)
 
-  vmsg("Number of tags removed because of low alignment score: %s tags", verbose = verbose, level = 2, type = ">>>", length(rm_score))
-  vmsg("Number of tags removed because of N in the alternative sequence: %s tags", verbose = verbose, level = 2, type = ">>>", length(rm_N))
-  vmsg("Number of tags removed because of indels as targets (not yet supported): %s tags", verbose = verbose, level = 2, type = ">>>", length(rm_indels))
+  vmsg("Number of tags removed because of low alignment score (threshold = %s): %s tags", verbose = verbose, level = 2, type = ">>", alignment_score_thr, length(rm_score))
+  vmsg("Number of tags removed because of N in the alternative sequence: %s tags", verbose = verbose, level = 2, type = ">>", length(rm_N))
+  if(length(rm_indels) > 0) {
+    if(!is.null(mi_df) && all(c("Ref", "Alt", "Indel_pos") %in% colnames(mi_df))) {
+      vmsg("Number of tags with indels as targets: %s tags (markers_info provided with required columns; targets exported, off-targets skipped)", verbose = verbose, level = 2, type = ">>", length(rm_indels))
+    } else {
+      vmsg("Number of tags removed because of indels as targets: %s tags (no markers_info with Ref/Alt/Indel_pos provided; tags discarded)", verbose = verbose, level = 2, type = ">>", length(rm_indels))
+    }
+  } else {
+    vmsg("Number of tags removed because of indels as targets: 0 tags", verbose = verbose, level = 2, type = ">>")
+  }
+
+  vmsg("Pairwise alignments concluded!", verbose = verbose, level = 1)
 
   rownames(my_results_csv) <- NULL
   return(my_results_csv)
@@ -417,7 +435,7 @@ compare <- function(one_tag, botloci, alignment_score_thr = 40, mi_df= NULL, ver
         stop("Duplicate CloneID '", cloneID, "' found in markers_info with differing values in key columns (CloneID, Chr, Pos, Ref, Alt, Type). Please resolve the conflict in your markers_info file.")
       }
     }
-    isIndel <- tolower(one_mi_df$Type) == "indel"
+    isIndel <- !is.null(one_mi_df$Type) && !is.na(one_mi_df$Type) && tolower(one_mi_df$Type) == "indel"
   } else {
     isIndel <- FALSE
   }
@@ -597,6 +615,7 @@ create_VCF_body <- function(csv,
                             multiallelic_SNP_dp_thr = 2,
                             multiallelic_SNP_sample_thr = 10,
                             n.cores = 1,
+                            pad_width = NULL,
                             verbose = TRUE){
 
   # Make sure counts are numeric
@@ -607,13 +626,31 @@ create_VCF_body <- function(csv,
 
   clust <- makeCluster(n.cores)
   #clusterExport(clust, c("merge_counts","rm_multiallelic_SNP", "multiallelic_SNP_dp_thr", "multiallelic_SNP_sample_thr"))
-  vcf_tag_list <- parLapply(clust, cloneID, function(x) merge_counts(x, rm_multiallelic_SNP, multiallelic_SNP_dp_thr, multiallelic_SNP_sample_thr))
+  vcf_tag_list <- parLapply(clust, cloneID, function(x) merge_counts(x, rm_multiallelic_SNP, multiallelic_SNP_dp_thr, multiallelic_SNP_sample_thr, pad_width))
   stopCluster(clust)
 
   vcf_tag_list1 <- lapply(vcf_tag_list, "[[", 1)
-  rm_mks <- sapply(vcf_tag_list, "[[" ,2)
+  rm_mks        <- sapply(vcf_tag_list, "[[", 2)  # total removed
+  total_mks     <- sapply(vcf_tag_list, "[[", 3)  # total multiallelic found
+  rm_setting    <- sapply(vcf_tag_list, "[[", 4)  # removed by rm_multiallelic_SNP=TRUE
+  rm_filter     <- sapply(vcf_tag_list, "[[", 5)  # removed because empty after filtering
+  kept_multi    <- sapply(vcf_tag_list, "[[", 6)  # kept as multiallelic
+  simplified    <- sapply(vcf_tag_list, "[[", 7)  # simplified to biallelic
 
-  vmsg("SNP removed because presented more than one allele: %s", verbose = verbose, level = 2, type = ">>>",sum(rm_mks))
+  vmsg("Performing final filterings", verbose = verbose, level = 0, type = ">>")
+
+  vmsg("Multiallelic off-target SNPs found: %s", verbose = verbose, level = 2, type = ">>", sum(total_mks))
+  if(rm_multiallelic_SNP) {
+    vmsg("Removed (rm_multiallelic_SNP = TRUE): %s", verbose = verbose, level = 3, type = ">>", sum(rm_setting))
+  } else if(multiallelic_SNP_dp_thr > 0 & multiallelic_SNP_sample_thr > 0) {
+    vmsg("Removed (empty after filtering; depth thr = %s, sample thr = %s): %s",
+         verbose = verbose, level = 3, type = ">>",
+         multiallelic_SNP_dp_thr, multiallelic_SNP_sample_thr, sum(rm_filter))
+    vmsg("Kept as multiallelic after filtering: %s", verbose = verbose, level = 3, type = ">>", sum(kept_multi))
+    vmsg("Simplified to biallelic after filtering: %s", verbose = verbose, level = 3, type = ">>", sum(simplified))
+  } else {
+    vmsg("All kept (rm_multiallelic_SNP = FALSE, no thresholds set): %s", verbose = verbose, level = 3, type = ">>", sum(kept_multi))
+  }
 
   for(i in seq_along(vcf_tag_list1)) {
     if(is.vector(vcf_tag_list1[[i]])) {
@@ -625,12 +662,6 @@ create_VCF_body <- function(csv,
   vcf_body <- as.data.frame(vcf_body)
   vcf_body$V3 <- as.numeric(vcf_body$V3)
   rownames(vcf_body) <- NULL
-
-  # Remove padding
-  sp <- strsplit(vcf_body$target, "_")
-  pos <- sapply(sp, function(x) x[length(x)])
-  chr <- sapply(sp, function(x) paste0(x[-length(x)], collapse = "_"))
-  vcf_body$target <- paste0(chr, "_",as.numeric(pos))
 
   # Dealing with repeated positions
   # discard the ones that are not the target and keep only the first if all are off-targets
@@ -655,6 +686,10 @@ create_VCF_body <- function(csv,
     vcf_body_new <- rbind(vcf_body_new, repeated_tab_stay)
   } else vcf_body_new <- vcf_body
 
+  vmsg("Filters finished", verbose = verbose, level = 1, type = ">>")
+
+  vmsg("Preparing VCF...", verbose = verbose, level = 0, type = ">>")
+
   vcf_body_new <- vcf_body_new[,-1]
 
   colnames(vcf_body_new) <- c("#CHROM", "POS", "ID", "REF", "ALT","QUAL", "FILTER", "INFO","FORMAT", colnames(csv)[-c(1:7)])
@@ -676,18 +711,24 @@ create_VCF_body <- function(csv,
 #' aspect of the marker, the marker is discarded. This is likely to happen to paralogous sites.
 #'
 #' @noRd
-merge_counts <- function(cloneID_unit, rm_multiallelic_SNP = FALSE, multiallelic_SNP_dp_thr = 0,  multiallelic_SNP_sample_thr = 0){
+merge_counts <- function(cloneID_unit, rm_multiallelic_SNP = FALSE, multiallelic_SNP_dp_thr = 0, multiallelic_SNP_sample_thr = 0, pad_width = NULL){
 
   #Get counts for target SNP
-  rm <- 0
+  rm_by_setting <- 0       # removed because rm_multiallelic_SNP = TRUE
+  rm_by_filter <- 0        # removed because empty after threshold filtering
+  kept_multiallelic <- 0   # kept as-is (still multiallelic after filtering or no filter)
+  simplified <- 0          # simplified from multiallelic to biallelic by filtering
+  total_multiallelic <- 0
   RefTag <- apply(cloneID_unit[which(grepl("Ref", cloneID_unit$AlleleID) & !duplicated(cloneID_unit$AlleleID)),-c(1:7)], 2, sum)
   AltTag <- apply(cloneID_unit[which(grepl("Alt", cloneID_unit$AlleleID) & !duplicated(cloneID_unit$AlleleID)),-c(1:7)], 2, sum)
   tab_counts <- paste0(RefTag + AltTag, ":", RefTag, ":", RefTag, ",", AltTag)
 
+  cloneID <- cloneID_unit$CloneID[1]
+  if(is.null(pad_width)) pad_width <- nchar(sub(".*_", "", cloneID))
   info <- cloneID_unit[grep("Ref_", cloneID_unit$AlleleID),]
   info <- c(info$Chromosome,
             info$SNP_position_in_Genome,
-            paste0(info$Chromosome, "_", info$SNP_position_in_Genome),
+            cloneID,
             info$Ref, info$Alt, ".", ".", paste0("DP=", sum(c(RefTag, AltTag)),";",
                                                  "ADS=",sum(RefTag),",",sum(AltTag)), "DP:RA:AD")
 
@@ -704,19 +745,21 @@ merge_counts <- function(cloneID_unit, rm_multiallelic_SNP = FALSE, multiallelic
       alleles <- unique(by_pos[[i]]$AlleleID)
 
       if(length(unique(by_pos[[i]]$Alt)) > 1){ # If SNP is multiallelic
+        total_multiallelic <- total_multiallelic + 1
 
         if(rm_multiallelic_SNP){ # option to remove multiallelics
-          rm <- rm + 1
+          rm_by_setting <- rm_by_setting + 1
           next()
         } else if(multiallelic_SNP_dp_thr > 0 & multiallelic_SNP_sample_thr > 0){ # If not removed, user can set threshold to remove low frequency alleles
           rm.idx <- which(apply(by_pos[[i]][,-c(1:7)], 1, function(x) sum(x > multiallelic_SNP_dp_thr) < multiallelic_SNP_sample_thr))
           if(length(rm.idx))  up_by_pos <- by_pos[[i]][-rm.idx,] else up_by_pos <- by_pos[[i]]
 
           if(length(unique(up_by_pos$Alt)) == 0) { # If after applied filter all tags are gone
-            rm <- rm + 1
+            rm_by_filter <- rm_by_filter + 1
             next()
 
           } else if (length(unique(up_by_pos$Alt)) > 1 ){ # If after applied filter the SNP remains multiallelic
+            kept_multiallelic <- kept_multiallelic + 1
             by_alt <- split.data.frame(up_by_pos, up_by_pos$Alt)
             by_alt_counts <- lapply(by_alt, function(x) apply(x[,-c(1:7)], 2, sum))
             total_counts <- sapply(by_alt_counts, sum)
@@ -731,12 +774,14 @@ merge_counts <- function(cloneID_unit, rm_multiallelic_SNP = FALSE, multiallelic
             info <- unique.data.frame(info)
 
           } else { # If after applied filter, only one alternative remains
+            simplified <- simplified + 1
             alt <- apply(up_by_pos[,-c(1:7)], 2, sum)
             total_alt <- alt
             info <- unique.data.frame(up_by_pos[,2:5])
           }
 
         } else { # If rm_multiallelic_SNP set to FALSE and threshold is 0, keep all multiallelics
+          kept_multiallelic <- kept_multiallelic + 1
           by_alt <- split.data.frame(by_pos[[i]], by_pos[[i]]$Alt)
           by_alt_counts <- lapply(by_alt, function(x) apply(x[,-c(1:7)], 2, sum))
           total_counts <- sapply(by_alt_counts, sum)
@@ -763,7 +808,7 @@ merge_counts <- function(cloneID_unit, rm_multiallelic_SNP = FALSE, multiallelic
 
       info <- c(info$Chromosome,
                 info$SNP_position_in_Genome,
-                paste0(info$Chromosome, "_", info$SNP_position_in_Genome),
+                paste0(info$Chromosome, "_", formatC(as.integer(as.numeric(info$SNP_position_in_Genome)), width = pad_width, flag = "0", format = "d")),
                 info$Ref, info$Alt, ".", ".", paste0("DP=", sum(c(ref, total_alt)),";",
                                                      "ADS=",sum(ref),",",sum(total_alt)), "DP:RA:AD")
 
@@ -773,5 +818,5 @@ merge_counts <- function(cloneID_unit, rm_multiallelic_SNP = FALSE, multiallelic
     }
   }
 
-  return(list(vcf_tag, rm))
+  return(list(vcf_tag, rm_by_setting + rm_by_filter, total_multiallelic, rm_by_setting, rm_by_filter, kept_multiallelic, simplified))
 }

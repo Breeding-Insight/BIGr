@@ -260,6 +260,7 @@ madc2vcf_targets <- function(madc_file,
       checked_botloci <- check_botloci(botloci, report, ChromPos = checks$checks["ChromPos"], mi_df = mi_df, verbose = verbose)
       botloci         <- checked_botloci[[1]]
       report          <- checked_botloci[[2]]
+      mi_df           <- checked_botloci[[3]]
 
     }
   }

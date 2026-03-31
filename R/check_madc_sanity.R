@@ -132,7 +132,7 @@ check_madc_sanity <- function(report) {
         n_diffs <- mapply(function(r, a) {
           r_chars <- strsplit(r, "")[[1]]
           a_chars <- strsplit(a, "")[[1]]
-          sum(r_chars != a_chars)
+          sum(toupper(r_chars) != toupper(a_chars))
         }, merged$AlleleSequence_ref[same_len], merged$AlleleSequence_alt[same_len])
         indel_mask[same_len] <- n_diffs > 1
       }
@@ -183,8 +183,8 @@ check_madc_sanity <- function(report) {
   messages[["Columns"]] <- c("Required columns are present",
                              "One or more required columns missing. Verify if your file has columns: CloneID, AlleleID, AlleleSequence")
   messages[["FixAlleleIDs"]] <- c("Fixed Allele IDs look good",
-                                  "MADC not processed by HapApp.")
-  messages[["IUPACcodes"]] <- c("IUPAC (non-ATCG) codes found in AlleleSequence. This codes are not currently supported",
+                                  "MADC not processed by HapApp")
+  messages[["IUPACcodes"]] <- c("IUPAC (non-ATCG) codes found in AlleleSequence. This codes are not currently supported by BIGr/BIGapp. Run HapApp to replace them",
                                 "No IUPAC (non-ATCG) codes found in AlleleSequence")
   messages[["LowerCase"]] <- c("Lowercase bases found in AlleleSequence",
                                "No lowercase bases found in AlleleSequence")
@@ -192,16 +192,16 @@ check_madc_sanity <- function(report) {
                             "No indels found (ref/alt lengths match and at most 1 mismatch) for all CloneIDs")
   messages[["ChromPos"]] <- c("Chromosome and Position format in CloneID look good",
                               "CloneID does not have the expected Chromosome_Position format. Please check your CloneIDs or provide a file with this information")
-  messages[["allNArow"]] <- c("One or more rows contain all NA values.",
+  messages[["allNArow"]] <- c("One or more rows contain all NA values",
                               "No rows with all NA values")
-  messages[["allNAcol"]] <- c("One or more columns contain all NA values.",
+  messages[["allNAcol"]] <- c("One or more columns contain all NA values",
                               "No columns with all NA values")
   messages[["RefAltSeqs"]] <- c("All CloneIDs have both Ref and Alt alleles",
-                                paste0("Some CloneIDs are missing Ref and/or Alt alleles. ",
+                                paste0("Some CloneIDs are missing Ref and/or Alt alleles ",
                                        "Missing Ref: ", paste(missRef, collapse = " "), ". ",
                                        "Missing Alt: ", paste(missAlt, collapse = " "), "."))
-  messages[["OtherAlleles"]] <- c("Alleles other than Ref and Alt were found in AlleleID.",
-                                  "No alleles other than Ref and Alt found in AlleleID.")
+  messages[["OtherAlleles"]] <- c("Alleles other than Ref and Alt were found in AlleleID",
+                                  "No alleles other than Ref and Alt found in AlleleID")
 
   list(checks = checks, messages = messages, indel_clone_ids = indels,
        missRef = missRef, missAlt = missAlt)
@@ -248,12 +248,17 @@ check_botloci <- function(botloci, report, ChromPos=TRUE, mi_df = NULL, verbose=
     if(length(pad_madc) > 1 | length(pad_botloci) > 1) stop("Check marker IDs in both MADC and botloci files. They should be the same.")
 
     if(pad_madc != pad_botloci) {
-      vmsg("Padding between MADC and botloci files do not match. Markers ID modified to match longest padding.", verbose = verbose, level = 1, type = ">>")
+      vmsg("Padding between MADC and botloci files do not match. Markers ID modified to match longest padding.", verbose = verbose, level = 2, type = ">>")
       if (pad_madc < pad_botloci) {
         report$CloneID <- paste0(sub("_(.*)", "", report$CloneID), "_",
                                  sprintf(paste0("%0", pad_botloci, "d"), as.integer(sub(".*_", "", report$CloneID)))
         )
         report$AlleleID <- paste0(report$CloneID, "|", sapply(strsplit(report$AlleleID, "[|]"), "[[",2))
+        if(!is.null(mi_df)) {
+          mi_df$CloneID <- paste0(sub("_(.*)", "", mi_df$CloneID), "_",
+                                  sprintf(paste0("%0", pad_botloci, "d"), as.integer(sub(".*_", "", mi_df$CloneID)))
+          )
+        }
       } else {
         botloci$V1 <- paste0(sub("_(.*)", "", botloci$V1), "_",
                              sprintf(paste0("%0", pad_madc, "d"), as.integer(sub(".*_", "", botloci$V1)))
@@ -261,30 +266,31 @@ check_botloci <- function(botloci, report, ChromPos=TRUE, mi_df = NULL, verbose=
         if(!any(botloci$V1 %in% report$CloneID)) stop("After matching padding, botloci markers still not found in MADC file. Check marker IDs.\n")
       }
     } else if (!(is.null(mi_df$Chr) | is.null(mi_df$Pos))){
-      vmsg("It is not a padding mismatch issue.", verbose = verbose, level = 1, type = ">>")
-      vmsg("Checking if jointing provided Chromosome and Position information in marker_file solve the issue", verbose = verbose, level = 1, type = ">>")
+      vmsg("It is not a padding mismatch issue.", verbose = verbose, level = 2, type = ">>")
+      vmsg("Checking if jointing provided Chromosome and Position information in marker_file solve the issue", verbose = verbose, level = 2, type = ">>")
       if(!any(mi_df$CloneID %in% report$CloneID) & !any(mi_df$BI_markerID %in% report$CloneID)) {
         stop("None of the MADC CloneID could be found in the markers_info CloneID or BI_markerID. Please make sure they match.")
       } else {
         use_col <- if(any(mi_df$CloneID %in% report$CloneID)) "CloneID" else "BI_markerID"
-        vmsg(paste("Using", use_col, "column in marker_info to match MADC CloneID"), verbose = verbose, level = 1, type = ">>")
+        vmsg(paste("Using", use_col, "column in marker_info to match MADC CloneID"), verbose = verbose, level = 2, type = ">>")
       }
       mk_info_CloneID <- paste0(mi_df$Chr, "_", sprintf(paste0("%0",pad_botloci, "d"), as.integer(mi_df$Pos)))
 
       if(!any(botloci$V1 %in% mk_info_CloneID)){
-        vmsg("It is not a padding mismatch issue.", verbose = verbose, level = 1, type = ">>")
-        vmsg("Chromosome and Position information in marker_file don't solve the issue.", verbose = verbose, level = 1, type = ">>")
+        vmsg("It is not a padding mismatch issue.", verbose = verbose, level = 2, type = ">>")
+        vmsg("Chromosome and Position information in marker_file don't solve the issue.", verbose = verbose, level = 2, type = ">>")
         stop("Check marker IDs in both MADC and botloci files. They should be the same.")
       } else {
-        vmsg("Chromosome and Position information in marker_file solve the issue.", verbose = verbose, level = 1, type = ">>")
-        vmsg("Using this information to modify MADC CloneIDs to match botloci markers.", verbose = verbose, level = 1, type = ">>")
+        vmsg("Chromosome and Position information in marker_file solve the issue.", verbose = verbose, level = 2, type = ">>")
+        vmsg("Using this information to modify MADC CloneIDs to match botloci markers.", verbose = verbose, level = 2, type = ">>")
         report$CloneID <- mk_info_CloneID[match(report$CloneID, mi_df[[use_col]])]
+        mi_df$CloneID <- mk_info_CloneID
       }
     } else {
-      vmsg("It is not a padding mismatch issue.", verbose = verbose, level = 1, type = ">>")
-      vmsg("Chromosome and Position information in marker_file not provided.", verbose = verbose, level = 1, type = ">>")
+      vmsg("It is not a padding mismatch issue.", verbose = verbose, level = 2, type = ">>")
+      vmsg("Chromosome and Position information in marker_file not provided.", verbose = verbose, level = 2, type = ">>")
       stop("Check marker IDs in both MADC and botloci files. They should be the same.")
     }
   }
-  return(list(botloci, report))
+  return(list(botloci, report, mi_df))
 }

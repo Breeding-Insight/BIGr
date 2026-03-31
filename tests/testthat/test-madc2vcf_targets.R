@@ -245,11 +245,13 @@ test_that("simu alfalfa",{
 
   test_that("alfalfa lower case fixed MADC", {
     out <- tempfile(fileext = ".vcf")
-    madc2vcf_targets(madc_file = alfalfa_lowercase,
-                     output.file = out,
-                     get_REF_ALT = TRUE,
-                     botloci_file = alfalfa_botloci,
-                     verbose = FALSE)
+    expect_warning(
+      madc2vcf_targets(madc_file = alfalfa_lowercase,
+                       output.file = out,
+                       get_REF_ALT = TRUE,
+                       botloci_file = alfalfa_botloci,
+                       verbose = TRUE)
+    )
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(alfalfa_markers_info)
@@ -260,14 +262,16 @@ test_that("simu alfalfa",{
     expect_equal(check$ALT, check$Alt)
     expect_equal(as.numeric(check$POS), check$Pos)
     dp <- extract.gt(vcf, "DP", as.numeric = TRUE)
-    expect_equal(sum(dp[,10]), 43691)
+    expect_equal(sum(dp[,10]), 43017)
 
-    madc2vcf_targets(madc_file = alfalfa_lowercase,
-                     output.file = out,
-                     get_REF_ALT = TRUE,
-                     botloci_file = alfalfa_botloci,
-                     markers_info = alfalfa_markers_info,
-                     verbose = FALSE)
+    expect_warning(
+      madc2vcf_targets(madc_file = alfalfa_lowercase,
+                       output.file = out,
+                       get_REF_ALT = TRUE,
+                       botloci_file = alfalfa_botloci,
+                       markers_info = alfalfa_markers_info,
+                       verbose = FALSE)
+    )
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(alfalfa_markers_info)
@@ -278,15 +282,16 @@ test_that("simu alfalfa",{
     expect_equal(check$ALT, check$Alt)
     expect_equal(as.numeric(check$POS), check$Pos)
     dp <- extract.gt(vcf, "DP", as.numeric = TRUE)
-    expect_equal(sum(dp[,10]), 43691)
+    expect_equal(sum(dp[,10]), 43017)
 
+    expect_warning(
     madc2vcf_targets(madc_file = alfalfa_lowercase,
                      output.file = out,
                      get_REF_ALT = FALSE,
                      botloci_file = alfalfa_botloci,
                      markers_info = alfalfa_markers_info,
                      verbose = FALSE)
-
+    )
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(alfalfa_markers_info)
     vcf_infos <- vcf@fix[,c(1:5)]
@@ -294,7 +299,7 @@ test_that("simu alfalfa",{
     check <- cbind(vcf_infos,lut_infos)
     expect_equal(as.numeric(check$POS), check$Pos)
     dp <- extract.gt(vcf, "DP", as.numeric = TRUE)
-    expect_equal(sum(dp[,10]), 43691)
+    expect_equal(sum(dp[,10]), 43017)
   })
 
   test_that("alfalfa IUPAC code", {

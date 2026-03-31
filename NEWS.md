@@ -1,3 +1,44 @@
+# BIGr 0.6.5
+
+# Updates on madc2vcf functions
+Details:
+
+- both functions targets and all (targets + off-targets) markers now have `check_madc_sanity` function implemented. It tests:
+    - [Columns] If MADC has the expected columns
+    - [allNArow | allNAcol] Presence of columns and rows with all NA (happens often when people open the MADC in excel before loading in R)
+    - [IUPACcodes] Presence of IUPAC codes on AlleleSequence
+    - [LowerCase] Presence of lower case bases on AlleleSequence
+    - [Indels] Presence of Indels
+    - [ChromPos] If CloneID follows the format Chr_Pos
+    - [RefAltSeqs] If all Ref Allele has corresponding Alt and vice-versa
+    - [OtherAlleles] If "Other" exists in the MADC AlleleID
+
+- Better messages if `verbose = TRUE` in `madc2vcf_all`
+- `madc2vcf_all` support for Indels - markers_info with Indels position is required; only the target indel is extracted, off-targets are ignored for the tag
+- `madc2vcf_targets` doesn’t run if: 
+    - MADC Column names are not correct
+    - Ignore Other alleles - but inform the user if they exist or not and direct them to `madc2vcf_all` in case they want to extract them as well
+- See the table for madc2vcf_targets requirements accordingly to MADC content:
+
+  | check status | get_REF_ALT | Requires
+-- | -- | -- | --
+IUPAC | TRUE | TRUE | markers_info REF/ALT
+  | TRUE | FALSE | -
+  | FALSE | TRUE | botloci or markers_info REF/ALT
+  | FALSE | FALSE | -
+Indels | TRUE | TRUE | markers_info REF/ALT
+  | TRUE | FALSE | -
+  | FALSE | TRUE | botloci or markers_info REF/ALT
+  | FALSE | FALSE | -
+ChromPos | TRUE | TRUE | botloci or markers_info REF/ALT
+  | TRUE | FALSE | -
+  | FALSE | TRUE | markers_info CHR/POS/REF/ALT or markers_info CHR/POS/ + botloci
+  | FALSE | FALSE | markers_info CHR/POS
+FixAlleleIDs | TRUE | TRUE | botloci or markers_info REF/ALT
+  | TRUE | FALSE | -
+  | FALSE | TRUE | markers_info REF/ALT
+  | FALSE | FALSE | -
+
 # BIGr 0.6.4
 
 - Add function `vmsg` to organize messages printed on the console

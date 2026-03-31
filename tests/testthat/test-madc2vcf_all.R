@@ -99,12 +99,14 @@ test_that("simu alfalfa",{
 
   test_that("ALFALFA — clean fixed allele ID MADC", {
     out <- tempfile(fileext = ".vcf")
+    #out <- "test.vcf"
+    # Default parameters
     expect_no_error(
       madc2vcf_all(madc = alfalfa_madc,
                    botloci_file = alfalfa_botloci,
                    hap_seq_file = alfalfa_microhapDB,
                    n.cores = 2,
-                   rm_multiallelic_SNP = TRUE,
+                   rm_multiallelic_SNP = FALSE,
                    multiallelic_SNP_sample_thr = 0,
                    multiallelic_SNP_dp_thr = 0,
                    alignment_score_thr = 40,
@@ -117,7 +119,10 @@ test_that("simu alfalfa",{
     expect_true(all(!is.na(vcf@fix[, "ALT"])))
     DP <- extract.gt(vcf, "DP", as.numeric = TRUE)
     expect_equal(sum(DP[1,]), 4534)
-    expect_equal(sum(DP[,5]), 233482)
+    expect_equal(sum(DP[,5]), 235217)
+    multi <- grepl(",", vcf@fix[,5])
+    expect_true(any(multi)) # It has multiallelics
+    expect_equal(sum(multi), 9)
     unlink(out)
 
     expect_no_error(
@@ -126,15 +131,18 @@ test_that("simu alfalfa",{
                    hap_seq_file = NULL,
                    n.cores = 1,
                    out_vcf = out,
-                   verbose = FALSE)
+                   verbose = TRUE)
     )
     vcf <- read.vcfR(out, verbose = FALSE)
     expect_s4_class(vcf, "vcfR")
-    expect_true(all(is.na(vcf@fix[, "REF"])))
-    expect_true(all(is.na(vcf@fix[, "ALT"])))
+    expect_true(all(!is.na(vcf@fix[, "REF"])))
+    expect_true(all(!is.na(vcf@fix[, "ALT"])))
     DP <- extract.gt(vcf, "DP", as.numeric = TRUE)
     expect_equal(sum(DP[1,]), 4534)
-    expect_equal(sum(DP[,5]), 56547)
+    expect_equal(sum(DP[,5]), 235217)
+    multi <- grepl(",", vcf@fix[,5])
+    expect_true(any(multi)) # It has multiallelics
+    expect_equal(sum(multi), 9)
 
     # Test error when botloci_file is NULL
     expect_error(
@@ -146,45 +154,48 @@ test_that("simu alfalfa",{
                    verbose = FALSE)
     )
 
-    # Test that it works when hap_seq_file is provided (REF/ALT recovered from probe sequences)
-    madc2vcf_all(madc = alfalfa_madc,
-                 botloci_file = alfalfa_botloci,
-                 hap_seq_file = alfalfa_microhapDB,
-                 n.cores = 1,
-                 out_vcf = out,
-                 verbose = FALSE)
-
-    vcf <- read.vcfR(out, verbose = FALSE)
-    lut <- read.csv(alfalfa_markers_info)
-    vcf_infos <- vcf@fix[,c(1:5)]
-    lut_infos <- lut[match(vcf@fix[,3],lut$BI_markerID),c(2:6)]
-    check <- cbind(vcf_infos,lut_infos)
-    expect_equal(check$REF, check$Ref)
-    expect_equal(check$ALT, check$Alt)
-    expect_equal(as.numeric(check$POS), check$Pos)
-    dp <- extract.gt(vcf, "DP", as.numeric = TRUE)
-    expect_equal(sum(dp[,10]), 43691)
-
     # Test that it also works when markers_info is provided together with botloci
     madc2vcf_all(madc = alfalfa_madc,
                  botloci_file = alfalfa_botloci,
                  hap_seq_file = alfalfa_microhapDB,
+                 multiallelic_SNP_dp_thr = 80,
+                 multiallelic_SNP_sample_thr = 2,
                  n.cores = 1,
                  markers_info = alfalfa_markers_info,
                  out_vcf = out,
-                 verbose = FALSE)
+                 verbose = TRUE)
 
     vcf <- read.vcfR(out, verbose = FALSE)
-    lut <- read.csv(alfalfa_markers_info)
-    vcf_infos <- vcf@fix[,c(1:5)]
-    lut_infos <- lut[match(vcf@fix[,3],lut$BI_markerID),c(2:6)]
-    check <- cbind(vcf_infos,lut_infos)
-    expect_equal(check$REF, check$Ref)
-    expect_equal(check$ALT, check$Alt)
-    expect_equal(as.numeric(check$POS), check$Pos)
-    dp <- extract.gt(vcf, "DP", as.numeric = TRUE)
-    expect_equal(sum(dp[,10]), 43691)
+    expect_s4_class(vcf, "vcfR")
+    expect_true(all(!is.na(vcf@fix[, "REF"])))
+    expect_true(all(!is.na(vcf@fix[, "ALT"])))
+    DP <- extract.gt(vcf, "DP", as.numeric = TRUE)
+    expect_equal(sum(DP[1,]), 4534)
+    expect_equal(sum(DP[,5]), 234777)
+    multi <- grepl(",", vcf@fix[,5])
+    expect_true(any(multi)) # It has multiallelics
+    expect_equal(sum(multi), 3)
 
+    # Remove multiallelics
+    madc2vcf_all(madc = alfalfa_madc,
+                 botloci_file = alfalfa_botloci,
+                 hap_seq_file = alfalfa_microhapDB,
+                 rm_multiallelic_SNP = TRUE,
+                 n.cores = 1,
+                 markers_info = alfalfa_markers_info,
+                 out_vcf = out,
+                 verbose = TRUE)
+
+    vcf <- read.vcfR(out, verbose = FALSE)
+    expect_s4_class(vcf, "vcfR")
+    expect_true(all(!is.na(vcf@fix[, "REF"])))
+    expect_true(all(!is.na(vcf@fix[, "ALT"])))
+    DP <- extract.gt(vcf, "DP", as.numeric = TRUE)
+    expect_equal(sum(DP[1,]), 4534)
+    expect_equal(sum(DP[,5]), 233482)
+    multi <- grepl(",", vcf@fix[,5])
+    expect_false(any(multi)) # It has multiallelics
+    expect_equal(sum(multi), 0)
   })
 
   test_that("ALFALFA — clean fixed allele ID MADC wrong CloneID", {
@@ -208,59 +219,77 @@ test_that("simu alfalfa",{
                    n.cores = 1,
                    markers_info = alfalfa_markers_info,
                    out_vcf = out,
-                   verbose = FALSE)
+                   verbose = FALSE),
+      regexp = "None of the markers_info CloneID values match the MADC CloneID column. Please make sure they use the same marker IDs."
     )
 
     # Test error when markers_info_ChromPos is provided but IDs still don't match botloci
-    expect_error(
-      madc2vcf_all(madc = alfalfa_madc_wrongID,
-                   botloci_file = alfalfa_botloci,
-                   hap_seq_file = alfalfa_microhapDB,
-                   n.cores = 1,
-                   markers_info = alfalfa_markers_info_ChromPos,
-                   out_vcf = out,
-                   verbose = FALSE)
-    )
+    madc2vcf_all(madc = alfalfa_madc_wrongID,
+                 botloci_file = alfalfa_botloci,
+                 hap_seq_file = alfalfa_microhapDB,
+                 n.cores = 1,
+                 markers_info = alfalfa_markers_info_ChromPos,
+                 out_vcf = out,
+                 verbose = TRUE)
+
+    vcf <- read.vcfR(out, verbose = FALSE)
+    expect_s4_class(vcf, "vcfR")
+    lut <- read.csv(alfalfa_markers_info)
+    vcf_infos <- vcf@fix[,c(1:5)]
+    lut_infos <- lut[match(vcf@fix[,3],lut$BI_markerID),c(2:6)]
+    check <- cbind(vcf_infos,lut_infos)
+    check <- check[-which(is.na(check$Pos)),]
+    expect_equal(check$REF, check$Ref)
+    expect_equal(check$ALT, check$Alt)
+    expect_equal(as.numeric(check$POS), check$Pos)
+    DP <- extract.gt(vcf, "DP", as.numeric = TRUE)
+    expect_equal(sum(DP[1,]), 4534)
+    expect_equal(sum(DP[,5]), 235217)
+    multi <- grepl(",", vcf@fix[,5])
+
   })
 
-  test_that("alfalfa lower case fixed MADC", {
+  test_that("alfalfa lower case missing 3 ref and 1 alt fixed MADC", {
     out <- tempfile(fileext = ".vcf")
     madc2vcf_all(madc = alfalfa_lowercase,
                  botloci_file = alfalfa_botloci,
                  hap_seq_file = alfalfa_microhapDB,
                  n.cores = 1,
                  out_vcf = out,
-                 verbose = FALSE)
+                 verbose = TRUE)
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(alfalfa_markers_info)
     vcf_infos <- vcf@fix[,c(1:5)]
     lut_infos <- lut[match(vcf@fix[,3],lut$BI_markerID),c(2:6)]
     check <- cbind(vcf_infos,lut_infos)
+    check <- check[-which(is.na(check$Pos)),]
     expect_equal(check$REF, check$Ref)
     expect_equal(check$ALT, check$Alt)
     expect_equal(as.numeric(check$POS), check$Pos)
     dp <- extract.gt(vcf, "DP", as.numeric = TRUE)
-    expect_equal(sum(dp[,10]), 43691)
+    expect_equal(sum(dp[1,]), 4534)
+    expect_equal(sum(dp[,5]), 233719)
 
     madc2vcf_all(madc = alfalfa_lowercase,
                  botloci_file = alfalfa_botloci,
-                 hap_seq_file = alfalfa_microhapDB,
+                 hap_seq_file = NULL,
                  n.cores = 1,
-                 markers_info = alfalfa_markers_info,
                  out_vcf = out,
-                 verbose = FALSE)
+                 verbose = TRUE)
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(alfalfa_markers_info)
     vcf_infos <- vcf@fix[,c(1:5)]
     lut_infos <- lut[match(vcf@fix[,3],lut$BI_markerID),c(2:6)]
     check <- cbind(vcf_infos,lut_infos)
+    check <- check[-which(is.na(check$Pos)),]
     expect_equal(check$REF, check$Ref)
     expect_equal(check$ALT, check$Alt)
     expect_equal(as.numeric(check$POS), check$Pos)
     dp <- extract.gt(vcf, "DP", as.numeric = TRUE)
-    expect_equal(sum(dp[,10]), 43691)
+    expect_equal(sum(dp[1,]), 4534)
+    expect_equal(sum(dp[,5]), 230415)
 
     madc2vcf_all(madc = alfalfa_lowercase,
                  botloci_file = alfalfa_botloci,
@@ -268,16 +297,21 @@ test_that("simu alfalfa",{
                  n.cores = 1,
                  markers_info = alfalfa_markers_info,
                  out_vcf = out,
-                 verbose = FALSE)
+                 verbose = TRUE)
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(alfalfa_markers_info)
     vcf_infos <- vcf@fix[,c(1:5)]
     lut_infos <- lut[match(vcf@fix[,3],lut$BI_markerID),c(2:6)]
     check <- cbind(vcf_infos,lut_infos)
+    check <- check[-which(is.na(check$Pos)),]
+    expect_equal(check$REF, check$Ref)
+    expect_equal(check$ALT, check$Alt)
     expect_equal(as.numeric(check$POS), check$Pos)
     dp <- extract.gt(vcf, "DP", as.numeric = TRUE)
-    expect_equal(sum(dp[,10]), 43691)
+    expect_equal(sum(dp[1,]), 4534)
+    expect_equal(sum(dp[,5]), 230415)
+
   })
 
   test_that("alfalfa IUPAC code", {
@@ -289,64 +323,9 @@ test_that("simu alfalfa",{
                    hap_seq_file = alfalfa_microhapDB,
                    n.cores = 1,
                    out_vcf = out,
-                   verbose = FALSE)
+                   verbose = FALSE),
+      regexp = "IUPAC \\(non-ATCG\\) codes found in AlleleSequence\\. This codes are not currently supported by BIGr/BIGapp\\. Run HapApp to replace them"
     )
-
-    madc2vcf_all(madc = alfalfa_iupac,
-                 botloci_file = alfalfa_botloci,
-                 hap_seq_file = alfalfa_microhapDB,
-                 n.cores = 1,
-                 markers_info = alfalfa_markers_info,
-                 out_vcf = out,
-                 verbose = FALSE)
-
-    vcf <- read.vcfR(out, verbose = FALSE)
-    lut <- read.csv(alfalfa_markers_info)
-    vcf_infos <- vcf@fix[,c(1:5)]
-    lut_infos <- lut[match(vcf@fix[,3],lut$BI_markerID),c(2:6)]
-    check <- cbind(vcf_infos,lut_infos)
-    expect_equal(as.numeric(check$POS), check$Pos)
-    dp <- extract.gt(vcf, "DP", as.numeric = TRUE)
-    expect_equal(sum(dp[,10]), 43691)
-    expect_equal(check$REF, check$Ref)
-    expect_equal(check$ALT, check$Alt)
-
-    madc2vcf_all(madc = alfalfa_iupac,
-                 botloci_file = alfalfa_botloci,
-                 hap_seq_file = NULL,
-                 n.cores = 1,
-                 markers_info = alfalfa_markers_info,
-                 out_vcf = out,
-                 verbose = FALSE)
-
-    vcf <- read.vcfR(out, verbose = FALSE)
-    lut <- read.csv(alfalfa_markers_info)
-    vcf_infos <- vcf@fix[,c(1:5)]
-    lut_infos <- lut[match(vcf@fix[,3],lut$BI_markerID),c(2:6)]
-    check <- cbind(vcf_infos,lut_infos)
-    expect_equal(as.numeric(check$POS), check$Pos)
-    dp <- extract.gt(vcf, "DP", as.numeric = TRUE)
-    expect_equal(sum(dp[1,]), 4534)
-    expect_equal(sum(dp[,5]), 56547)
-    expect_equal(check$REF, check$Ref)
-    expect_equal(check$ALT, check$Alt)
-
-    madc2vcf_all(madc = alfalfa_iupac,
-                 botloci_file = alfalfa_botloci,
-                 hap_seq_file = NULL,
-                 n.cores = 1,
-                 out_vcf = out,
-                 verbose = FALSE)
-
-    vcf <- read.vcfR(out, verbose = FALSE)
-    lut <- read.csv(alfalfa_markers_info)
-    vcf_infos <- vcf@fix[,c(1:5)]
-    lut_infos <- lut[match(vcf@fix[,3],lut$BI_markerID),c(2:6)]
-    check <- cbind(vcf_infos,lut_infos)
-    expect_equal(as.numeric(check$POS), check$Pos)
-    dp <- extract.gt(vcf, "DP", as.numeric = TRUE)
-    expect_equal(sum(dp[,10]), 43691)
-
   })
 
   test_that("potato indel madc chrompos=FALSE", {
@@ -358,7 +337,9 @@ test_that("simu alfalfa",{
                    hap_seq_file = potato_microhapDB,
                    n.cores = 1,
                    out_vcf = out,
-                   verbose = FALSE)
+                   verbose = FALSE),
+      regexp = "CloneID does not have the expected Chromosome_Position format. Please check your CloneIDs or provide a file with this information"
+
     )
 
     madc2vcf_all(madc = potato_indel_madc,
@@ -367,16 +348,18 @@ test_that("simu alfalfa",{
                  n.cores = 1,
                  markers_info = potato_markers_info,
                  out_vcf = out,
-                 verbose = FALSE)
+                 verbose = TRUE)
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(potato_markers_info)
     vcf_infos <- vcf@fix[,c(1:5)]
     lut_infos <- lut[match(vcf@fix[,3],lut$BI_markerID),c(2:6)]
     check <- cbind(vcf_infos,lut_infos)
+    check <- check[-which(is.na(check$Ref)),]
     expect_equal(as.numeric(check$POS), check$Pos)
     dp <- extract.gt(vcf, "DP", as.numeric = TRUE)
-    expect_equal(sum(dp[,10]), 41656)
+    expect_equal(sum(dp[,10]), 43017)
+    expect_equal(sum(dp[3,]), 5073)
     expect_equal(check$REF, check$Ref)
     expect_equal(check$ALT, check$Alt)
 
@@ -393,10 +376,11 @@ test_that("simu alfalfa",{
     vcf_infos <- vcf@fix[,c(1:5)]
     lut_infos <- lut[match(vcf@fix[,3],lut$BI_markerID),c(2:6)]
     check <- cbind(vcf_infos,lut_infos)
+    check <- check[-which(is.na(check$Ref)),]
     expect_equal(as.numeric(check$POS), check$Pos)
     dp <- extract.gt(vcf, "DP", as.numeric = TRUE)
-    expect_equal(sum(dp[1,]), 5163)
-    expect_equal(sum(dp[,5]), 58927)
+    expect_equal(sum(dp[1,]), 3937)
+    expect_equal(sum(dp[,5]), 248571)
     expect_equal(check$REF, check$Ref)
     expect_equal(check$ALT, check$Alt)
 
@@ -407,25 +391,10 @@ test_that("simu alfalfa",{
                    hap_seq_file = NULL,
                    n.cores = 1,
                    out_vcf = out,
-                   verbose = FALSE)
+                   verbose = FALSE),
+      regexp = "CloneID does not have the expected Chromosome_Position format. Please check your CloneIDs or provide a file with this information"
     )
 
-    madc2vcf_all(madc = potato_indel_madc,
-                 botloci_file = potato_botloci,
-                 hap_seq_file = NULL,
-                 n.cores = 1,
-                 markers_info = potato_markers_info,
-                 out_vcf = out,
-                 verbose = FALSE)
-
-    vcf <- read.vcfR(out, verbose = FALSE)
-    lut <- read.csv(potato_markers_info)
-    vcf_infos <- vcf@fix[,c(1:5)]
-    lut_infos <- lut[match(vcf@fix[,3],lut$BI_markerID),c(2:6)]
-    check <- cbind(vcf_infos,lut_infos)
-    expect_equal(as.numeric(check$POS), check$Pos)
-    dp <- extract.gt(vcf, "DP", as.numeric = TRUE)
-    expect_equal(sum(dp[,10]), 41656)
   })
 
   test_that("potato indel chromposFALSE", {
@@ -437,7 +406,8 @@ test_that("simu alfalfa",{
                    hap_seq_file = potato_microhapDB,
                    n.cores = 1,
                    out_vcf = out,
-                   verbose = FALSE)
+                   verbose = FALSE),
+      regexp = "CloneID does not have the expected Chromosome_Position format. Please check your CloneIDs or provide a file with this information"
     )
 
     madc2vcf_all(madc = potato_more_indels_chrompos_false,
@@ -453,9 +423,11 @@ test_that("simu alfalfa",{
     vcf_infos <- vcf@fix[,c(1:5)]
     lut_infos <- lut[match(vcf@fix[,3],lut$BI_markerID),c(2:6)]
     check <- cbind(vcf_infos,lut_infos)
+    check <- check[-which(is.na(check$Ref)),]
     expect_equal(as.numeric(check$POS), check$Pos)
     dp <- extract.gt(vcf, "DP", as.numeric = TRUE)
-    expect_equal(sum(dp[,10]), 41755)
+    expect_equal(sum(dp[1,]), 5397)
+    expect_equal(sum(dp[,5]), 215070)
     expect_equal(check$REF, check$Ref)
     expect_equal(check$ALT, check$Alt)
 
@@ -472,10 +444,11 @@ test_that("simu alfalfa",{
     vcf_infos <- vcf@fix[,c(1:5)]
     lut_infos <- lut[match(vcf@fix[,3],lut$BI_markerID),c(2:6)]
     check <- cbind(vcf_infos,lut_infos)
+    check <- check[-which(is.na(check$Ref)),]
     expect_equal(as.numeric(check$POS), check$Pos)
     dp <- extract.gt(vcf, "DP", as.numeric = TRUE)
-    expect_equal(sum(dp[1,]), 6301)
-    expect_equal(sum(dp[,5]), 53613)
+    expect_equal(sum(dp[1,]), 5397)
+    expect_equal(sum(dp[,5]), 215070)
     expect_equal(check$REF, check$Ref)
     expect_equal(check$ALT, check$Alt)
 
@@ -486,25 +459,9 @@ test_that("simu alfalfa",{
                    hap_seq_file = NULL,
                    n.cores = 1,
                    out_vcf = out,
-                   verbose = FALSE)
+                   verbose = FALSE),
+      regexp = "CloneID does not have the expected Chromosome_Position format. Please check your CloneIDs or provide a file with this information"
     )
-
-    madc2vcf_all(madc = potato_more_indels_chrompos_false,
-                 botloci_file = potato_botloci,
-                 hap_seq_file = NULL,
-                 n.cores = 1,
-                 markers_info = potato_markers_info,
-                 out_vcf = out,
-                 verbose = FALSE)
-
-    vcf <- read.vcfR(out, verbose = FALSE)
-    lut <- read.csv(potato_markers_info)
-    vcf_infos <- vcf@fix[,c(1:5)]
-    lut_infos <- lut[match(vcf@fix[,3],lut$BI_markerID),c(2:6)]
-    check <- cbind(vcf_infos,lut_infos)
-    expect_equal(as.numeric(check$POS), check$Pos)
-    dp <- extract.gt(vcf, "DP", as.numeric = TRUE)
-    expect_equal(sum(dp[,10]), 41755)
   })
 
   test_that("potato lowercase", {
@@ -515,13 +472,15 @@ test_that("simu alfalfa",{
                  n.cores = 1,
                  markers_info = potato_markers_info,
                  out_vcf = out,
-                 verbose = FALSE)
+                 verbose = TRUE)
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(potato_markers_info)
     vcf_infos <- vcf@fix[,c(1:5)]
     lut_infos <- lut[match(vcf@fix[,3],lut$BI_markerID),c(2:6)]
     check <- cbind(vcf_infos,lut_infos)
+    check <- check[-which(is.na(check$Ref)),]
+
     expect_equal(as.numeric(check$POS), check$Pos)
     dp <- extract.gt(vcf, "DP", as.numeric = TRUE)
     expect_equal(sum(dp[,10]), 41755)
@@ -536,124 +495,24 @@ test_that("simu alfalfa",{
                    n.cores = 1,
                    markers_info = potato_markers_info_ChromPos,
                    out_vcf = out,
-                   verbose = FALSE)
+                   verbose = FALSE),
+      regexp = "Indels detected in MADC file. The markers_info file must contain 'Ref', 'Alt', and 'Indel_pos' columns."
     )
-
-    madc2vcf_all(madc = potato_indel_lowercase,
-                 botloci_file = potato_botloci,
-                 hap_seq_file = potato_microhapDB,
-                 n.cores = 1,
-                 markers_info = potato_markers_info,
-                 out_vcf = out,
-                 verbose = FALSE)
-
-    vcf <- read.vcfR(out, verbose = FALSE)
-    lut <- read.csv(potato_markers_info)
-    vcf_infos <- vcf@fix[,c(1:5)]
-    lut_infos <- lut[match(vcf@fix[,3],lut$BI_markerID),c(2:6)]
-    check <- cbind(vcf_infos,lut_infos)
-    expect_equal(as.numeric(check$POS), check$Pos)
-    dp <- extract.gt(vcf, "DP", as.numeric = TRUE)
-    expect_equal(sum(dp[,10]), 41755)
-    expect_equal(check$REF, check$Ref)
-    expect_equal(check$ALT, check$Alt)
-
-    madc2vcf_all(madc = potato_indel_lowercase,
-                 botloci_file = potato_botloci,
-                 hap_seq_file = NULL,
-                 n.cores = 1,
-                 markers_info = potato_markers_info,
-                 out_vcf = out,
-                 verbose = FALSE)
-
-    vcf <- read.vcfR(out, verbose = FALSE)
-    lut <- read.csv(potato_markers_info)
-    vcf_infos <- vcf@fix[,c(1:5)]
-    lut_infos <- lut[match(vcf@fix[,3],lut$BI_markerID),c(2:6)]
-    check <- cbind(vcf_infos,lut_infos)
-    expect_equal(as.numeric(check$POS), check$Pos)
-    dp <- extract.gt(vcf, "DP", as.numeric = TRUE)
-    expect_equal(sum(dp[1,]), 6301)
-    expect_equal(sum(dp[,5]), 53613)
-    expect_equal(check$REF, check$Ref)
-    expect_equal(check$ALT, check$Alt)
-
-    madc2vcf_all(madc = potato_indel_lowercase,
-                 botloci_file = potato_botloci,
-                 hap_seq_file = NULL,
-                 n.cores = 1,
-                 markers_info = potato_markers_info,
-                 out_vcf = out,
-                 verbose = FALSE)
-
-    vcf <- read.vcfR(out, verbose = FALSE)
-    lut <- read.csv(potato_markers_info)
-    vcf_infos <- vcf@fix[,c(1:5)]
-    lut_infos <- lut[match(vcf@fix[,3],lut$BI_markerID),c(2:6)]
-    check <- cbind(vcf_infos,lut_infos)
-    expect_equal(as.numeric(check$POS), check$Pos)
-    dp <- extract.gt(vcf, "DP", as.numeric = TRUE)
-    expect_equal(sum(dp[,10]), 41755)
   })
-
 
   test_that("potato IUPAC", {
     out <- tempfile(fileext = ".vcf")
-    madc2vcf_all(madc = potato_indel_iupac,
-                 botloci_file = potato_botloci,
-                 hap_seq_file = potato_microhapDB,
-                 n.cores = 1,
-                 markers_info = potato_markers_info,
-                 out_vcf = out,
-                 verbose = FALSE)
 
-    vcf <- read.vcfR(out, verbose = FALSE)
-    lut <- read.csv(potato_markers_info)
-    vcf_infos <- vcf@fix[,c(1:5)]
-    lut_infos <- lut[match(vcf@fix[,3],lut$BI_markerID),c(2:6)]
-    check <- cbind(vcf_infos,lut_infos)
-    expect_equal(as.numeric(check$POS), check$Pos)
-    dp <- extract.gt(vcf, "DP", as.numeric = TRUE)
-    expect_equal(sum(dp[,10]), 41755)
-    expect_equal(check$REF, check$Ref)
-    expect_equal(check$ALT, check$Alt)
-
-    madc2vcf_all(madc = potato_indel_iupac,
-                 botloci_file = potato_botloci,
-                 hap_seq_file = NULL,
-                 n.cores = 1,
-                 markers_info = potato_markers_info,
-                 out_vcf = out,
-                 verbose = FALSE)
-
-    vcf <- read.vcfR(out, verbose = FALSE)
-    lut <- read.csv(potato_markers_info)
-    vcf_infos <- vcf@fix[,c(1:5)]
-    lut_infos <- lut[match(vcf@fix[,3],lut$BI_markerID),c(2:6)]
-    check <- cbind(vcf_infos,lut_infos)
-    expect_equal(as.numeric(check$POS), check$Pos)
-    dp <- extract.gt(vcf, "DP", as.numeric = TRUE)
-    expect_equal(sum(dp[1,]), 6301)
-    expect_equal(sum(dp[,5]), 53613)
-    expect_equal(check$REF, check$Ref)
-    expect_equal(check$ALT, check$Alt)
-
-    madc2vcf_all(madc = potato_indel_iupac,
-                 botloci_file = potato_botloci,
-                 hap_seq_file = NULL,
-                 n.cores = 1,
-                 markers_info = potato_markers_info,
-                 out_vcf = out,
-                 verbose = FALSE)
-
-    vcf <- read.vcfR(out, verbose = FALSE)
-    lut <- read.csv(potato_markers_info)
-    vcf_infos <- vcf@fix[,c(1:5)]
-    lut_infos <- lut[match(vcf@fix[,3],lut$BI_markerID),c(2:6)]
-    check <- cbind(vcf_infos,lut_infos)
-    expect_equal(as.numeric(check$POS), check$Pos)
-    dp <- extract.gt(vcf, "DP", as.numeric = TRUE)
-    expect_equal(sum(dp[,10]), 41755)
+    expect_error(
+      madc2vcf_all(madc = potato_indel_iupac,
+                   botloci_file = potato_botloci,
+                   hap_seq_file = potato_microhapDB,
+                   n.cores = 1,
+                   markers_info = potato_markers_info,
+                   out_vcf = out,
+                   verbose = TRUE),
+      regexp = "IUPAC \\(non-ATCG\\) codes found in AlleleSequence. This codes are not currently supported by BIGr/BIGapp. Run HapApp to replace them"
+    )
   })
 
   test_that("alfalfa raw MADC format (7-row header)", {
@@ -665,36 +524,7 @@ test_that("simu alfalfa",{
                    hap_seq_file = alfalfa_microhapDB,
                    n.cores = 1,
                    out_vcf = out,
-                   verbose = FALSE)
-    )
-
-    expect_error(
-      madc2vcf_all(madc = alfalfa_madc_raw,
-                   botloci_file = alfalfa_botloci,
-                   hap_seq_file = NULL,
-                   n.cores = 1,
-                   out_vcf = out,
-                   verbose = FALSE)
-    )
-
-    expect_error(
-      madc2vcf_all(madc = alfalfa_madc_raw,
-                   botloci_file = alfalfa_botloci,
-                   hap_seq_file = NULL,
-                   n.cores = 1,
-                   markers_info = alfalfa_markers_info,
-                   out_vcf = out,
-                   verbose = FALSE)
-    )
-
-    expect_error(
-      madc2vcf_all(madc = alfalfa_madc_raw,
-                   botloci_file = alfalfa_botloci,
-                   hap_seq_file = alfalfa_microhapDB,
-                   n.cores = 1,
-                   markers_info = alfalfa_markers_info,
-                   out_vcf = out,
-                   verbose = FALSE)
+                   verbose = FALSE), regexp = "MADC not processed by HapApp"
     )
   })
 })

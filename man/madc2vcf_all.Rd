@@ -15,6 +15,9 @@ madc2vcf_all(
   alignment_score_thr = 40,
   out_vcf = NULL,
   markers_info = NULL,
+  add_others = TRUE,
+  others_max_snps = 5,
+  others_rm_with_indels = TRUE,
   verbose = TRUE
 )
 }
@@ -36,6 +39,14 @@ madc2vcf_all(
 \item{alignment_score_thr}{A numeric value specifying the minimum alignment score threshold. Default is 40.}
 
 \item{out_vcf}{A string specifying the name of the output VCF file. If the file extension is not \code{.vcf}, it will be appended automatically.}
+
+\item{markers_info}{A string specifying the path to a CSV file with marker information (CloneID/BI_markerID, Chr, Pos, Ref, Alt, Type, Indel_pos columns as needed).}
+
+\item{add_others}{A logical value. If TRUE, alleles labeled "Other" in the MADC file are included in off-target SNP extraction. Default is TRUE.}
+
+\item{others_max_snps}{An integer or NULL. If not NULL, Other alleles with more than this many SNP differences versus the Ref sequence (as detected by pairwise alignment) are discarded. Default is NULL (no limit).}
+
+\item{others_rm_with_indels}{A logical value. If TRUE, Other alleles that contain insertions or deletions relative to the Ref sequence (as detected by pairwise alignment) are discarded. Default is TRUE.}
 
 \item{verbose}{A logical value indicating whether to print metrics and progress to the console. Default is TRUE.}
 }

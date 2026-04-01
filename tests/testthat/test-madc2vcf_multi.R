@@ -34,8 +34,6 @@ test_that("madc2vcf_multi — alfalfa (BIGapp-PanelHub)", {
   skip_if_offline("raw.githubusercontent.com")
 
   out <- tempfile(fileext = ".vcf")
-  on.exit(unlink(out), add = TRUE)
-
   # Fixed allele ID format
   expect_no_error(
     madc2vcf_multi(
@@ -54,6 +52,7 @@ test_that("madc2vcf_multi — alfalfa (BIGapp-PanelHub)", {
   expect_equal(GT[3,5],"0/0/0/3")
 
   # Don't allow raw MADC
+  out <- tempfile(fileext = ".vcf")
   expect_error(
     madc2vcf_multi(
       madc_file    = alfalfa_madc_raw,
@@ -64,6 +63,7 @@ test_that("madc2vcf_multi — alfalfa (BIGapp-PanelHub)", {
     ), regexp = "The MADC file does not have fixed AlleleIDs. Please process the MADC file through HapApp before using this function."
   )
 
+  out <- tempfile(fileext = ".vcf")
   expect_no_error(
     madc2vcf_multi(
       madc_file    = alfalfa_madc,
@@ -75,6 +75,7 @@ test_that("madc2vcf_multi — alfalfa (BIGapp-PanelHub)", {
   )
 
   # Wrong IDs
+  out <- tempfile(fileext = ".vcf")
   expect_error(
     madc2vcf_multi(
       madc_file    = alfalfa_madc_wrongID,
@@ -85,6 +86,7 @@ test_that("madc2vcf_multi — alfalfa (BIGapp-PanelHub)", {
     ), regexp = "Check marker IDs in both MADC and botloci files. They should be the same."
   )
 
+  out <- tempfile(fileext = ".vcf")
   expect_no_error(
     madc2vcf_multi(
       madc_file    = alfalfa_madc_wrongID,
@@ -103,6 +105,7 @@ test_that("madc2vcf_multi — alfalfa (BIGapp-PanelHub)", {
   expect_equal(GT[3,5],"0/0/0/3")
 
   ### Avoid IUPAC codes
+  out <- tempfile(fileext = ".vcf")
   expect_error(
     madc2vcf_multi(
       madc_file    = alfalfa_iupac,
@@ -113,6 +116,7 @@ test_that("madc2vcf_multi — alfalfa (BIGapp-PanelHub)", {
     ), regexp = "MADC Allele Sequences contain IUPAC \\(non-ATCG\\) codes. Please run HapApp to clean MADC file before using this function."
   )
 
+  out <- tempfile(fileext = ".vcf")
   expect_error(
     madc2vcf_multi(
       madc_file    = alfalfa_lowercase,
@@ -123,6 +127,7 @@ test_that("madc2vcf_multi — alfalfa (BIGapp-PanelHub)", {
     ), regexp = "Not all Ref sequences have a corresponding Alt or vice versa. Please provide a complete MADC file before using this function."
   )
 
+  out <- tempfile(fileext = ".vcf")
   expect_no_error(
     madc2vcf_multi(
       madc_file    = potato_indel_madc,

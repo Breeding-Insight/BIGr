@@ -62,7 +62,8 @@ Imports:
     janitor,
     quadprog,
     tibble,
-    stringr
+    stringr,
+    ggplot2
 Suggests: 
     covr,
     spelling,

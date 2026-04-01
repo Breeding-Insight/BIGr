@@ -50,6 +50,7 @@
 #' @import ggplot2
 #'
 #' @examples
+#' \dontrun{
 #' result <- imputation_concordance(
 #'   reference_genos = ref,
 #'   imputed_genos = test,
@@ -58,7 +59,9 @@
 #'   verbose = TRUE,
 #'   plot = TRUE
 #' )
+#' }
 #'
+#' @importFrom stats reorder
 #' @export
 imputation_concordance <- function(reference_genos,
                                    imputed_genos,

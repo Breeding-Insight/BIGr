@@ -17,6 +17,7 @@
 #' @param filter.SAMPLE.miss Sample missing data filter
 #' @param filter.SNP.miss SNP missing data filter
 #' @param ploidy The ploidy of the species being analyzed
+#' @param quality.rates Logical. If TRUE, calculates and outputs CSV files with quality metrics for each marker and sample before filtering (mean depth, genotyping rate, observed heterozygosity).
 #' @param output.file output file name (optional). If no output.file name provided, then a vcfR object will be returned.
 #' @return A gzipped vcf file
 #' @importFrom vcfR read.vcfR
@@ -55,7 +56,7 @@ filterVCF <- function(vcf.file,
 
   # Read VCF (can be .vcf or .vcf.gz)
 
-  if (class(vcf.file) != "vcfR") {
+  if (!inherits(vcf.file, "vcfR")) {
     vcf <- read.vcfR(vcf.file)
   } else {
     vcf <- vcf.file
@@ -381,7 +382,7 @@ filterVCF <- function(vcf.file,
   }
   ### Export the modified VCF file (this exports as a .vcf.gz, so make sure to have the name end in .vcf.gz)
   cat("Exporting VCF\n")
-  if (!class(vcf.file) == "vcfR"){
+  if (!inherits(vcf.file, "vcfR")){
     if (!is.null(output.file)){
       output_name <- paste0(output.file,".vcf.gz")
       vcfR::write.vcf(vcf, file = output_name)

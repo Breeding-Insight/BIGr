@@ -23,6 +23,8 @@ filterVCF(
 \arguments{
 \item{vcf.file}{vcfR object or path to VCF file. Can be unzipped (.vcf) or gzipped (.vcf.gz).}
 
+\item{quality.rates}{Logical. If TRUE, calculates and outputs CSV files with quality metrics for each marker and sample before filtering (mean depth, genotyping rate, observed heterozygosity).}
+
 \item{filter.OD}{Updog filter}
 
 \item{filter.BIAS.min}{Updog filter (requires a value for both BIAS.min and BIAS.max)}

@@ -64,6 +64,7 @@ When \code{plot = TRUE}, a bar plot showing concordance percentage per sample
 is generated using \pkg{ggplot2}.
 }
 \examples{
+\dontrun{
 result <- imputation_concordance(
   reference_genos = ref,
   imputed_genos = test,
@@ -72,5 +73,6 @@ result <- imputation_concordance(
   verbose = TRUE,
   plot = TRUE
 )
+}
 
 }

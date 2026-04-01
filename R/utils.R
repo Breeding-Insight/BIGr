@@ -1,8 +1,9 @@
 #Internal Functions
 
 utils::globalVariables(c(
-  "ALT", "AlleleID", "CHROM", "Data", "ID", "MarkerName", "POS",
-  "QPseparate", "QPsolve_par", "REF", "Var1", "Variant", "geno",
+  "ALT", "AlleleID", "AlleleSequence", "CHROM", "Concordance", "Data", "ID",
+  "MarkerName", "POS",
+  "QPseparate", "QPsolve_par", "REF", "Type", "Var1", "Variant", "geno",
   "ind", "ref", "row_name", "size", "snp",
   "CloneID", "Count", "qualifying_sites_count",
   "MarkerID", "SampleID", "Dosage",
@@ -48,10 +49,10 @@ vmsg <- function(text, verbose = FALSE, level = 1, type = ">>", ...) {
   # Create indentation based on level
   indent <- switch(as.character(level),
                    "0" = "",           # Section headers
-                   "1" = "  ∙ ",       # Main steps (medium bullet)
+                   "1" = "  \u2219 ",       # Main steps (medium bullet)
                    "2" = "    - ",     # Details
                    "3" = "      > ",   # Sub-details
-                   paste0(paste(rep("  ", level), collapse = ""), "• ")  # Fallback for level > 3
+                   paste0(paste(rep("  ", level), collapse = ""), "\u2022 ")  # Fallback for level > 3
   )
 
   # Format type label (only show for level 0)
@@ -82,7 +83,7 @@ vmsg <- function(text, verbose = FALSE, level = 1, type = ">>", ...) {
 #'
 #' @keywords internal
 #' @noRd
-#' @export 
+#' 
 url_exists <- function(u) {
   tryCatch({
     con <- url(u, open = "rb")

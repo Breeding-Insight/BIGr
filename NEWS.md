@@ -1,6 +1,6 @@
 # BIGr 0.6.7
 
-# New function `madc2vcf_multi`
+## New function `madc2vcf_multi`
 
 - New function `madc2vcf_multi` to convert a DArTag MADC file to a VCF using the polyRAD pipeline for multiallelic genotyping
 - Runs `check_madc_sanity` before loading the data and stops with informative errors if:
@@ -18,7 +18,7 @@
 
 # BIGr 0.6.6
 
-# Updates on `madc2vcf_all`
+## Updates on `madc2vcf_all`
 
 - New arguments for controlling processing of `Other` alleles:
     - `add_others`: if `TRUE` (default), alleles labeled "Other" in the MADC are included in off-target SNP extraction
@@ -32,7 +32,7 @@
 
 # BIGr 0.6.5
 
-# Updates on madc2vcf functions
+## Updates on madc2vcf functions
 Details:
 
 - both functions targets and all (targets + off-targets) markers now have `check_madc_sanity` function implemented. It tests:

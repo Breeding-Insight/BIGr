@@ -129,10 +129,11 @@ check_madc_sanity <- function(report) {
       # Complex indel: same length but >1 character difference between sequences
       same_len <- cmp_ok & (ref_len == alt_len)
       if (any(same_len)) {
-        n_diffs <- mapply(function(r, a) {
+      n_diffs <- mapply(function(r, a) {
           r_chars <- strsplit(r, "")[[1]]
           a_chars <- strsplit(a, "")[[1]]
-          sum(toupper(r_chars) != toupper(a_chars))
+          standard <- toupper(r_chars) %in% c("A","T","C","G") & toupper(a_chars) %in% c("A","T","C","G")
+          sum(toupper(r_chars[standard]) != toupper(a_chars[standard]))
         }, merged$AlleleSequence_ref[same_len], merged$AlleleSequence_alt[same_len])
         indel_mask[same_len] <- n_diffs > 1
       }

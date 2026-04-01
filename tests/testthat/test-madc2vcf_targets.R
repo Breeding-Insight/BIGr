@@ -140,7 +140,7 @@ test_that("simu alfalfa",{
                        output.file = out,
                        get_REF_ALT = FALSE,
                        collapse_matches_counts = TRUE,
-                       verbose = FALSE)
+                       verbose = TRUE)
     )
     vcf <- read.vcfR(out, verbose = FALSE)
     expect_s4_class(vcf, "vcfR")
@@ -250,7 +250,7 @@ test_that("simu alfalfa",{
                        output.file = out,
                        get_REF_ALT = TRUE,
                        botloci_file = alfalfa_botloci,
-                       verbose = TRUE)
+                       verbose = FALSE)
     )
 
     vcf <- read.vcfR(out, verbose = FALSE)
@@ -677,7 +677,7 @@ test_that("simu alfalfa",{
                      output.file = out,
                      get_REF_ALT = FALSE,
                      collapse_matches_counts = TRUE,
-                     verbose = FALSE)
+                     verbose = TRUE)
 
     vcf <- read.vcfR(out, verbose = FALSE)
     expect_s4_class(vcf, "vcfR")

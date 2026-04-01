@@ -22,7 +22,7 @@ test_that("test madc offtargets",{
                multiallelic_SNP_sample_thr = 0,
                alignment_score_thr = 40,
                out_vcf = temp,
-               verbose = TRUE)
+               verbose = FALSE)
 
   set.seed(456)
   madc2vcf_all(madc = madc_file,
@@ -34,7 +34,7 @@ test_that("test madc offtargets",{
                multiallelic_SNP_sample_thr = 0,
                alignment_score_thr = 40,
                out_vcf = temp_multi,
-               verbose = TRUE)
+               verbose = FALSE)
 
   vcf <- read.vcfR(temp)
   vcf_multi <- read.vcfR(temp_multi)
@@ -56,7 +56,7 @@ test_that("test madc offtargets",{
                multiallelic_SNP_dp_thr = 0,
                multiallelic_SNP_sample_thr = 0,
                out_vcf = temp,
-               verbose = TRUE)
+               verbose = FALSE)
 
   vcf <- read.vcfR(temp)
 
@@ -111,7 +111,7 @@ test_that("simu alfalfa",{
                    multiallelic_SNP_dp_thr = 0,
                    alignment_score_thr = 40,
                    out_vcf = out,
-                   verbose = TRUE)
+                   verbose = FALSE)
     )
     vcf <- read.vcfR(out, verbose = FALSE)
     expect_s4_class(vcf, "vcfR")
@@ -131,7 +131,7 @@ test_that("simu alfalfa",{
                    hap_seq_file = NULL,
                    n.cores = 1,
                    out_vcf = out,
-                   verbose = TRUE)
+                   verbose = FALSE)
     )
     vcf <- read.vcfR(out, verbose = FALSE)
     expect_s4_class(vcf, "vcfR")
@@ -163,7 +163,7 @@ test_that("simu alfalfa",{
                  n.cores = 1,
                  markers_info = alfalfa_markers_info,
                  out_vcf = out,
-                 verbose = TRUE)
+                 verbose = FALSE)
 
     vcf <- read.vcfR(out, verbose = FALSE)
     expect_s4_class(vcf, "vcfR")
@@ -184,7 +184,7 @@ test_that("simu alfalfa",{
                  n.cores = 1,
                  markers_info = alfalfa_markers_info,
                  out_vcf = out,
-                 verbose = TRUE)
+                 verbose = FALSE)
 
     vcf <- read.vcfR(out, verbose = FALSE)
     expect_s4_class(vcf, "vcfR")
@@ -230,7 +230,7 @@ test_that("simu alfalfa",{
                  n.cores = 1,
                  markers_info = alfalfa_markers_info_ChromPos,
                  out_vcf = out,
-                 verbose = TRUE)
+                 verbose = FALSE)
 
     vcf <- read.vcfR(out, verbose = FALSE)
     expect_s4_class(vcf, "vcfR")
@@ -256,7 +256,7 @@ test_that("simu alfalfa",{
                  hap_seq_file = alfalfa_microhapDB,
                  n.cores = 1,
                  out_vcf = out,
-                 verbose = TRUE)
+                 verbose = FALSE)
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(alfalfa_markers_info)
@@ -276,7 +276,7 @@ test_that("simu alfalfa",{
                  hap_seq_file = NULL,
                  n.cores = 1,
                  out_vcf = out,
-                 verbose = TRUE)
+                 verbose = FALSE)
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(alfalfa_markers_info)
@@ -297,7 +297,7 @@ test_that("simu alfalfa",{
                  n.cores = 1,
                  markers_info = alfalfa_markers_info,
                  out_vcf = out,
-                 verbose = TRUE)
+                 verbose = FALSE)
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(alfalfa_markers_info)
@@ -348,7 +348,7 @@ test_that("simu alfalfa",{
                  n.cores = 1,
                  markers_info = potato_markers_info,
                  out_vcf = out,
-                 verbose = TRUE)
+                 verbose = FALSE)
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(potato_markers_info)
@@ -358,8 +358,8 @@ test_that("simu alfalfa",{
     check <- check[-which(is.na(check$Ref)),]
     expect_equal(as.numeric(check$POS), check$Pos)
     dp <- extract.gt(vcf, "DP", as.numeric = TRUE)
-    expect_equal(sum(dp[,10]), 43017)
-    expect_equal(sum(dp[3,]), 5073)
+    expect_equal(sum(dp[,10]), 226838)
+    expect_equal(sum(dp[3,]), 3996)
     expect_equal(check$REF, check$Ref)
     expect_equal(check$ALT, check$Alt)
 
@@ -472,7 +472,7 @@ test_that("simu alfalfa",{
                  n.cores = 1,
                  markers_info = potato_markers_info,
                  out_vcf = out,
-                 verbose = TRUE)
+                 verbose = FALSE)
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(potato_markers_info)
@@ -483,7 +483,7 @@ test_that("simu alfalfa",{
 
     expect_equal(as.numeric(check$POS), check$Pos)
     dp <- extract.gt(vcf, "DP", as.numeric = TRUE)
-    expect_equal(sum(dp[,10]), 41755)
+    expect_equal(sum(dp[,10]), 219742)
     expect_equal(check$REF, check$Ref)
     expect_equal(check$ALT, check$Alt)
 
@@ -510,7 +510,7 @@ test_that("simu alfalfa",{
                    n.cores = 1,
                    markers_info = potato_markers_info,
                    out_vcf = out,
-                   verbose = TRUE),
+                   verbose = FALSE),
       regexp = "IUPAC \\(non-ATCG\\) codes found in AlleleSequence. This codes are not currently supported by BIGr/BIGapp. Run HapApp to replace them"
     )
   })

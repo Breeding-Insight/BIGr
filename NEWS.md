@@ -1,3 +1,21 @@
+# BIGr 0.6.7
+
+# New function `madc2vcf_multi`
+
+- New function `madc2vcf_multi` to convert a DArTag MADC file to a VCF using the polyRAD pipeline for multiallelic genotyping
+- Runs `check_madc_sanity` before loading the data and stops with informative errors if:
+    - Required columns are missing
+    - IUPAC (non-ATCG) codes are present in AlleleSequence
+    - Ref/Alt sequences are unpaired (`RefAltSeqs = FALSE`)
+    - Allele IDs have not been fixed by HapApp (`FixAlleleIDs = FALSE`)
+    - CloneIDs do not follow `Chr_Pos` format and no `markers_info` is provided
+- New argument `markers_info`: optional path or URL to a CSV with `CloneID`/`BI_markerID`, `Chr`, and `Pos` columns; required when CloneIDs do not follow the `Chr_Pos` format
+- Runs `check_botloci` to validate and reconcile CloneIDs between the MADC and botloci file, automatically fixing padding mismatches
+- A corrected temp file is written and passed to `readDArTag` only when needed (all-NA rows/columns detected, CloneIDs remapped by `check_botloci`, or botloci IDs remapped)
+- Accepts paths or URLs for `madc_file`, `botloci_file`, and `markers_info`
+- Estimates overdispersion with `polyRAD::TestOverdispersion`, iterates priors with `polyRAD::IterateHWE`, and exports the result with `polyRAD::RADdata2VCF`
+- `polyRAD` is a soft dependency (listed under `Suggests`); an informative error is raised if it is not installed
+
 # BIGr 0.6.6
 
 # Updates on `madc2vcf_all`

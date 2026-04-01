@@ -15,7 +15,7 @@ test_that("check madc",{
   report <- read.csv(paste0(github_path,"/alfalfa_lowercase.csv"))
 
   res <- check_madc_sanity(report)
-  exp <- c(TRUE, TRUE, FALSE, TRUE, FALSE, TRUE, FALSE, FALSE, TRUE, FALSE)
+  exp <- c(TRUE, TRUE, FALSE, TRUE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE)
   names(exp) <- names
   expect_equal(res$checks, exp)
 

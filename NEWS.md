@@ -1,3 +1,17 @@
+# BIGr 0.6.6
+
+# Updates on `madc2vcf_all`
+
+- New arguments for controlling processing of `Other` alleles:
+    - `add_others`: if `TRUE` (default), alleles labeled "Other" in the MADC are included in off-target SNP extraction
+    - `others_max_snps`: discards Other alleles with more than this many SNP differences relative to the Ref sequence (default: 5)
+    - `others_rm_with_indels`: discards Other alleles containing insertions or deletions relative to the Ref sequence (default: `TRUE`)
+- Others alleles that carry a different base at the target SNP position are now reported as a 3rd allele in the VCF instead of being silently dropped
+- Target position is now correctly removed from Others alignments, preventing duplicate VCF positions and marker IDs
+- Fixed a bug where Others alleles with "Ref_" or "Alt_" in their AlleleID would corrupt the target SNP REF/ALT fields and read depth counts in `merge_counts`
+- Improved verbose messages throughout: counts of Other alleles found, kept, and discarded (by indel filter and by max SNP filter) are now reported; multiallelic target SNPs with a 3rd allele from Others are counted and reported
+- Debug-level message (level 3) listing each Other allele added and its genomic position
+
 # BIGr 0.6.5
 
 # Updates on madc2vcf functions

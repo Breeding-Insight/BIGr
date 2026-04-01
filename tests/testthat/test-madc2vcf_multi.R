@@ -7,6 +7,7 @@ context("MADC to VCF via polyRAD")
 test_that("madc2vcf_multi — alfalfa (BIGapp-PanelHub)", {
 
   skip_if_not_installed("polyRAD")
+  skip_if_not_installed("VariantAnnotation")
 
  github_path <- "https://raw.githubusercontent.com/Breeding-Insight/BIGapp-PanelHub/refs/heads/long_seq/"
 

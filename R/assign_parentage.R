@@ -46,10 +46,8 @@
 #'   If `verbose = TRUE`, the function prints the results to the console and
 #'   returns the `tibble` invisibly.
 #'
-#' @importFrom dplyr filter mutate across bind_rows
-#' @importFrom tibble column_to_rownames tibble as_tibble
-#'
-#' @export
+#' @importFrom data.table := as.data.table CJ copy data.table fread fwrite rbindlist
+#' #' @export
 #'
 find_parentage <- function(genotypes_file, parents_file, progeny_file,
                            method = "best.pair",
@@ -57,6 +55,13 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
                            allow.selfing = TRUE,
                            verbose = TRUE,
                            write.txt = TRUE) {
+
+  # Ensure data.table is loaded
+  if (!requireNamespace("data.table", quietly = TRUE)) {
+    stop("The 'data.table' package is required. Please install it.", call. = FALSE)
+  }
+  library(data.table)
+
   #### Input Validation and Data Loading ####
   allowed_methods <- c("best.sire", "best.dam", "best.match", "best.pair")
   if (!method %in% allowed_methods) {
@@ -64,11 +69,11 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
   }
 
   tryCatch({
-    genos <- read.table(genotypes_file, header = TRUE, stringsAsFactors = FALSE)
-    all_parents <- read.table(parents_file, header = TRUE, stringsAsFactors = FALSE)
-    progeny_candidates <- read.table(progeny_file, header = TRUE, stringsAsFactors = FALSE)
+    genos <- fread(genotypes_file)
+    all_parents <- fread(parents_file)
+    progeny_candidates <- fread(progeny_file)
   }, error = function(e) {
-    stop("Error reading input files. Please ensure paths are correct and files are properly formatted.")
+    stop("Error reading input files. Ensure paths are correct and files are TSV/CSV.")
   })
 
   valid_ids <- genos$ID
@@ -76,24 +81,24 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
   if (length(removed_parents) > 0) {
     warning("The following parent IDs were not in the genotype file and will not be analyzed: ",
             paste(removed_parents, collapse = ", "), call. = FALSE)
-    all_parents <- all_parents %>% filter(ID %in% valid_ids)
+    all_parents <- all_parents[ID %in% valid_ids]
   }
 
   removed_progeny <- setdiff(progeny_candidates$ID, valid_ids)
   if (length(removed_progeny) > 0) {
     warning("The following progeny IDs were not in the genotype file and will not be analyzed: ",
             paste(removed_progeny, collapse = ", "), call. = FALSE)
-    progeny_candidates <- progeny_candidates %>% filter(ID %in% valid_ids)
+    progeny_candidates <- progeny_candidates[ID %in% valid_ids]
   }
 
   if (!"Sex" %in% colnames(all_parents)) {
     warning("No 'Sex' column in parents file. All parents treated as ambiguous ('A').")
-    all_parents$Sex <- "A"
+    all_parents[, Sex := "A"]
   }
 
-  all_parents <- all_parents %>% mutate(Sex = toupper(Sex))
-  sire_candidates <- all_parents %>% filter(Sex %in% c("M", "A"))
-  dam_candidates <- all_parents %>% filter(Sex %in% c("F", "A"))
+  all_parents[, Sex := toupper(Sex)]
+  sire_candidates <- all_parents[Sex %in% c("M", "A")]
+  dam_candidates <- all_parents[Sex %in% c("F", "A")]
 
   if (nrow(sire_candidates) == 0 && method %in% c("best.sire", "best.pair")) {
     warning("No valid sire candidates remain after filtering.", call. = FALSE)
@@ -107,21 +112,22 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
 
   #### Logic for Homozygous Matching Methods ####
   if (method %in% c("best.sire", "best.dam", "best.match")) {
-    genos_hom <- genos %>% mutate(across(-ID, ~ ifelse(.x == 1, NA, .x)))
+    genos_hom <- copy(genos)
+    marker_cols <- setdiff(names(genos_hom), "ID")
+    for (col in marker_cols) {
+      genos_hom[get(col) == 1, (col) := NA_integer_]
+    }
+
     parent_ids <- switch(method,
                          "best.sire" = sire_candidates$ID,
                          "best.dam" = dam_candidates$ID,
-                         "best.match" = union(sire_candidates$ID, dam_candidates$ID)
-    )
+                         "best.match" = union(sire_candidates$ID, dam_candidates$ID))
 
-    parent_genos <- genos_hom %>% filter(ID %in% parent_ids) %>% column_to_rownames("ID")
-    progeny_genos <- genos_hom %>% filter(ID %in% progeny_candidates$ID) %>% column_to_rownames("ID")
-    results_list <- list()
+    parent_genos <- as.matrix(genos_hom[ID %in% parent_ids], rownames = "ID")
+    progeny_genos <- as.matrix(genos_hom[ID %in% progeny_candidates$ID], rownames = "ID")
 
-    for (i in seq_len(nrow(progeny_genos))) {
-      progeny_id <- rownames(progeny_genos)[i]
-      progeny_vec <- as.numeric(progeny_genos[i, ])
-
+    results_list <- lapply(rownames(progeny_genos), function(progeny_id) {
+      progeny_vec <- progeny_genos[progeny_id, ]
       mismatches <- rowSums(parent_genos != progeny_vec, na.rm = TRUE)
       comparisons <- rowSums(!is.na(parent_genos) & !is.na(progeny_vec))
       percent_mismatch <- (mismatches / comparisons) * 100
@@ -129,41 +135,33 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
 
       best_idx <- which.min(percent_mismatch)
       if (length(best_idx) == 0) {
-        best_parent_id <- NA
-        min_percent <- NA
-        markers_tested <- NA
+        data.table(Progeny = progeny_id, Best_Match = NA, Mendelian_Error_Pct = NA, Markers_Tested = NA)
       } else {
-        best_parent_id <- rownames(parent_genos)[best_idx]
-        min_percent <- percent_mismatch[best_idx]
-        markers_tested <- comparisons[best_idx]
+        data.table(Progeny = progeny_id,
+                   Best_Match = rownames(parent_genos)[best_idx],
+                   Mendelian_Error_Pct = round(percent_mismatch[best_idx], 2),
+                   Markers_Tested = comparisons[best_idx])
       }
-
-      results_list[[progeny_id]] <- tibble(
-        Progeny = progeny_id,
-        Best_Match = best_parent_id,
-        Mendelian_Error_Pct = round(min_percent,2),
-        Markers_Tested = markers_tested
-      )
-    }
-    final_df <- bind_rows(results_list)
+    })
+    final_df <- rbindlist(results_list)
   }
 
   #### Logic for Best Pair Method ####
   if (method == "best.pair") {
-    genos_mat <- genos %>% column_to_rownames("ID") %>% as.matrix()
-    parent_pairs <- expand.grid(Sire = sire_candidates$ID, Dam = dam_candidates$ID, stringsAsFactors = FALSE)
+    genos_mat <- as.matrix(genos, rownames = "ID")
+
+    parent_pairs <- CJ(Sire = sire_candidates$ID, Dam = dam_candidates$ID)
 
     if (!allow.selfing) {
-      parent_pairs <- parent_pairs %>% filter(Sire != Dam)
-      if(verbose) cat("Selfing is disallowed. Pairs with identical parents are removed.\n")
+      parent_pairs <- parent_pairs[Sire != Dam]
+      if (verbose) cat("Selfing is disallowed. Pairs with identical parents are removed.\n")
     }
     if (nrow(parent_pairs) == 0) stop("No valid parent pairs to test.")
 
     sire_genos_mat <- genos_mat[parent_pairs$Sire, , drop = FALSE]
     dam_genos_mat <- genos_mat[parent_pairs$Dam, , drop = FALSE]
-    results_list <- list()
 
-    for (prog_id in progeny_candidates$ID) {
+    results_list <- lapply(progeny_candidates$ID, function(prog_id) {
       progeny_vec <- genos_mat[prog_id, ]
 
       mismatches <- rowSums(
@@ -182,12 +180,11 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
       min_mismatch_val <- min(percent_mismatch, na.rm = TRUE)
 
       if (is.infinite(min_mismatch_val)) {
-        results_list[[prog_id]] <- tibble(Progeny = prog_id, Markers_Tested = 0)
-        next
+        return(data.table(Progeny = prog_id, Markers_Tested = 0))
       }
 
       best_indices <- which(percent_mismatch == min_mismatch_val)
-      best_pairs <- parent_pairs[best_indices, ]
+      best_pairs <- parent_pairs[best_indices]
 
       if (!show.ties && nrow(best_pairs) > 1) {
         warning("Progeny '", prog_id, "' has ", nrow(best_pairs), " tied best pairs. Only one is reported as show.ties=FALSE.", call. = FALSE)
@@ -197,7 +194,6 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
       num_to_report <- min(nrow(best_pairs), num_to_report)
 
       result_row <- list(Progeny = prog_id)
-
       if (num_to_report == 1) {
         result_row[['Sire']] <- best_pairs$Sire[1]
         result_row[['Dam']] <- best_pairs$Dam[1]
@@ -211,24 +207,17 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
           result_row[[paste0("Markers_Tested_", k)]] <- comparisons[best_indices[k]]
         }
       }
-      results_list[[prog_id]] <- as_tibble(result_row)
-    }
-    final_df <- bind_rows(results_list)
+      as.data.table(result_row)
+    })
+    final_df <- rbindlist(results_list, fill = TRUE)
   }
 
   #### Output ####
-  # write .txt output
   if (write.txt) {
-    output_filename <- "parentage_results.txt"
+    output_filename <- "parentage_results_dt.txt"
     tryCatch({
-      write.table(final_df,
-                  file = output_filename,
-                  sep = "\t",
-                  quote = FALSE,
-                  row.names = FALSE)
-      if (verbose) {
-        cat("\nResults successfully written to:", output_filename, "\n")
-      }
+      fwrite(final_df, file = output_filename, sep = "\t", quote = FALSE)
+      if (verbose) cat("\nResults successfully written to:", output_filename, "\n")
     }, error = function(e) {
       warning("Could not write results to file. Error: ", e$message, call. = FALSE)
     })
@@ -242,4 +231,3 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
     return(final_df)
   }
 }
-

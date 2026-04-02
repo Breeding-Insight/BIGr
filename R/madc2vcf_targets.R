@@ -136,6 +136,14 @@ madc2vcf_targets <- function(madc_file,
                              collapse_matches_counts = FALSE,
                              verbose = TRUE) {
 
+  vmsg("Running BIGr madc2vcf_targets", verbose = verbose, level = 0, type = ">>")
+  vmsg("madc_file               : %s", verbose = verbose, level = 1, madc_file)
+  vmsg("output.file             : %s", verbose = verbose, level = 1, output.file)
+  vmsg("botloci_file            : %s", verbose = verbose, level = 1, if (is.null(botloci_file)) "NULL" else botloci_file)
+  vmsg("markers_info            : %s", verbose = verbose, level = 1, if (is.null(markers_info)) "NULL" else markers_info)
+  vmsg("get_REF_ALT             : %s", verbose = verbose, level = 1, get_REF_ALT)
+  vmsg("collapse_matches_counts : %s", verbose = verbose, level = 1, collapse_matches_counts)
+
   vmsg("Checking inputs", verbose = verbose, level = 0, type = ">>")
 
   # Input checks

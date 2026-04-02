@@ -43,7 +43,12 @@ jobs:
           extra-packages: |
             any::rcmdcheck
             any::covr
+            any::polyRAD
           needs: check
+
+      - name: Install VariantAnnotation (no Suggests)
+        run: pak::pkg_install("bioc::VariantAnnotation", dependencies = c("Depends", "Imports", "LinkingTo"))
+        shell: Rscript {0}
       - uses: r-lib/actions/check-r-package@v2
 
       - name: Generate test coverage report

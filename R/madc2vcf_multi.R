@@ -46,6 +46,13 @@ madc2vcf_multi <- function(madc_file,
                            ploidy = 2L,
                            verbose = TRUE) {
 
+  vmsg("Running BIGr madc2vcf_multi", verbose = verbose, level = 0, type = ">>")
+  vmsg("madc_file    : %s", verbose = verbose, level = 1, madc_file)
+  vmsg("botloci_file : %s", verbose = verbose, level = 1, botloci_file)
+  vmsg("markers_info : %s", verbose = verbose, level = 1, if (is.null(markers_info)) "NULL" else markers_info)
+  vmsg("outfile      : %s", verbose = verbose, level = 1, outfile)
+  vmsg("ploidy       : %s", verbose = verbose, level = 1, ploidy)
+
   vmsg("Checking inputs", verbose = verbose, level = 0, type = ">>")
 
   if (!(file.exists(madc_file) | url_exists(madc_file)))       stop("MADC file not found. Please provide a valid path or URL.")

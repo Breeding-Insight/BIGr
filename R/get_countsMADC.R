@@ -95,8 +95,9 @@ get_countsMADC <- function(madc_file = NULL, madc_object = NULL, collapse_matche
 
     vmsg(paste("There are", n_singles,"Ref tags without corresponding Alt tags, or vice versa"), verbose = verbose, level = 2, type = ">>")
     vmsg("Only the markers with both Ref and Alt tags will be retained for the conversion", verbose = verbose, level = 1, type = ">>")
+    vmsg("Consider providing a haplotype database file to resolve unpaired Ref/Alt sequences", verbose = verbose, level = 1, type = ">>")
 
-    warning(paste("There are", n_singles,"Ref tags without corresponding Alt tags, or vice versa. Only the markers with both Ref and Alt tags will be retained for the conversion"))
+    warning(paste("There are", n_singles,"Ref tags without corresponding Alt tags, or vice versa. Only the markers with both Ref and Alt tags will be retained for the conversion. Consider providing a haplotype database file to resolve unpaired Ref/Alt sequences."))
 
     # Subset both dataframes to retain only the common rows
     ref_df <- ref_df[common_ids, ]

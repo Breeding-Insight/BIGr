@@ -36,6 +36,19 @@
 #'         \code{polyRAD::RADdata2VCF}.
 #' }
 #'
+#' **Sanity check behaviour and requirements**
+#'
+#' The function always stops if IUPAC codes, unpaired Ref/Alt sequences, or
+#' unfixed AlleleIDs are detected (see \code{check_madc_sanity}). For the
+#' remaining checks the required inputs are:
+#'
+#' | Check | Status | Required |
+#' |---|---|---|
+#' | **Indels** | detected | `botloci_file` |
+#' | | not detected | `botloci_file` |
+#' | **ChromPos** | valid | `botloci_file` |
+#' | | invalid | `markers_info` with `Chr`/`Pos` + `botloci_file` |
+#'
 #' @importFrom utils read.csv write.csv read.table
 #'
 #' @export

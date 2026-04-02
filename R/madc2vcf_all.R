@@ -22,6 +22,18 @@
 #' @details
 #' The function processes a MADC file to generate a VCF file containing both target and off-target SNPs. It uses parallel processing to improve performance and provides options to filter multiallelic SNPs based on user-defined thresholds. The alignment score threshold can be adjusted using the `alignment_score_thr` parameter. The generated VCF file includes metadata about the processing parameters and the BIGr package version. If the `alignment_score_thr` is not met, the corresponding SNPs are discarded.
 #'
+#' **Sanity check behaviour and requirements**
+#'
+#' | Check | Status | Required |
+#' |---|---|---|
+#' | **Indels** | detected | `markers_info` with `Ref`/`Alt`/`Indel_pos`/`Indel_length` + `botloci_file` |
+#' | | not detected | `botloci_file` |
+#' | **ChromPos** | valid | `botloci_file` |
+#' | | invalid | `markers_info` with `Chr`/`Pos` + `botloci_file` |
+#' | **RefAltSeqs** | all paired | `botloci_file` |
+#' | | unpaired | `botloci_file` + `hap_seq_file` (microhaplotype DB) |
+#'
+#'
 #' @examples
 #' # Example usage:
 #'
@@ -323,6 +335,8 @@ loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, align
   }
   vmsg("Tags discarded due to lack of Ref_0001 sequence: %s tags", verbose = verbose, level = 2, type = ">>", sum(ref_index==-1))
   vmsg("Tags discarded due to lack of Alt_0002 sequence: %s tags", verbose = verbose, level = 2, type = ">>", sum(alt_index==-1))
+  if(sum(ref_index==-1) > 0) warning(sprintf("%s tags discarded due to lack of Ref_0001 sequence. Consider providing the haplotype database file to recover these tags", sum(ref_index==-1)))
+  if(sum(alt_index==-1) > 0) warning(sprintf("%s tags discarded due to lack of Alt_0002 sequence. Consider providing the haplotype database file to recover these tags", sum(alt_index==-1)))
 
   vmsg("Pairwise alignments of sequences to recover SNP position, reference and alternative bases...", verbose = verbose, level = 0)
   clust <- makeCluster(n.cores)

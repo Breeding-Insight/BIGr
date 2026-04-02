@@ -58,6 +58,16 @@ This function processes a MADC file to generate a VCF file containing both targe
 }
 \details{
 The function processes a MADC file to generate a VCF file containing both target and off-target SNPs. It uses parallel processing to improve performance and provides options to filter multiallelic SNPs based on user-defined thresholds. The alignment score threshold can be adjusted using the \code{alignment_score_thr} parameter. The generated VCF file includes metadata about the processing parameters and the BIGr package version. If the \code{alignment_score_thr} is not met, the corresponding SNPs are discarded.
+
+\strong{Sanity check behaviour and requirements}\tabular{lll}{
+   Check \tab Status \tab Required \cr
+   \strong{Indels} \tab detected \tab \code{markers_info} with \code{Ref}/\code{Alt}/\code{Indel_pos}/\code{Indel_length} + \code{botloci_file} \cr
+    \tab not detected \tab \code{botloci_file} \cr
+   \strong{ChromPos} \tab valid \tab \code{botloci_file} \cr
+    \tab invalid \tab \code{markers_info} with \code{Chr}/\code{Pos} + \code{botloci_file} \cr
+   \strong{RefAltSeqs} \tab all paired \tab \code{botloci_file} \cr
+    \tab unpaired \tab \code{botloci_file} + \code{hap_seq_file} (microhaplotype DB) \cr
+}
 }
 \examples{
 # Example usage:

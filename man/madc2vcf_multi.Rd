@@ -56,4 +56,16 @@ The function performs the following steps:
 calls \code{polyRAD::IterateHWE}, then exports the result with
 \code{polyRAD::RADdata2VCF}.
 }
+
+\strong{Sanity check behaviour and requirements}
+
+The function always stops if IUPAC codes, unpaired Ref/Alt sequences, or
+unfixed AlleleIDs are detected (see \code{check_madc_sanity}). For the
+remaining checks the required inputs are:\tabular{lll}{
+   Check \tab Status \tab Required \cr
+   \strong{Indels} \tab detected \tab \code{botloci_file} \cr
+    \tab not detected \tab \code{botloci_file} \cr
+   \strong{ChromPos} \tab valid \tab \code{botloci_file} \cr
+    \tab invalid \tab \code{markers_info} with \code{Chr}/\code{Pos} + \code{botloci_file} \cr
+}
 }

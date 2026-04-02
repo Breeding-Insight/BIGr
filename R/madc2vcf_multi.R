@@ -47,11 +47,11 @@ madc2vcf_multi <- function(madc_file,
                            verbose = TRUE) {
 
   vmsg("Running BIGr madc2vcf_multi", verbose = verbose, level = 0, type = ">>")
-  vmsg("madc_file    : %s", verbose = verbose, level = 1, madc_file)
-  vmsg("botloci_file : %s", verbose = verbose, level = 1, botloci_file)
-  vmsg("markers_info : %s", verbose = verbose, level = 1, if (is.null(markers_info)) "NULL" else markers_info)
-  vmsg("outfile      : %s", verbose = verbose, level = 1, outfile)
-  vmsg("ploidy       : %s", verbose = verbose, level = 1, ploidy)
+  vmsg("madc_file    : %s", verbose = verbose, level = 1, type = ">>", madc_file)
+  vmsg("botloci_file : %s", verbose = verbose, level = 1, type = ">>", botloci_file)
+  vmsg("markers_info : %s", verbose = verbose, level = 1, type = ">>", if (is.null(markers_info)) "NULL" else markers_info)
+  vmsg("outfile      : %s", verbose = verbose, level = 1, type = ">>", outfile)
+  vmsg("ploidy       : %s", verbose = verbose, level = 1, type = ">>", ploidy)
 
   vmsg("Checking inputs", verbose = verbose, level = 0, type = ">>")
 

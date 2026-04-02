@@ -1,4 +1,4 @@
-# BIGr 0.6.7
+# BIGr 0.7.0
 
 ## New function `madc2vcf_multi`
 

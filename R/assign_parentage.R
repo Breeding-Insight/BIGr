@@ -1,66 +1,95 @@
-#' Perform Parentage Assignment from Genotypic Data
+#' Find Parentage Assignments for Progeny
 #'
-#' @description
-#' Assigns parents to progeny based on genetic marker data coded as 0, 1, or 2
-#' representing allele counts. The function supports several methods, including
-#' finding the best single parent (sire, dam, or best match) based on
-#' homozygous loci mismatches, or identifying the best parent pair by
-#' minimizing Mendelian inheritance errors.
+#' Assigns the most likely parent(s) to each progeny individual based on
+#' genotypic data using Mendelian error rates or homozygous mismatch rates.
+#'
+#' @param genotypes_file Path to a TSV/CSV file containing genotype data.
+#'   Must include an 'ID' column followed by marker columns coded as 0, 1, 2
+#'   (allele dosage).
+#' @param parents_file Path to a TSV/CSV file listing candidate parent IDs.
+#'   Must include an 'ID' column. An optional 'Sex' column with values
+#'   'M' (sire), 'F' (dam), or 'A' (ambiguous) determines which parents are
+#'   tested for each role. If absent, all parents are treated as ambiguous.
+#' @param progeny_file Path to a TSV/CSV file listing progeny IDs to assign.
+#'   Must include an 'ID' column.
+#' @param method Character. Parentage assignment method. One of:
+#'   \itemize{
+#'     \item \code{"best.sire"}  — finds the best sire for each progeny using
+#'       homozygous mismatch rate.
+#'     \item \code{"best.dam"}   — finds the best dam for each progeny using
+#'       homozygous mismatch rate.
+#'     \item \code{"best.match"} — finds the single best parent (either sex)
+#'       using homozygous mismatch rate.
+#'     \item \code{"best.pair"}  — finds the best sire-dam pair for each
+#'       progeny using full Mendelian error rate (default).
+#'   }
+#' @param show_ties Logical. If \code{TRUE}, all tied best pairs are reported
+#'   as additional columns (\code{Sire_1}, \code{Sire_2}, etc.) when
+#'   \code{method = "best.pair"}. If \code{FALSE}, only one tied pair is
+#'   reported with a warning. Default is \code{TRUE}.
+#' @param allow_selfing Logical. If \code{FALSE}, sire-dam pairs where both
+#'   IDs are identical are excluded when \code{method = "best.pair"}.
+#'   Default is \code{TRUE}.
+#' @param verbose Logical. If \code{TRUE}, prints progress messages, summary
+#'   statistics, and the results table to the console. Default is \code{TRUE}.
+#' @param write_txt Logical. If \code{TRUE}, writes results to
+#'   \code{parentage_results_dt.txt} in the working directory. Default is
+#'   \code{TRUE}.
+#'
+#' @return A \code{data.table} with one row per progeny (or more if ties are
+#'   reported). Columns depend on the method used:
+#'   \itemize{
+#'     \item \code{best.sire} / \code{best.dam} / \code{best.match}: \code{Progeny},
+#'       \code{Best_Match}, \code{Mendelian_Error_Pct}, \code{Markers_Tested}.
+#'     \item \code{best.pair} (no ties): \code{Progeny}, \code{Sire}, \code{Dam},
+#'       \code{Mendelian_Error_Pct}, \code{Markers_Tested}.
+#'     \item \code{best.pair} (with ties): columns are suffixed \code{_1}, \code{_2},
+#'       etc. for each tied pair.
+#'   }
+#'   Returned invisibly when \code{verbose = TRUE}.
 #'
 #' @details
-#' The function operates in one of two main modes depending on the `method` argument:
-#' \itemize{
-#'   \item \strong{Homozygous Mismatch Methods} (`"best.sire"`, `"best.dam"`, `"best.match"`):
-#'     These methods work by considering only homozygous loci (coded as 0 or 2).
-#'     They calculate the percentage of mismatching homozygous loci between each
-#'     progeny and the potential parents. Heterozygous loci (coded as 1) are
-#'     ignored in this comparison.
-#'   \item \strong{Best Pair Method} (`"best.pair"`): This method evaluates all
-#'     possible sire-dam pairs for each progeny. It counts the number of loci
-#'     that show a Mendelian error given the parental pair's genotypes (e.g.,
-#'     two parents with genotype 0 cannot produce a progeny with genotype 1 or 2).
-#'     The pair(s) with the minimum error percentage is/are reported as the best match.
+#' For \code{"best.sire"}, \code{"best.dam"}, and \code{"best.match"}, only
+#' homozygous markers (coded 0 or 2) are used for comparison; heterozygous
+#' markers (coded 1) are set to \code{NA}. This reduces false mismatches caused
+#' by phase ambiguity.
+#'
+#' For \code{"best.pair"}, all markers are used and full Mendelian inheritance
+#' rules are applied across all possible sire-dam combinations via
+#' \code{data.table::CJ()}.
+#'
+#' Individuals in \code{parents_file} or \code{progeny_file} that are absent
+#' from \code{genotypes_file} are removed with a warning.
+#'
+#' @examples
+#' \dontrun{
+#' # Assign best sire-dam pair to each progeny
+#' results <- find_parentage(
+#'   genotypes_file = "genotypes.txt",
+#'   parents_file   = "parents.txt",
+#'   progeny_file   = "progeny.txt",
+#'   method         = "best.pair",
+#'   show_ties      = TRUE,
+#'   allow_selfing  = FALSE
+#' )
+#'
+#' # Find best individual parent match (ignoring sex)
+#' results <- find_parentage(
+#'   genotypes_file = "genotypes.txt",
+#'   parents_file   = "parents.txt",
+#'   progeny_file   = "progeny.txt",
+#'   method         = "best.match"
+#' )
 #' }
 #'
-#' @param genotypes_file A character string. Path to the tab-separated file
-#'   containing genotypic data for all individuals. Must have an 'ID' column
-#'   followed by marker columns.
-#' @param parents_file A character string. Path to the tab-separated file listing
-#'   potential parent individuals. Must have an 'ID' column and optionally a
-#'   'Sex' column ('M' for male, 'F' for female).
-#' @param progeny_file A character string. Path to the tab-separated file listing
-#'   the progeny individuals to be analyzed. Must have an 'ID' column.
-#' @param method A character string specifying the assignment method. Must be one
-#'   of `"best.pair"` (default), `"best.sire"`, `"best.dam"`, or `"best.match"`.
-#' @param show.ties A logical value. If `TRUE` (default), all tied best matches
-#'   for a progeny are reported in wide format. If `FALSE`, only the first
-#'   tied match is reported and a warning is issued.
-#' @param allow.selfing A logical value. If `TRUE` (default), an individual can
-#'   be assigned as both sire and dam. Only applicable when `method = "best.pair"`.
-#' @param verbose A logical value. If `TRUE` (default), progress messages and the
-#'   final results table are printed to the console.
-#' @param write.txt A logical value. If `TRUE` (default), the results table is
-#'   written to a file named "parentage_results.txt" in the current directory.
-#'
-#' @return A `tibble` (data frame) containing the parentage assignment results.
-#'   If `verbose = TRUE`, the function prints the results to the console and
-#'   returns the `tibble` invisibly.
-#'
-#' @importFrom data.table := as.data.table CJ copy data.table fread fwrite rbindlist
-#' #' @export
-#'
+#' @importFrom data.table fread fwrite copy CJ rbindlist
+#' @export
 find_parentage <- function(genotypes_file, parents_file, progeny_file,
                            method = "best.pair",
-                           show.ties = TRUE,
-                           allow.selfing = TRUE,
+                           show_ties = TRUE,
+                           allow_selfing = TRUE,
                            verbose = TRUE,
-                           write.txt = TRUE) {
-
-  # Ensure data.table is loaded
-  if (!requireNamespace("data.table", quietly = TRUE)) {
-    stop("The 'data.table' package is required. Please install it.", call. = FALSE)
-  }
-  library(data.table)
+                           write_txt = TRUE) {
 
   #### Input Validation and Data Loading ####
   allowed_methods <- c("best.sire", "best.dam", "best.match", "best.pair")
@@ -97,8 +126,8 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
   }
 
   all_parents[, Sex := toupper(Sex)]
-  sire_candidates <- all_parents[Sex %in% c("M", "A")]
-  dam_candidates <- all_parents[Sex %in% c("F", "A")]
+  sire_candidates <- all_parents[Sex %in% c("M", "A", "NA")]
+  dam_candidates <- all_parents[Sex %in% c("F", "A", "NA")]
 
   if (nrow(sire_candidates) == 0 && method %in% c("best.sire", "best.pair")) {
     warning("No valid sire candidates remain after filtering.", call. = FALSE)
@@ -152,7 +181,7 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
 
     parent_pairs <- CJ(Sire = sire_candidates$ID, Dam = dam_candidates$ID)
 
-    if (!allow.selfing) {
+    if (!allow_selfing) {
       parent_pairs <- parent_pairs[Sire != Dam]
       if (verbose) cat("Selfing is disallowed. Pairs with identical parents are removed.\n")
     }
@@ -186,11 +215,11 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
       best_indices <- which(percent_mismatch == min_mismatch_val)
       best_pairs <- parent_pairs[best_indices]
 
-      if (!show.ties && nrow(best_pairs) > 1) {
-        warning("Progeny '", prog_id, "' has ", nrow(best_pairs), " tied best pairs. Only one is reported as show.ties=FALSE.", call. = FALSE)
+      if (!show_ties && nrow(best_pairs) > 1) {
+        warning("Progeny '", prog_id, "' has ", nrow(best_pairs), " tied best pairs. Only one is reported as show_ties=FALSE.", call. = FALSE)
       }
 
-      num_to_report <- if (show.ties) nrow(best_pairs) else 1
+      num_to_report <- if (show_ties) nrow(best_pairs) else 1
       num_to_report <- min(nrow(best_pairs), num_to_report)
 
       result_row <- list(Progeny = prog_id)
@@ -213,7 +242,7 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
   }
 
   #### Output ####
-  if (write.txt) {
+  if (write_txt) {
     output_filename <- "parentage_results_dt.txt"
     tryCatch({
       fwrite(final_df, file = output_filename, sep = "\t", quote = FALSE)

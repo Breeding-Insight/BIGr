@@ -82,7 +82,7 @@
 #' )
 #' }
 #'
-#' @importFrom data.table fread fwrite copy CJ rbindlist
+#' @importFrom data.table fread fwrite copy CJ rbindlist set data.table
 #' @export
 find_parentage <- function(genotypes_file, parents_file, progeny_file,
                            method = "best.pair",

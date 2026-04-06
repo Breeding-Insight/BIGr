@@ -2,99 +2,104 @@
 % Please edit documentation in R/validate_pedigree.R
 \name{validate_pedigree}
 \alias{validate_pedigree}
-\title{Validate Pedigree Using Mendelian Error Analysis}
+\title{Validate Pedigree Trios Using Mendelian Error Analysis}
 \usage{
 validate_pedigree(
   pedigree_file,
   genotypes_file,
-  error_threshold = 5,
+  trio_error_threshold = 5,
   min_markers = 10,
-  homozygous_threshold = 2,
+  single_parent_error_threshold = 2,
   fill_pedigree = FALSE,
   verbose = TRUE,
-  write_txt = TRUE
+  write_txt = TRUE,
+  output_filename = "trio_validation_results.txt"
 )
 }
 \arguments{
-\item{pedigree_file}{Character. Path to the pedigree file (TSV or CSV).
-Must contain columns \code{Progeny}, \code{Sire}, and \code{Dam}.}
+\item{pedigree_file}{Character. Path to the pedigree file (TSV/CSV) with
+columns: \code{Progeny}, \code{Sire}, \code{Dam}.}
 
-\item{genotypes_file}{Character. Path to the genotypes file (TSV or CSV).
-Must contain an \code{ID} column followed by one column per marker,
-with genotypes coded as 0, 1, or 2 (allele dosage).}
+\item{genotypes_file}{Character. Path to the genotypes file (TSV/CSV) with
+an \code{ID} column followed by marker columns coded
+as 0, 1, 2 (additive allele dosage).}
 
-\item{error_threshold}{Numeric. Maximum acceptable Mendelian error percentage
-(0-100) for a trio to be considered a \code{PASS}. Default is \code{5.0}.}
+\item{trio_error_threshold}{Numeric. Maximum Mendelian error percentage to
+classify a trio as \code{PASS} (default: \code{5.0}).}
 
-\item{min_markers}{Integer. Minimum number of non-missing markers required
-across all three individuals for a trio to be fully evaluated. Trios below
-this threshold receive status \code{LOW_MARKERS}. Default is \code{10}.}
+\item{min_markers}{Integer. Minimum number of non-missing markers
+required to evaluate a trio; below this the trio
+is flagged \code{LOW_MARKERS} (default: \code{10}).}
 
-\item{homozygous_threshold}{Numeric. Maximum acceptable homozygous-marker
-mismatch percentage (0-100) for a parent to be considered acceptable in a
-failed trio. Default is \code{2.0}.}
+\item{single_parent_error_threshold}{Numeric. Maximum homozygous-marker mismatch
+percentage for a parent to be considered acceptable
+in a failed trio (default: \code{2.0}).}
 
-\item{fill_pedigree}{Logical. If \code{TRUE}, writes an additional corrected
-pedigree file (\code{id_corrected_pedigree.txt}) in which removed parents
-are replaced by the best-matching candidate ID rather than zero.
-Default is \code{FALSE}.}
+\item{fill_pedigree}{Logical. If \code{TRUE}, writes an additional file with
+failed parents replaced by the best-matching candidate
+IDs (default: \code{FALSE}).}
 
-\item{verbose}{Logical. If \code{TRUE}, prints a summary of results and
-correction decisions to the console. Default is \code{TRUE}.}
+\item{verbose}{Logical. If \code{TRUE}, prints progress messages, summary
+statistics, and the results table to the console
+(default: \code{TRUE}).}
 
-\item{write_txt}{Logical. If \code{TRUE}, writes the full validation results
-table to \code{pedigree_validation_results.txt}. Default is \code{TRUE}.}
+\item{write_txt}{Logical. If \code{TRUE}, writes the validation results to
+\code{output_filename} (default: \code{TRUE}).}
+
+\item{output_filename}{Character. Name of the output file for validation
+results (default: \code{"trio_validation_results.txt"}).}
 }
 \value{
-A \code{data.table} with one row per validated trio containing the
-following columns: \code{Progeny} (progeny ID); \code{Sire} (declared sire
-ID); \code{Dam} (declared dam ID); \code{Mendelian_Error_Pct} (overall
-Mendelian error rate \\% across all three individuals);
-\code{Markers_Tested} (number of markers with non-missing genotypes in all
-three individuals); \code{Status} (validation outcome: \code{PASS},
-\code{FAIL}, \code{LOW_MARKERS}, or \code{NO_DATA});
-\code{Correction_Decision} (action taken for failed trios: \code{NONE},
-\code{KEEP_BOTH}, \code{REMOVE_SIRE}, \code{REMOVE_DAM}, or
-\code{REMOVE_BOTH}); \code{Sire_Hom_Error_Pct} (homozygous-marker mismatch
-\\% between sire and progeny, \code{NA} unless status is \code{FAIL});
-\code{Dam_Hom_Error_Pct} (homozygous-marker mismatch \\% between dam and
-progeny, \code{NA} unless status is \code{FAIL}); \code{Best_Sire} (ID of
-the best-matching sire candidate, populated only when
-\code{Correction_Decision} is \code{REMOVE_SIRE} or \code{REMOVE_BOTH});
-\code{Best_Sire_Error_Pct} (homozygous mismatch \\% for \code{Best_Sire});
-\code{Best_Dam} (ID of the best-matching dam candidate, populated only when
-\code{Correction_Decision} is \code{REMOVE_DAM} or \code{REMOVE_BOTH});
-\code{Best_Dam_Error_Pct} (homozygous mismatch \\% for \code{Best_Dam}).
-The function also writes \code{zero_corrected_pedigree.txt} (always) and,
-if \code{fill_pedigree = TRUE}, \code{id_corrected_pedigree.txt}. If
-\code{write_txt = TRUE}, results are written to
-\code{pedigree_validation_results.txt}. The return value is invisible when
-\code{verbose = TRUE}.
+A \code{data.table} (returned invisibly) with one row per trio and
+the following columns:
+\describe{
+\item{Progeny}{Progeny ID.}
+\item{Sire}{Declared sire ID.}
+\item{Dam}{Declared dam ID.}
+\item{Mendelian_Error_Pct}{Trio-level Mendelian error percentage.}
+\item{Markers_Tested}{Number of markers compared across all three individuals.}
+\item{Status}{One of \code{PASS}, \code{FAIL}, \code{LOW_MARKERS}, or \code{NO_DATA}.}
+\item{Correction_Decision}{One of \code{NONE}, \code{KEEP_BOTH}, \code{REMOVE_SIRE},
+\code{REMOVE_DAM}, or \code{REMOVE_BOTH}.}
+\item{Sire_Hom_Error_Pct}{Sire homozygous-marker mismatch percentage (\code{NA} unless \code{FAIL}).}
+\item{Dam_Hom_Error_Pct}{Dam homozygous-marker mismatch percentage (\code{NA} unless \code{FAIL}).}
+\item{Best_Sire}{Best-matching sire candidate ID (\code{NA} unless sire removed).}
+\item{Best_Sire_Error_Pct}{Homozygous mismatch percentage for \code{Best_Sire}.}
+\item{Best_Dam}{Best-matching dam candidate ID (\code{NA} unless dam removed).}
+\item{Best_Dam_Error_Pct}{Homozygous mismatch percentage for \code{Best_Dam}.}
+}
 }
 \description{
 Validates parent-offspring trios by calculating Mendelian error rates from
-SNP genotype data. Trios exceeding the error threshold are flagged and
-analysed further using homozygous-marker comparisons to identify which
-parent(s) are likely incorrect. Optionally writes corrected pedigree files
-with erroneous parents replaced by zeros or by the best-matching candidate IDs.
+SNP genotype data. Identifies incorrect parentage assignments and optionally
+suggests or fills in best-matching replacements.
 }
 \details{
-Mendelian errors are identified using standard allele-dosage rules, e.g. a
-progeny cannot carry an allele absent in both parents. Only homozygous
-parental markers (coded 0 or 2) are used in the per-parent mismatch
-analysis, as heterozygous markers are uninformative for tracing allele
-origin. Trios in the pedigree that lack genotype data for any of the three
-individuals are removed prior to analysis.
+Trios are filtered to individuals present in the genotype file before
+analysis. Mendelian errors are counted as genotype combinations impossible
+under Mendelian inheritance (e.g. both parents homozygous reference but
+progeny carries the alternate allele). Failed trios are further dissected
+using homozygous-only markers to identify which parent is likely incorrect.
+A corrected pedigree with failed parents set to \code{0} is always written
+to \code{corrected_pedigree.txt}. If \code{fill_pedigree = TRUE}, a second
+file (\code{filled_pedigree.txt}) replaces those zeros with the best
+genomic match.
 }
 \examples{
+\dontrun{
+# Basic run with defaults
+results <- validate_pedigree("pedigree.txt", "genotypes.txt")
+
+# Stricter thresholds, custom output name, no console output
 results <- validate_pedigree(
-  pedigree_file        = "pedigree.txt",
-  genotypes_file       = "genotypes.txt",
-  error_threshold      = 5.0,
-  min_markers          = 10,
-  homozygous_threshold = 2.0,
-  fill_pedigree        = TRUE,
-  verbose              = TRUE,
-  write_txt            = TRUE
+  pedigree_file      = "pedigree.txt",
+  genotypes_file     = "genotypes.txt",
+  trio_error_threshold    = 2.0,
+  single_parent_error_threshold = 1.0,
+  fill_pedigree      = TRUE,
+  verbose            = FALSE,
+  output_filename    = "my_validation.txt"
 )
+}
+
 }

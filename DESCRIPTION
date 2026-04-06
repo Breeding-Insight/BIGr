@@ -63,7 +63,8 @@ Imports:
     quadprog,
     tibble,
     stringr,
-    ggplot2
+    ggplot2,
+    data.table,
 Suggests: 
     covr,
     spelling,

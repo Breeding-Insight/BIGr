@@ -82,7 +82,7 @@
 #' )
 #' }
 #'
-#' @importFrom data.table fread fwrite copy CJ rbindlist set data.table
+#' @importFrom data.table fread fwrite copy CJ rbindlist set data.table as.data.table
 #' @export
 find_parentage <- function(genotypes_file, parents_file, progeny_file,
                            method = "best.pair",
@@ -126,7 +126,7 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
   }
 
   all_parents[, Sex := toupper(Sex)]
-  sire_candidates <- all_parents[Sex %in% c("M", "A", "NA")]
+  sire_candidates <- all_parents[Sex %in% c("M", "A", "NA"), .SD]
   dam_candidates <- all_parents[Sex %in% c("F", "A", "NA")]
 
   if (nrow(sire_candidates) == 0 && method %in% c("best.sire", "best.pair")) {

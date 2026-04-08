@@ -50,7 +50,8 @@ or a \code{"-"} character is present in \code{AlleleSequence};
 (prefix matches \code{"chr"} case-insensitively, suffix is a positive integer);
 \item \strong{allNAcol} - at least one column contains only \code{NA} or empty values;
 \item \strong{allNArow} - at least one row contains only \code{NA} or empty values;
-\item \strong{RefAltSeqs} - every \code{CloneID} has at least one \code{Ref} and one \code{Alt} allele row.
+\item \strong{RefAltSeqs} - every \code{CloneID} has at least one \code{Ref} and one \code{Alt} allele row;
+\item \strong{OtherAlleles} - presence of alleles where the target locus differs from both the Ref and Alt in \code{AlleleSequence}.
 }
 }
 \details{

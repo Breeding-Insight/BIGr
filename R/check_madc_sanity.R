@@ -13,7 +13,8 @@
 #'    (prefix matches `"chr"` case-insensitively, suffix is a positive integer);
 #' 7) **allNAcol** - at least one column contains only `NA` or empty values;
 #' 8) **allNArow** - at least one row contains only `NA` or empty values;
-#' 9) **RefAltSeqs** - every `CloneID` has at least one `Ref` and one `Alt` allele row.
+#' 9) **RefAltSeqs** - every `CloneID` has at least one `Ref` and one `Alt` allele row;
+#' 10) **OtherAlleles** - presence of alleles where the target locus differs from both the Ref and Alt in `AlleleSequence`.
 #'
 #' @param report A `data.frame` with at least the columns
 #'   `CloneID`, `AlleleID`, and `AlleleSequence`. The first column is also

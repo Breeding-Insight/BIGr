@@ -1,0 +1,3 @@
+ID	Male_Parent	Female_Parent
+IND_C	IND_A	IND_B
+IND_D	0	IND_A

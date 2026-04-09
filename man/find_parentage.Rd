@@ -8,7 +8,7 @@ find_parentage(
   genotypes_file,
   parents_file,
   progeny_file,
-  method = "best.pair",
+  method = "best_pair",
   show_ties = TRUE,
   allow_selfing = TRUE,
   verbose = TRUE,
@@ -16,37 +16,38 @@ find_parentage(
 )
 }
 \arguments{
-\item{genotypes_file}{Path to a TSV/CSV file containing genotype data.
+\item{genotypes_file}{Path to a TSV/CSV/TXT file containing genotype data.
 Must include an 'ID' column followed by marker columns coded as 0, 1, 2
 (allele dosage).}
 
-\item{parents_file}{Path to a TSV/CSV file listing candidate parent IDs.
+\item{parents_file}{Path to a TSV/CSV/TXT file listing candidate parent IDs.
 Must include an 'ID' column. An optional 'Sex' column with values
-'M' (sire), 'F' (dam), or 'A' (ambiguous) determines which parents are
-tested for each role. If absent, all parents are treated as ambiguous.}
+'M' (male parent), 'F' (female parent), or 'A' (ambiguous) determines
+which parents are tested for each role. If absent, all parents are treated
+as ambiguous.}
 
-\item{progeny_file}{Path to a TSV/CSV file listing progeny IDs to assign.
+\item{progeny_file}{Path to a TSV/CSV/TXT file listing progeny IDs to assign.
 Must include an 'ID' column.}
 
 \item{method}{Character. Parentage assignment method. One of:
 \itemize{
-\item \code{"best.sire"}  — finds the best sire for each progeny using
-homozygous mismatch rate.
-\item \code{"best.dam"}   — finds the best dam for each progeny using
-homozygous mismatch rate.
-\item \code{"best.match"} — finds the single best parent (either sex)
+\item \code{"best_male_parent"}  — finds the best male parent for each
+progeny using homozygous mismatch rate.
+\item \code{"best_female_parent"} — finds the best female parent for each
+progeny using homozygous mismatch rate.
+\item \code{"best_match"} — finds the single best parent (either sex)
 using homozygous mismatch rate.
-\item \code{"best.pair"}  — finds the best sire-dam pair for each
-progeny using full Mendelian error rate (default).
+\item \code{"best_pair"}  — finds the best male-female parent pair for
+each progeny using full Mendelian error rate (default).
 }}
 
 \item{show_ties}{Logical. If \code{TRUE}, all tied best pairs are reported
-as additional columns (\code{Sire_1}, \code{Sire_2}, etc.) when
-\code{method = "best.pair"}. If \code{FALSE}, only one tied pair is
+as additional columns (\code{Male_Parent_1}, \code{Male_Parent_2}, etc.)
+when \code{method = "best_pair"}. If \code{FALSE}, only one tied pair is
 reported with a warning. Default is \code{TRUE}.}
 
-\item{allow_selfing}{Logical. If \code{FALSE}, sire-dam pairs where both
-IDs are identical are excluded when \code{method = "best.pair"}.
+\item{allow_selfing}{Logical. If \code{FALSE}, male-female parent pairs where
+both IDs are identical are excluded when \code{method = "best_pair"}.
 Default is \code{TRUE}.}
 
 \item{verbose}{Logical. If \code{TRUE}, prints progress messages, summary
@@ -60,12 +61,13 @@ statistics, and the results table to the console. Default is \code{TRUE}.}
 A \code{data.table} with one row per progeny (or more if ties are
 reported). Columns depend on the method used:
 \itemize{
-\item \code{best.sire} / \code{best.dam} / \code{best.match}: \code{Progeny},
-\code{Best_Match}, \code{Mendelian_Error_Pct}, \code{Markers_Tested}.
-\item \code{best.pair} (no ties): \code{Progeny}, \code{Sire}, \code{Dam},
-\code{Mendelian_Error_Pct}, \code{Markers_Tested}.
-\item \code{best.pair} (with ties): columns are suffixed \code{_1}, \code{_2},
-etc. for each tied pair.
+\item \code{best_male_parent} / \code{best_female_parent} / \code{best_match}:
+\code{Progeny}, \code{Best_Match}, \code{Mendelian_Error_Pct},
+\code{Markers_Tested}.
+\item \code{best_pair} (no ties): \code{Progeny}, \code{Male_Parent},
+\code{Female_Parent}, \code{Mendelian_Error_Pct}, \code{Markers_Tested}.
+\item \code{best_pair} (with ties): columns are suffixed \code{_1},
+\code{_2}, etc. for each tied pair.
 }
 Returned invisibly when \code{verbose = TRUE}.
 }
@@ -74,13 +76,13 @@ Assigns the most likely parent(s) to each progeny individual based on
 genotypic data using Mendelian error rates or homozygous mismatch rates.
 }
 \details{
-For \code{"best.sire"}, \code{"best.dam"}, and \code{"best.match"}, only
-homozygous markers (coded 0 or 2) are used for comparison; heterozygous
-markers (coded 1) are set to \code{NA}. This reduces false mismatches caused
-by phase ambiguity.
+For \code{"best_male_parent"}, \code{"best_female_parent"}, and
+\code{"best_match"}, only homozygous markers (coded 0 or 2) are used for
+comparison; heterozygous markers (coded 1) are set to \code{NA}. This
+reduces false mismatches caused by phase ambiguity.
 
-For \code{"best.pair"}, all markers are used and full Mendelian inheritance
-rules are applied across all possible sire-dam combinations via
+For \code{"best_pair"}, all markers are used and full Mendelian inheritance
+rules are applied across all possible male-female parent combinations via
 \code{data.table::CJ()}.
 
 Individuals in \code{parents_file} or \code{progeny_file} that are absent
@@ -88,12 +90,12 @@ from \code{genotypes_file} are removed with a warning.
 }
 \examples{
 \dontrun{
-# Assign best sire-dam pair to each progeny
+# Assign best male-female parent pair to each progeny
 results <- find_parentage(
   genotypes_file = "genotypes.txt",
   parents_file   = "parents.txt",
   progeny_file   = "progeny.txt",
-  method         = "best.pair",
+  method         = "best_pair",
   show_ties      = TRUE,
   allow_selfing  = FALSE
 )
@@ -103,7 +105,7 @@ results <- find_parentage(
   genotypes_file = "genotypes.txt",
   parents_file   = "parents.txt",
   progeny_file   = "progeny.txt",
-  method         = "best.match"
+  method         = "best_match"
 )
 }
 

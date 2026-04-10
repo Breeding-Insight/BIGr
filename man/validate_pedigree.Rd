@@ -7,107 +7,111 @@
 validate_pedigree(
   pedigree_file,
   genotypes_file,
+  founders_file = NULL,
   trio_error_threshold = 5,
   min_markers = 10,
   single_parent_error_threshold = 2,
-  fill_pedigree = FALSE,
   verbose = TRUE,
   write_txt = TRUE,
   output_filename = "pedigree_validation_results.txt"
 )
 }
 \arguments{
-\item{pedigree_file}{Character. Path to the pedigree file (TSV/CSV/TXT) with
-columns: \code{ID}, \code{Male_Parent}, \code{Female_Parent}.}
+\item{pedigree_file}{Character. Path to the pedigree file (TSV/CSV/TXT)
+with columns: ID, Male_Parent, Female_Parent.}
 
 \item{genotypes_file}{Character. Path to the genotypes file (TSV/CSV/TXT)
-with an \code{ID} column followed by marker columns coded as 0, 1, 2
-(additive allele dosage).}
+with an ID column followed by marker columns coded as 0, 1, 2.}
 
-\item{trio_error_threshold}{Numeric. Maximum Mendelian error percentage to
-classify a trio as \code{PASS} (default: \code{5.0}). Must be between
-0 and 100.}
+\item{founders_file}{Character, optional. Path to a one-column file
+listing the IDs of founder individuals. Founders with both parents
+coded as 0 are left unchanged with no recommendations. Defaults to NULL.}
 
-\item{min_markers}{Integer. Minimum number of non-missing markers required
-to evaluate a trio; below this the trio is flagged \code{LOW_MARKERS}
-(default: \code{10}).}
+\item{trio_error_threshold}{Numeric. Maximum Mendelian error percentage
+to classify a trio as PASS (default: 5.0). Must be between 0 and 100.}
+
+\item{min_markers}{Integer. Minimum number of non-missing markers
+required to evaluate a trio (default: 10).}
 
 \item{single_parent_error_threshold}{Numeric. Maximum homozygous-marker
-mismatch percentage for a parent to be considered acceptable in a failed
-trio (default: \code{2.0}). Must be between 0 and 100.}
+mismatch percentage for a parent to be considered acceptable in a
+failed trio (default: 2.0). Must be between 0 and 100.}
 
-\item{fill_pedigree}{Logical. If \code{TRUE}, writes an additional file
-(\code{filled_pedigree.txt}) with failed parents replaced by the
-best-matching candidate IDs (default: \code{FALSE}).}
+\item{verbose}{Logical. If TRUE, prints progress messages, a summary
+table, and results to the console (default: TRUE).}
 
-\item{verbose}{Logical. If \code{TRUE}, prints progress messages, a summary
-table, and the results to the console (default: \code{TRUE}).}
+\item{write_txt}{Logical. If TRUE, writes validation results to
+output_filename (default: TRUE).}
 
-\item{write_txt}{Logical. If \code{TRUE}, writes the validation results
-to \code{output_filename} (default: \code{TRUE}).}
-
-\item{output_filename}{Character. Path/name of the output file for
-validation results (default: \code{"pedigree_validation_results.txt"}).}
+\item{output_filename}{Character. Path/name of the output file
+(default: "pedigree_validation_results.txt").}
 }
 \value{
-A \code{data.table} (returned invisibly) with one row per trio and
+A data.table (returned invisibly) with one row per trio and
 the following columns:
 \describe{
-\item{ID}{Individual ID (first column of the pedigree input).}
+\item{ID}{Individual ID.}
 \item{Male_Parent}{Declared male parent ID.}
 \item{Female_Parent}{Declared female parent ID.}
 \item{Mendelian_Error_Pct}{Trio-level Mendelian error percentage.}
-\item{Markers_Tested}{Number of markers with non-missing genotypes in
-all three individuals.}
-\item{Status}{One of \code{PASS}, \code{FAIL}, \code{LOW_MARKERS}, or
-\code{NO_DATA}.}
-\item{Correction_Decision}{One of \code{NONE}, \code{KEEP_BOTH},
-\code{REMOVE_MALE_PARENT}, \code{REMOVE_FEMALE_PARENT}, or
-\code{REMOVE_BOTH}.}
+\item{Markers_Tested}{Number of markers with non-missing genotypes.}
+\item{Status}{One of PASS, FAIL, LOW_MARKERS, NO_DATA, FOUNDERS,
+MISSING_MALE_PARENT, MISSING_FEMALE_PARENT, MISSING_BOTH_PARENTS,
+or NO_GENOTYPE_DATA (trio present in pedigree but absent from
+the genotype file).}
+\item{Correction_Decision}{One of NONE, KEEP_BOTH,
+REMOVE_MALE_PARENT, REMOVE_FEMALE_PARENT, REMOVE_BOTH.}
 \item{Male_Parent_Hom_Error_Pct}{Male parent homozygous-marker mismatch
-percentage (\code{NA} unless \code{Status == "FAIL"}).}
+percentage (NA unless Status == "FAIL").}
 \item{Female_Parent_Hom_Error_Pct}{Female parent homozygous-marker
-mismatch percentage (\code{NA} unless \code{Status == "FAIL"}).}
-\item{Best_Male_Parent}{Best-matching male parent candidate ID
-(\code{NA} unless male parent is removed).}
+mismatch percentage (NA unless Status == "FAIL").}
+\item{Best_Male_Parent}{Best-matching male parent candidate ID.}
 \item{Best_Male_Parent_Error_Pct}{Homozygous mismatch percentage for
-\code{Best_Male_Parent}.}
-\item{Best_Female_Parent}{Best-matching female parent candidate ID
-(\code{NA} unless female parent is removed).}
+Best_Male_Parent.}
+\item{Best_Female_Parent}{Best-matching female parent candidate ID.}
 \item{Best_Female_Parent_Error_Pct}{Homozygous mismatch percentage for
-\code{Best_Female_Parent}.}
+Best_Female_Parent.}
 }
 }
 \description{
 Validates parent-offspring trios by calculating Mendelian error rates from
-SNP genotype data. Identifies incorrect parentage assignments and optionally
-suggests or fills in best-matching replacements.
+SNP genotype data. Identifies incorrect parentage assignments and suggests
+best-matching replacements. If a list of founders is supplied, trios that
+are declared founders (both parents coded as 0) are preserved unchanged
+with no recommendations. Trios removed due to missing genotype data are
+retained in the output with a NO_GENOTYPE_DATA status.
 }
 \details{
-Trios are filtered to individuals present in the genotype file before
-analysis. Mendelian errors are counted as genotype combinations impossible
-under Mendelian inheritance (e.g. both parents homozygous reference but the
-offspring carries the alternate allele). Failed trios are further dissected
-using homozygous-only markers to identify which parent is likely incorrect.
+All trios in the pedigree file are represented in the output. Trios where
+the progeny or a declared parent is absent from the genotype file are
+flagged as NO_GENOTYPE_DATA and are excluded from Mendelian error analysis
+but retained in the final report and summary counts.
 
-A corrected pedigree with failed parents replaced by \code{0} is always
-written to \code{corrected_pedigree.txt} in the working directory. If
-\code{fill_pedigree = TRUE}, a second file (\code{filled_pedigree.txt})
-replaces those zeros with the best genomic match found across all
-genotyped individuals.
+Trios with missing parents (coded as 0) that are not listed as founders
+receive a MISSING_MALE_PARENT, MISSING_FEMALE_PARENT, or
+MISSING_BOTH_PARENTS status. Recommendations are provided in the
+Best_Male_Parent and Best_Female_Parent columns, but the 0 values are
+preserved in the corrected pedigree output.
+
+If founders_file is provided, any trio where the individual is listed as
+a founder and both parents are coded as 0 is flagged as FOUNDERS; no
+recommendation or correction is attempted.
+
+A corrected pedigree with failed parents replaced by 0 is always written
+to corrected_pedigree.txt.
 }
 \examples{
 \dontrun{
-# Basic run with defaults
+# Basic run
 results <- validate_pedigree("pedigree.txt", "genotypes.txt")
 
-# Stricter thresholds, fill replacements, suppress console output
+# With founders list and stricter thresholds
 results <- validate_pedigree(
   pedigree_file                 = "pedigree.txt",
   genotypes_file                = "genotypes.txt",
+  founders_file                 = "founders.txt",
   trio_error_threshold          = 2.0,
   single_parent_error_threshold = 1.0,
-  fill_pedigree                 = TRUE,
   verbose                       = FALSE,
   output_filename               = "my_validation.txt"
 )

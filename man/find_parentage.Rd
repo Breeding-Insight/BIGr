@@ -9,6 +9,8 @@ find_parentage(
   parents_file,
   progeny_file,
   method = "best_pair",
+  min_markers = 10,
+  error_threshold = 5,
   show_ties = TRUE,
   allow_selfing = TRUE,
   verbose = TRUE,
@@ -41,6 +43,16 @@ using homozygous mismatch rate.
 each progeny using full Mendelian error rate (default).
 }}
 
+\item{min_markers}{Integer. Minimum number of non-missing markers required
+to report a parentage assignment. Progeny-parent comparisons with fewer
+markers are flagged as \code{LOW_MARKERS} and no assignment is made
+(default: \code{10}).}
+
+\item{error_threshold}{Numeric. Maximum mismatch percentage to report a
+parentage assignment as confident. Assignments above this threshold are
+flagged as \code{HIGH_ERROR} in the \code{Assignment_Status} column
+(default: \code{5.0}). Must be between 0 and 100.}
+
 \item{show_ties}{Logical. If \code{TRUE}, all tied best pairs are reported
 as additional columns (\code{Male_Parent_1}, \code{Male_Parent_2}, etc.)
 when \code{method = "best_pair"}. If \code{FALSE}, only one tied pair is
@@ -63,13 +75,15 @@ reported). Columns depend on the method used:
 \itemize{
 \item \code{best_male_parent} / \code{best_female_parent} / \code{best_match}:
 \code{Progeny}, \code{Best_Match}, \code{Mendelian_Error_Pct},
-\code{Markers_Tested}.
+\code{Markers_Tested}, \code{Assignment_Status}.
 \item \code{best_pair} (no ties): \code{Progeny}, \code{Male_Parent},
-\code{Female_Parent}, \code{Mendelian_Error_Pct}, \code{Markers_Tested}.
+\code{Female_Parent}, \code{Mendelian_Error_Pct}, \code{Markers_Tested},
+\code{Assignment_Status}.
 \item \code{best_pair} (with ties): columns are suffixed \code{_1},
-\code{_2}, etc. for each tied pair.
+\code{_2}, etc. for each tied pair, plus \code{Assignment_Status}.
 }
-Returned invisibly when \code{verbose = TRUE}.
+\code{Assignment_Status} is one of \code{PASS}, \code{HIGH_ERROR}, or
+\code{LOW_MARKERS}. Returned invisibly when \code{verbose = TRUE}.
 }
 \description{
 Assigns the most likely parent(s) to each progeny individual based on
@@ -87,6 +101,10 @@ rules are applied across all possible male-female parent combinations via
 
 Individuals in \code{parents_file} or \code{progeny_file} that are absent
 from \code{genotypes_file} are removed with a warning.
+
+Progeny with fewer non-missing markers than \code{min_markers} are flagged
+\code{LOW_MARKERS} and no parent assignment is reported. Progeny whose best
+match exceeds \code{error_threshold} are flagged \code{HIGH_ERROR}.
 }
 \examples{
 \dontrun{
@@ -96,16 +114,20 @@ results <- find_parentage(
   parents_file   = "parents.txt",
   progeny_file   = "progeny.txt",
   method         = "best_pair",
+  min_markers    = 50,
+  error_threshold = 5.0,
   show_ties      = TRUE,
   allow_selfing  = FALSE
 )
 
 # Find best individual parent match (ignoring sex)
 results <- find_parentage(
-  genotypes_file = "genotypes.txt",
-  parents_file   = "parents.txt",
-  progeny_file   = "progeny.txt",
-  method         = "best_match"
+  genotypes_file  = "genotypes.txt",
+  parents_file    = "parents.txt",
+  progeny_file    = "progeny.txt",
+  method          = "best_match",
+  min_markers     = 30,
+  error_threshold = 3.0
 )
 }
 

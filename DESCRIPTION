@@ -62,10 +62,10 @@ Imports:
     janitor,
     quadprog,
     tibble,
-    stringr,
-    ggplot2
+    stringr
 Suggests: 
     covr,
+    ggplot2,
     spelling,
     rmdformats,
     knitr (>= 1.10),

@@ -64,15 +64,28 @@ When \code{plot = TRUE}, a bar plot showing concordance percentage per sample
 is generated using \pkg{ggplot2}.
 }
 \examples{
-\dontrun{
+ref <- data.frame(
+  ID = c("S1", "S2", "S3"),
+  SNP1 = c(0, 1, 2),
+  SNP2 = c(1, 1, 0),
+  SNP3 = c(2, 5, 1)
+)
+
+test <- data.frame(
+  ID = c("S1", "S2", "S3"),
+  SNP1 = c(0, 0, 2),
+  SNP2 = c(1, 1, 1),
+  SNP3 = c(2, 5, 0)
+)
+
 result <- imputation_concordance(
   reference_genos = ref,
   imputed_genos = test,
-  snps_2_exclude = snps,
+  snps_2_exclude = "SNP2",
   missing_code = 5,
-  verbose = TRUE,
-  plot = TRUE
+  print_result = FALSE
 )
-}
+
+result
 
 }

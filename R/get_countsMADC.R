@@ -54,6 +54,7 @@ get_countsMADC <- function(madc_file = NULL, madc_object = NULL, collapse_matche
 
   # Add check inputs
   if(is.null(madc_file) && is.null(madc_object)) stop("Please provide either madc_file or madc_object.")
+  if(!is.null(madc_file) && !is.null(madc_object)) stop("Please provide either madc_file or madc_object. Not both.")
   if(!is.null(madc_file) && !file.exists(madc_file)) stop("MADC file not found. Please provide a valid path.")
   if(!is.null(madc_object) && !is.data.frame(madc_object)) stop("madc_object must be a data frame.")
 

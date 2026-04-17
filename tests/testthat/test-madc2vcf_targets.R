@@ -218,7 +218,7 @@ test_that("simu alfalfa",{
                        botloci_file = alfalfa_botloci,
                        markers_info = alfalfa_markers_info,
                        verbose = FALSE),
-      "None of the MADC CloneID could be found in the markers_info CloneID or BI_markerID. Please make sure they match."
+      "None of the MADC CloneID could be found in the markers_info CloneID, Marker_ID or BI_markerID. Please make sure they match."
     )
 
     # Test that it works when the function can find a matching ID in markers_info to fix the botloci mismatch issue

@@ -166,6 +166,9 @@ madc2vcf_multi <- function(madc_file,
 
   vmsg("Loading MADC into polyRAD", verbose = verbose, level = 0, type = ">>")
 
+  if (!requireNamespace("polyRAD", quietly = TRUE)) {
+    stop("Package 'polyRAD' is required for madc2vcf_multi(). Please install it with install.packages('polyRAD').", call. = FALSE)
+  }
   raddat <- polyRAD::readDArTag(
     file              = input_file,
     botloci           = botloci_input,

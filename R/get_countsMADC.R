@@ -46,7 +46,7 @@
 #'
 #' rm(counts_matrices)
 #'
-#' @seealso [get_counts()], [check_madc_sanity()]
+#' @seealso [check_madc_sanity()]
 #'
 #' @import dplyr
 #' @export
@@ -182,6 +182,7 @@ get_countsMADC <- function(madc_file = NULL, madc_object = NULL, collapse_matche
 #' @importFrom dplyr %>% filter case_when
 #'
 #' @keywords internal
+#' @noRd
 get_counts <- function(madc_file = NULL, madc_object = NULL, collapse_matches_counts = FALSE, verbose = TRUE) {
 
   # Add check inputs

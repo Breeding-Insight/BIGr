@@ -67,5 +67,5 @@ rm(counts_matrices)
 
 }
 \seealso{
-\code{\link[=get_counts]{get_counts()}}, \code{\link[=check_madc_sanity]{check_madc_sanity()}}
+\code{\link[=check_madc_sanity]{check_madc_sanity()}}
 }

@@ -71,7 +71,7 @@
 #'   `ChromPos` is invalid and `markers_info` does not provide `Ref`/`Alt`.
 #' @param markers_info character or `NULL`. Optional path to a CSV providing target
 #'   metadata. Accepted columns:
-#'   - `CloneID` or `BI_markerID` (required as marker identifier);
+#'   - `CloneID`, `Marker_ID`, or `BI_markerID` (required as marker identifier);
 #'   - `Chr`, `Pos` — required when `CloneID` does not follow the `Chr_Pos` format;
 #'   - `Ref`, `Alt` — required when `get_REF_ALT = TRUE` and probe-sequence
 #'     inference is not possible (IUPAC codes, indels, or unfixed allele IDs).
@@ -237,7 +237,7 @@ madc2vcf_targets <- function(madc_file,
   if(!isTRUE(checks$checks["ChromPos"])) {
     if(is.null(markers_info)){
       stop("CloneID column does not follow the 'Chr_Pos'. ",
-           "Please provide a markers_info file with at least 'CloneID'/'BI_markerID', ",
+           "Please provide a markers_info file with at least 'CloneID'/'Marker_ID'/'BI_markerID', ",
            "'Chr', and 'Pos' columns.")
     } else {
 
@@ -309,7 +309,8 @@ madc2vcf_targets <- function(madc_file,
     if(is.null(mi_df)) mi_df <- read.csv(markers_info)
     id_col <- if ("BI_markerID" %in% colnames(mi_df)) "BI_markerID" else
               if ("CloneID"     %in% colnames(mi_df)) "CloneID"     else
-      stop("The markers_info file must contain a marker ID column named either 'CloneID' or 'BI_markerID'.")
+              if ("Marker_ID"     %in% colnames(mi_df)) "Marker_ID"     else
+      stop("The markers_info file must contain a marker ID column named either 'CloneID', 'Marker_ID' or 'BI_markerID'.")
 
     if(checks$checks["Indels"])
       vmsg("Indels detected in MADC file. But it is okay because Ref and Alt are provided in markers_info.",
@@ -321,7 +322,7 @@ madc2vcf_targets <- function(madc_file,
 
     if(!all(rownames(ad_df) %in% mi_df[[id_col]])) {
       miss_CloneIDs <- rownames(ad_df)[!rownames(ad_df) %in% mi_df[[id_col]]]
-      if(length(miss_CloneIDs) == nrow(ad_df)) stop("None of the MADC CloneID could be found in the markers_info CloneID or BI_markerID. Please make sure they match.")
+      if(length(miss_CloneIDs) == nrow(ad_df)) stop("None of the MADC CloneID could be found in the markers_info CloneID, Marker_ID or BI_markerID. Please make sure they match.")
       vmsg(paste("Not all MADC CloneID was found in the markers_info file. These markers will be removed:",
                  paste(miss_CloneIDs, collapse = " ")), verbose = verbose, level = 2, type = ">>")
       warning("Not all MADC CloneID was found in the markers_info file. These markers will be removed.")
@@ -342,7 +343,8 @@ madc2vcf_targets <- function(madc_file,
     if(is.null(mi_df)) mi_df <- read.csv(markers_info)
     id_col <- if ("BI_markerID" %in% colnames(mi_df)) "BI_markerID" else
               if ("CloneID"     %in% colnames(mi_df)) "CloneID"     else
-      stop("The markers_info file must contain a marker ID column named either 'CloneID' or 'BI_markerID'.")
+              if ("Marker_ID"     %in% colnames(mi_df)) "Marker_ID"     else
+      stop("The markers_info file must contain a marker ID column named either 'CloneID', 'Marker_ID' or 'BI_markerID'.")
 
     if(checks$checks["Indels"])
       vmsg("Indels detected in MADC file. Since get_REF_ALT = FALSE, Type and Indel_pos are not required in markers_info.",

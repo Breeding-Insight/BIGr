@@ -28,7 +28,7 @@ Used for strand-correcting probe sequences when \code{get_REF_ALT = TRUE} and
 \item{markers_info}{character or \code{NULL}. Optional path to a CSV providing target
 metadata. Accepted columns:
 \itemize{
-\item \code{CloneID} or \code{BI_markerID} (required as marker identifier);
+\item \code{CloneID}, \code{Marker_ID}, or \code{BI_markerID} (required as marker identifier);
 \item \code{Chr}, \code{Pos} — required when \code{CloneID} does not follow the \code{Chr_Pos} format;
 \item \code{Ref}, \code{Alt} — required when \code{get_REF_ALT = TRUE} and probe-sequence
 inference is not possible (IUPAC codes, indels, or unfixed allele IDs).

@@ -40,7 +40,6 @@ convert_to_dosage <- function(gt) {
 #' @details Use the verbose argument to control message output. Typically, pass the function's verbose parameter to vmsg.
 #'
 #' @return No return value, called for side effects.
-#' @internal
 #' @noRd
 vmsg <- function(text, verbose = FALSE, level = 1, type = ">>", ...) {
   if (!verbose) return(invisible())
@@ -84,7 +83,7 @@ vmsg <- function(text, verbose = FALSE, level = 1, type = ">>", ...) {
 #'
 #' @keywords internal
 #' @noRd
-#' 
+#'
 url_exists <- function(u) {
   tryCatch({
     con <- url(u, open = "rb")

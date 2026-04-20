@@ -81,7 +81,7 @@ madc2vcf_multi <- function(madc_file,
   checks <- check_madc_sanity(report)
 
   messages_results <- mapply(function(check, message) {
-    if (check) message[1] else message[2]
+    if (isTRUE(check)) message[1] else message[2]
   }, checks$checks, checks$messages)
 
   for (i in seq_along(messages_results))
@@ -193,4 +193,3 @@ madc2vcf_multi <- function(madc_file,
 
   invisible(NULL)
 }
-

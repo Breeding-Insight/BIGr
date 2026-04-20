@@ -1,4 +1,5 @@
 test_that("check madc",{
+  skip_if_offline("raw.githubusercontent.com")
 
   github_path <- "https://raw.githubusercontent.com/Breeding-Insight/BIGapp-PanelHub/refs/heads/long_seq/test_madcs/"
   names <- c("Columns", "FixAlleleIDs", "IUPACcodes", "LowerCase", "Indels", "ChromPos", "allNAcol", "allNArow", "RefAltSeqs", "OtherAlleles")

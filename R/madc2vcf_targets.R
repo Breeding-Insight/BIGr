@@ -165,7 +165,7 @@ madc2vcf_targets <- function(madc_file,
                       "verbose= ", verbose,')">')
 
   # MADC checks
-  report <- read.csv(madc_file)
+  report <- read.csv(madc_file, check.names = FALSE)
   checks <- check_madc_sanity(report)
 
   messages_results <- mapply(function(check, message) {

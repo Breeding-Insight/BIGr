@@ -87,6 +87,41 @@ test_that("bottom strand markers have correct REF/ALT", {
   rm(vcf_targets, temp_targets)
 })
 
+test_that("madc2vcf_targets preserves original sample names", {
+  madc_file <- system.file("example_MADC_FixedAlleleID.csv", package="BIGr")
+  temp_madc <- tempfile(fileext = ".csv")
+  temp_vcf <- tempfile(fileext = ".vcf")
+
+  report <- read.csv(madc_file, check.names = FALSE)
+  colnames(report)[4:6] <- c("1A", "Sample-1", "sample 2")
+  write.csv(report, temp_madc, row.names = FALSE, quote = TRUE)
+
+  suppressWarnings(
+    madc2vcf_targets(madc_file = temp_madc, output.file = temp_vcf, get_REF_ALT = FALSE)
+  )
+
+  vcf <- read.vcfR(temp_vcf, verbose = FALSE)
+
+  expect_equal(colnames(vcf@gt)[2:4], c("1A", "Sample-1", "sample 2"))
+})
+
+test_that("madc2vcf_targets surfaces missing-column validation error without crashing", {
+  madc_file <- system.file("example_MADC_FixedAlleleID.csv", package="BIGr")
+  temp_madc <- tempfile(fileext = ".csv")
+
+  report <- read.csv(madc_file, check.names = FALSE)
+  report$AlleleSequence <- NULL
+  write.csv(report, temp_madc, row.names = FALSE)
+
+  expect_error(
+    madc2vcf_targets(madc_file = temp_madc,
+                     output.file = tempfile(fileext = ".vcf"),
+                     get_REF_ALT = FALSE,
+                     verbose = FALSE),
+    "One or more required columns missing"
+  )
+})
+
 
 # =======================================================================
 # Using Breeding-Insight/BIGapp-PanelHub test files

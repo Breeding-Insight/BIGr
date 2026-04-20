@@ -22,16 +22,21 @@ madc2vcf_targets(
 \item{botloci_file}{character or \code{NULL} (default \code{NULL}). Path to a plain-text
 file listing target IDs designed on the \strong{bottom} strand (one ID per line).
 Used for strand-correcting probe sequences when \code{get_REF_ALT = TRUE} and
-\code{markers_info} does not supply \code{Ref} and \code{Alt} columns. Also required when
-\code{ChromPos} is invalid and \code{markers_info} does not provide \code{Ref}/\code{Alt}.}
+\code{markers_info} does not supply \code{Ref} and \code{Alt} columns. Not needed when
+\code{markers_info} provides \code{Ref} and \code{Alt}, or when \code{get_REF_ALT = FALSE} and
+\code{markers_info} provides \code{Chr} and \code{Pos}. Also required when \code{ChromPos} is
+invalid and \code{markers_info} does not provide \code{Ref}/\code{Alt}.}
 
 \item{markers_info}{character or \code{NULL}. Optional path to a CSV providing target
-metadata. Accepted columns:
+metadata. Matching is done by column name, not column position. Accepted columns:
 \itemize{
-\item \code{CloneID}, \code{Marker_ID}, or \code{BI_markerID} (required as marker identifier);
+\item one marker identifier column named \code{CloneID}, \code{Marker_ID}, or \code{BI_markerID}
+(required; a generic \code{ID} column is not accepted);
 \item \code{Chr}, \code{Pos} — required when \code{CloneID} does not follow the \code{Chr_Pos} format;
 \item \code{Ref}, \code{Alt} — required when \code{get_REF_ALT = TRUE} and probe-sequence
-inference is not possible (IUPAC codes, indels, or unfixed allele IDs).
+inference is not possible (IUPAC codes, indels, or unfixed allele IDs). When
+\code{get_REF_ALT = TRUE}, \code{botloci_file} is still required unless \code{Ref} and \code{Alt}
+are supplied here.
 }}
 
 \item{get_REF_ALT}{logical (default \code{FALSE}). If \code{TRUE}, attempts to recover

@@ -35,12 +35,10 @@ Default is 2.}
 Invisible NULL. Writes a VCF file to \code{outfile}.
 }
 \description{
-This function converts a DArTag MADC file to a VCF using the polyRAD package's
-\code{readDArTag} and \code{RADdata2VCF} pipeline. It runs \code{check_madc_sanity} before
-loading the data, applies corrections for lowercase sequences and all-NA
-rows/columns, and sets \code{n.header.rows} automatically based on whether the
-MADC file follows the raw DArT format (6 header rows) or the fixed allele ID
-format (no header rows).
+This function converts a DArTag fixed allele ID MADC file to a VCF
+containing multiallelic markers based on the microhaplotypes using
+the polyRAD package's \code{readDArTag}, \code{IterateHWE} population model
+and \code{RADdata2VCF} pipeline.
 }
 \details{
 The function performs the following steps:

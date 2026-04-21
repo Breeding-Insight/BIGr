@@ -1,11 +1,9 @@
 #' Convert MADC file to VCF using polyRAD for multiallelic genotyping
 #'
-#' This function converts a DArTag MADC file to a VCF using the polyRAD package's
-#' `readDArTag` and `RADdata2VCF` pipeline. It runs `check_madc_sanity` before
-#' loading the data, applies corrections for lowercase sequences and all-NA
-#' rows/columns, and sets `n.header.rows` automatically based on whether the
-#' MADC file follows the raw DArT format (6 header rows) or the fixed allele ID
-#' format (no header rows).
+#' This function converts a DArTag fixed allele ID MADC file to a VCF
+#' containing multiallelic markers based on the microhaplotypes using
+#' the polyRAD package's `readDArTag`, `IterateHWE` population model
+#' and `RADdata2VCF` pipeline.
 #'
 #' @param madc_file character. Path or URL to the input MADC CSV file.
 #' @param botloci_file character. Path or URL to the botloci file listing target

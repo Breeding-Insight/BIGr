@@ -187,18 +187,18 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
     stop("No valid progeny candidates remain after filtering.")
 
   #### Pre-compute genotype matrices once (shared across all methods) ####
-  ## Full genotype matrix used by best_pair
+  # Full genotype matrix used by best_pair
   genos_mat <- base::as.matrix(genos, rownames = "ID")
 
-  ## Homozygous-only matrix (het markers set to NA) used by hom methods
+  # Homozygous-only matrix (het markers set to NA) used by hom methods
   genos_hom   <- data.table::copy(genos)
   marker_cols <- base::setdiff(base::names(genos_hom), "ID")
   for (col in marker_cols)
     genos_hom[base::get(col) == 1, (col) := NA_integer_]
   genos_hom_mat <- base::as.matrix(genos_hom, rownames = "ID")
 
-  #### Helper: assign Assignment_Status from markers and error rate ####
-  ## Returns LOW_MARKERS, HIGH_ERROR, or PASS
+  #### Assignment_Status from markers and error rate ####
+  # Returns LOW_MARKERS, HIGH_ERROR, or PASS
   assign_status <- function(markers, error_pct) {
     base::ifelse(markers < min_markers, "LOW_MARKERS",
                  base::ifelse(error_pct > error_threshold, "HIGH_ERROR", "PASS"))
@@ -206,18 +206,17 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
 
   #### Logic for Homozygous Matching Methods ####
   if (method %in% c("best_male_parent", "best_female_parent", "best_match")) {
-
     parent_ids <- base::switch(method,
                                "best_male_parent"   = male_parent_candidates$ID,
                                "best_female_parent" = female_parent_candidates$ID,
                                "best_match"         = base::union(male_parent_candidates$ID,
                                                                   female_parent_candidates$ID))
 
-    ## Subset pre-computed homozygous matrix for relevant parents and progeny
+    # Subset pre-computed homozygous matrix for relevant parents and progeny
     parent_genos  <- genos_hom_mat[base::rownames(genos_hom_mat) %in% parent_ids,           , drop = FALSE]
     progeny_genos <- genos_hom_mat[base::rownames(genos_hom_mat) %in% progeny_candidates$ID, , drop = FALSE]
 
-    ## Pre-allocate results data.table; fill by reference with set()
+    # Pre-allocate results data.table; fill by reference with set()
     n_progeny  <- base::nrow(progeny_genos)
     results_dt <- data.table::data.table(
       Progeny             = base::rownames(progeny_genos),
@@ -251,36 +250,31 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
       data.table::set(results_dt, i, "Markers_Tested",      base::as.integer(best_markers))
       data.table::set(results_dt, i, "Assignment_Status",   assign_status(best_markers, best_error))
     }
-
     final_df <- results_dt
   }
 
   #### Logic for Best Pair Method ####
   if (method == "best_pair") {
-
     parent_pairs <- data.table::CJ(Male_Parent   = male_parent_candidates$ID,
                                    Female_Parent = female_parent_candidates$ID)
-
     if (!allow_selfing) {
       parent_pairs <- parent_pairs[Male_Parent != Female_Parent]
       if (verbose) base::cat("Selfing is disallowed. Pairs with identical parents are removed.\n")
     }
-
     if (base::nrow(parent_pairs) == 0) stop("No valid parent pairs to test.")
 
-    ## Pre-extract parent genotype row blocks for vectorised operations
+    # Pre-extract parent genotype row blocks for vectorised operations
     male_parent_genos_mat   <- genos_mat[parent_pairs$Male_Parent,   , drop = FALSE]
     female_parent_genos_mat <- genos_mat[parent_pairs$Female_Parent, , drop = FALSE]
 
-    ## Subset full genotype matrix to progeny only
+    # Subset full genotype matrix to progeny only
     progeny_ids <- progeny_candidates$ID
     progeny_mat <- genos_mat[progeny_ids, , drop = FALSE]
     n_progeny   <- base::nrow(progeny_mat)
     n_pairs     <- base::nrow(parent_pairs)
 
-    ## Vectorised mismatch computation across ALL progeny at once
-    ## Result: matrix of dimensions n_pairs x n_progeny
-    ## Explicitly wrapped in matrix() to handle the n_pairs = 1 edge case
+    # Vectorised mismatch computation across ALL progeny at once
+    # Wrapped in matrix() to handle the n_pairs = 1 edge case
     mismatch_mat <- base::matrix(
       base::vapply(base::seq_len(n_progeny), function(j) {
         progeny_vec <- progeny_mat[j, ]
@@ -299,9 +293,8 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
       nrow = n_pairs, ncol = n_progeny
     )
 
-    ## Vectorised comparison count across ALL progeny at once
-    ## Result: matrix of dimensions n_pairs x n_progeny
-    ## Explicitly wrapped in matrix() to handle the n_pairs = 1 edge case
+    # Vectorised comparison count across ALL progeny at once
+    # Wrapped in matrix() to handle the n_pairs = 1 edge case
     comparison_mat <- base::matrix(
       base::vapply(base::seq_len(n_progeny), function(j) {
         progeny_vec <- progeny_mat[j, ]
@@ -312,11 +305,11 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
       nrow = n_pairs, ncol = n_progeny
     )
 
-    ## Percent mismatch matrix: n_pairs x n_progeny
+    # Percent mismatch matrix: n_pairs x n_progeny
     pct_mismatch_mat <- (mismatch_mat / comparison_mat) * 100
     pct_mismatch_mat[base::is.nan(pct_mismatch_mat)] <- NA
 
-    ## Pre-allocate base results data.table; tie columns added dynamically
+    # Pre-allocate base results data.table; tie columns added dynamically
     results_dt <- data.table::data.table(
       Progeny             = progeny_ids,
       Male_Parent         = NA_character_,
@@ -326,11 +319,9 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
       Assignment_Status   = NA_character_
     )
 
-    ## Per-progeny result extraction from pre-computed matrices
+    # Per-progeny result extraction from pre-computed matrices
     results_list <- base::vector("list", n_progeny)
-
     for (j in base::seq_len(n_progeny)) {
-
       prog_id          <- progeny_ids[j]
       percent_mismatch <- pct_mismatch_mat[, j]
       comparisons      <- comparison_mat[,  j]
@@ -391,7 +382,6 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
       base::Filter(Negate(base::is.null), results_list),
       fill = TRUE
     )
-
     if (base::nrow(tie_rows) > 0) {
       final_df <- merge(results_dt, tie_rows, by = "Progeny", all.x = TRUE)
     } else {

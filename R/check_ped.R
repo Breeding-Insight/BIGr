@@ -38,7 +38,7 @@
 #' messy_ids <- ped_errors$messy_parents$id
 #' print(messy_ids)
 #'
-#' @importFrom dplyr %>% group_by filter ungroup distinct mutate summarize first bind_rows
+#' @importFrom dplyr %>% group_by filter ungroup distinct mutate summarize first bind_rows n_distinct n
 #' @importFrom janitor clean_names
 #' @importFrom stats setNames
 #' @importFrom utils read.table

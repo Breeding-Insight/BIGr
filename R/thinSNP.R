@@ -10,8 +10,9 @@
 #' @param min_distance A numeric value for the minimum distance between selected SNPs.
 #'   The unit of this distance should match the unit of the `pos_col_name` column (e.g., base pairs).
 #'
-#' @import dplyr
-#' @import rlang
+#' @importFrom rlang sym
+#' @importFrom dplyr group_by arrange group_modify ungroup
+#' @importFrom tibble as_tibble
 #' @return A thinned dataframe with the same columns as the input.
 #'
 #' @examples

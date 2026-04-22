@@ -38,10 +38,11 @@
 #' messy_ids <- ped_errors$messy_parents$id
 #' print(messy_ids)
 #'
-#' @import dplyr
-#' @import janitor
+#' @importFrom dplyr %>% group_by filter ungroup distinct mutate summarize first bind_rows
+#' @importFrom janitor clean_names
 #' @importFrom stats setNames
 #' @importFrom utils read.table
+#' @importFrom tools file_path_sans_ext
 #' @export
 check_ped <- function(ped.file, seed = NULL, verbose = TRUE) {
 

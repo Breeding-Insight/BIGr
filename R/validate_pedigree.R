@@ -51,6 +51,7 @@
 #'     \item{Best_Female_Parent_Error_Pct}{Homozygous mismatch percentage for the best female parent candidate.}
 #'   }
 #' @export
+#' @importFrom data.table fread fwrite copy  data.table set rbindlist
 validate_pedigree <- function(pedigree_file, genotypes_file,
                               founders_file = NULL,
                               trio_error_threshold = 5.0,

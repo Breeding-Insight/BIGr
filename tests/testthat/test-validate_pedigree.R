@@ -174,7 +174,7 @@ test_that("LOW_MARKERS status assigned when markers_tested < min_markers", {
   res <- validate_pedigree(f$ped, f$genos, verbose = FALSE,
                            write_txt = FALSE, min_markers = 25L)
   expect_true(all(res$Status == "LOW_MARKERS"))
-  expect_true(all(res$Correction_Decision == "NONE"))
+  expect_true(all(grepl("^LOW_MARKERS_", res$Correction_Decision)))
 })
 
 test_that("NA markers reduce Markers_Tested and do not cause errors", {

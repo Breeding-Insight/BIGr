@@ -34,8 +34,8 @@ to classify a trio as PASS (default: 5.0). Must be between 0 and 100.}
 required to evaluate a trio (default: 10).}
 
 \item{single_parent_error_threshold}{Numeric. Maximum homozygous-marker
-mismatch percentage for a parent to be considered acceptable in a
-failed trio (default: 2.0). Must be between 0 and 100.}
+mismatch percentage for a parent to be considered acceptable during
+parent-level evaluation (default: 2.0). Must be between 0 and 100.}
 
 \item{verbose}{Logical. If TRUE, prints progress messages, a summary
 table, and results to the console (default: TRUE).}
@@ -57,20 +57,17 @@ the following columns:
 \item{Markers_Tested}{Number of markers with non-missing genotypes.}
 \item{Status}{One of PASS, FAIL, LOW_MARKERS, NO_DATA, FOUNDERS,
 MISSING_MALE_PARENT, MISSING_FEMALE_PARENT, MISSING_BOTH_PARENTS,
-or NO_GENOTYPE_DATA (trio present in pedigree but absent from
-the genotype file).}
+or NO_GENOTYPE_DATA.}
 \item{Correction_Decision}{One of NONE, KEEP_BOTH,
-REMOVE_MALE_PARENT, REMOVE_FEMALE_PARENT, REMOVE_BOTH.}
-\item{Male_Parent_Hom_Error_Pct}{Male parent homozygous-marker mismatch
-percentage (NA unless Status == "FAIL").}
-\item{Female_Parent_Hom_Error_Pct}{Female parent homozygous-marker
-mismatch percentage (NA unless Status == "FAIL").}
+REMOVE_MALE_PARENT, REMOVE_FEMALE_PARENT, REMOVE_BOTH,
+LOW_MARKERS_KEEP_BOTH, LOW_MARKERS_REMOVE_MALE_PARENT,
+LOW_MARKERS_REMOVE_FEMALE_PARENT, LOW_MARKERS_REMOVE_BOTH.}
+\item{Male_Parent_Hom_Error_Pct}{Male parent homozygous-marker mismatch percentage.}
+\item{Female_Parent_Hom_Error_Pct}{Female parent homozygous-marker mismatch percentage.}
 \item{Best_Male_Parent}{Best-matching male parent candidate ID.}
-\item{Best_Male_Parent_Error_Pct}{Homozygous mismatch percentage for
-Best_Male_Parent.}
+\item{Best_Male_Parent_Error_Pct}{Homozygous mismatch percentage for the best male parent candidate.}
 \item{Best_Female_Parent}{Best-matching female parent candidate ID.}
-\item{Best_Female_Parent_Error_Pct}{Homozygous mismatch percentage for
-Best_Female_Parent.}
+\item{Best_Female_Parent_Error_Pct}{Homozygous mismatch percentage for the best female parent candidate.}
 }
 }
 \description{
@@ -80,41 +77,4 @@ best-matching replacements. If a list of founders is supplied, trios that
 are declared founders (both parents coded as 0) are preserved unchanged
 with no recommendations. Trios removed due to missing genotype data are
 retained in the output with a NO_GENOTYPE_DATA status.
-}
-\details{
-All trios in the pedigree file are represented in the output. Trios where
-the progeny or a declared parent is absent from the genotype file are
-flagged as NO_GENOTYPE_DATA and are excluded from Mendelian error analysis
-but retained in the final report and summary counts.
-
-Trios with missing parents (coded as 0) that are not listed as founders
-receive a MISSING_MALE_PARENT, MISSING_FEMALE_PARENT, or
-MISSING_BOTH_PARENTS status. Recommendations are provided in the
-Best_Male_Parent and Best_Female_Parent columns, but the 0 values are
-preserved in the corrected pedigree output.
-
-If founders_file is provided, any trio where the individual is listed as
-a founder and both parents are coded as 0 is flagged as FOUNDERS; no
-recommendation or correction is attempted.
-
-A corrected pedigree with failed parents replaced by 0 is always written
-to corrected_pedigree.txt.
-}
-\examples{
-\dontrun{
-# Basic run
-results <- validate_pedigree("pedigree.txt", "genotypes.txt")
-
-# With founders list and stricter thresholds
-results <- validate_pedigree(
-  pedigree_file                 = "pedigree.txt",
-  genotypes_file                = "genotypes.txt",
-  founders_file                 = "founders.txt",
-  trio_error_threshold          = 2.0,
-  single_parent_error_threshold = 1.0,
-  verbose                       = FALSE,
-  output_filename               = "my_validation.txt"
-)
-}
-
 }

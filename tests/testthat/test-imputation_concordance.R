@@ -1,6 +1,5 @@
 context("Imputation Concordance")
 
-
 test_that("test imputation",{
   #Input variables
   ignore_file <- system.file("imputation_ignore.txt", package="BIGr")

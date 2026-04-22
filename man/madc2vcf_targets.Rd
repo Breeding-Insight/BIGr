@@ -4,44 +4,158 @@
 \alias{madc2vcf_targets}
 \title{Format MADC Target Loci Read Counts Into VCF}
 \usage{
-madc2vcf_targets(madc_file, output.file, botloci_file, get_REF_ALT = FALSE)
+madc2vcf_targets(
+  madc_file,
+  output.file,
+  botloci_file = NULL,
+  markers_info = NULL,
+  get_REF_ALT = FALSE,
+  collapse_matches_counts = FALSE,
+  verbose = TRUE
+)
 }
 \arguments{
-\item{madc_file}{Path to MADC file}
+\item{madc_file}{character. Path to the input MADC CSV file.}
 
-\item{output.file}{output file name and path}
+\item{output.file}{character. Path to the output VCF file to write.}
 
-\item{botloci_file}{A string specifying the path to the file containing the target IDs designed in the bottom strand.}
+\item{botloci_file}{character or \code{NULL} (default \code{NULL}). Path to a plain-text
+file listing target IDs designed on the \strong{bottom} strand (one ID per line).
+Used for strand-correcting probe sequences when \code{get_REF_ALT = TRUE} and
+\code{markers_info} does not supply \code{Ref} and \code{Alt} columns. Not needed when
+\code{markers_info} provides \code{Ref} and \code{Alt}, or when \code{get_REF_ALT = FALSE} and
+\code{markers_info} provides \code{Chr} and \code{Pos}. Also required when \code{ChromPos} is
+invalid and \code{markers_info} does not provide \code{Ref}/\code{Alt}.}
 
-\item{get_REF_ALT}{if TRUE recovers the reference and alternative bases by comparing the sequences. If more than one polymorphism are found for a tag, it is discarded.}
+\item{markers_info}{character or \code{NULL}. Optional path to a CSV providing target
+metadata. Matching is done by column name, not column position. Accepted columns:
+\itemize{
+\item one marker identifier column named \code{CloneID}, \code{Marker_ID}, or \code{BI_markerID}
+(required; a generic \code{ID} column is not accepted);
+\item \code{Chr}, \code{Pos} — required when \code{CloneID} does not follow the \code{Chr_Pos} format;
+\item \code{Ref}, \code{Alt} — required when \code{get_REF_ALT = TRUE} and probe-sequence
+inference is not possible (IUPAC codes, indels, or unfixed allele IDs). When
+\code{get_REF_ALT = TRUE}, \code{botloci_file} is still required unless \code{Ref} and \code{Alt}
+are supplied here.
+}}
+
+\item{get_REF_ALT}{logical (default \code{FALSE}). If \code{TRUE}, attempts to recover
+REF/ALT bases. The source is chosen automatically: \code{markers_info} \code{Ref}/\code{Alt}
+columns take priority; otherwise probe sequences from the MADC are compared
+(with \code{botloci_file} for strand correction). Targets with more than one
+difference between Ref/Alt sequences are removed. When \code{FALSE}, REF and ALT
+are set to \code{"."} in the output VCF.}
+
+\item{collapse_matches_counts}{logical (default \code{FALSE}). If \code{TRUE}, counts for
+\verb{|AltMatch} and \verb{|RefMatch} rows are summed into their corresponding \verb{|Ref}
+and \verb{|Alt} rows before building the matrices. Useful when the MADC contains
+multiple allele rows per target that should be aggregated.}
+
+\item{verbose}{logical (default \code{TRUE}). If \code{TRUE}, prints detailed progress
+messages about each processing step.}
 }
 \value{
-A VCF file v4.3 with the target marker read count information
-
-A VCF file v4.3 with the target marker read count information
+(Invisibly) returns the path to \code{output.file}. The side effect is a
+\strong{VCF v4.3} written to disk containing one row per target and columns for all
+samples in the MADC file.
 }
 \description{
-This function will extract the read count information from a MADC file target markers and convert to VCF file format.
+Parses a DArTag \strong{MADC} report and writes a \strong{VCF v4.3} containing per-target
+read counts for the panel’s target loci. This is useful because MADC is not
+widely supported by general-purpose tools, while VCF is.
 }
 \details{
-The DArTag MADC file format is not commonly supported through existing tools. This function
-will extract the read count information from a MADC file for the target markers and convert it to a VCF file format for the
-genotyping panel target markers only
+Convert DArTag MADC target read counts to a VCF
+
+\strong{What this function does}
+\itemize{
+\item Runs basic sanity checks on the MADC file via \code{check_madc_sanity()} (column
+presence, fixed allele IDs, IUPAC/ambiguous bases, lowercase bases, indels,
+chromosome/position format, all-NA rows/columns, Ref/Alt sequence presence).
+\item Extracts reference and total read counts per sample and target.
+\item Derives \code{AD} (ref,alt) by subtraction (alt = total − ref).
+\item If \code{get_REF_ALT = TRUE}, recovers REF/ALT bases either from \code{markers_info}
+(when \code{Ref}/\code{Alt} columns are present) or by comparing the Ref/Alt probe
+sequences in the MADC file (with strand correction via \code{botloci_file}).
+Targets with >1 polymorphism between sequences are discarded.
+\item Optionally accepts a \code{markers_info} CSV to supply \code{CHROM}, \code{POS}, \code{REF},
+\code{ALT}, bypassing sequence-based inference.
 }
+
+\strong{Output VCF layout}
+\itemize{
+\item \code{INFO} fields:
+\itemize{
+\item \code{DP}   — total depth across all samples for the locus
+\item \code{ADS}  — total counts across samples in the order \verb{ref,alt}
+}
+\item \code{FORMAT} fields (per sample):
+\itemize{
+\item \code{DP}   — total reads (ref + alt)
+\item \code{RA}   — reads supporting the reference allele
+\item \code{AD}   — \code{"ref,alt"} counts
+}
+}
+
+\strong{Strand handling}
+If a target ID appears in \code{botloci_file}, its probe sequences are reverse-
+complemented prior to base comparison so that REF/ALT are reported in the
+top-strand genomic orientation.
+
+\strong{Sanity check behaviour and requirements}
+
+The function always stops if required columns (\code{CloneID}, \code{AlleleID},
+\code{AlleleSequence}) are missing.
+
+For the remaining checks the required inputs depend on the combination of
+check result and \code{get_REF_ALT}:\tabular{llll}{
+   Check \tab Status \tab \code{get_REF_ALT} \tab Required \cr
+   \strong{IUPAC codes} \tab detected \tab \code{TRUE} \tab \code{markers_info} with \code{Ref}/\code{Alt} \cr
+    \tab detected \tab \code{FALSE} \tab — \cr
+    \tab not detected \tab \code{TRUE} \tab \code{botloci_file} \strong{or} \code{markers_info} with \code{Ref}/\code{Alt} \cr
+    \tab not detected \tab \code{FALSE} \tab — \cr
+   \strong{Indels} \tab detected \tab \code{TRUE} \tab \code{markers_info} with \code{Ref}/\code{Alt} \cr
+    \tab detected \tab \code{FALSE} \tab — \cr
+    \tab not detected \tab \code{TRUE} \tab \code{botloci_file} \strong{or} \code{markers_info} with \code{Ref}/\code{Alt} \cr
+    \tab not detected \tab \code{FALSE} \tab — \cr
+   \strong{ChromPos} \tab valid \tab \code{TRUE} \tab \code{botloci_file} \strong{or} \code{markers_info} with \code{Ref}/\code{Alt} \cr
+    \tab valid \tab \code{FALSE} \tab — \cr
+    \tab invalid \tab \code{TRUE} \tab \code{markers_info} with \code{Chr}/\code{Pos}/\code{Ref}/\code{Alt} \strong{or} \code{markers_info} with \code{Chr}/\code{Pos} + \code{botloci_file} \cr
+    \tab invalid \tab \code{FALSE} \tab \code{markers_info} with \code{Chr}/\code{Pos} \cr
+   \strong{FixAlleleIDs} \tab fixed \tab \code{TRUE} \tab \code{botloci_file} \strong{or} \code{markers_info} with \code{Ref}/\code{Alt} \cr
+    \tab fixed \tab \code{FALSE} \tab — \cr
+    \tab not fixed \tab \code{TRUE} \tab \code{markers_info} with \code{Ref}/\code{Alt} \cr
+    \tab not fixed \tab \code{FALSE} \tab — \cr
+}
+}
+\section{Dependencies}{
+
+Uses \strong{dplyr}, \strong{tidyr}, \strong{tibble}, \strong{reshape2}, \strong{Biostrings} and base
+\strong{utils}. Helper functions expected in this package: \code{check_madc_sanity()},
+\code{get_countsMADC()}, \code{get_counts()}, and \code{check_botloci()}.
+}
+
 \examples{
-# Load example files
-madc_file <- system.file("example_MADC_FixedAlleleID.csv", package="BIGr")
-bot_file <- system.file("example_SNPs_DArTag-probe-design_f180bp.botloci", package="BIGr")
+# Example files shipped with the package
+madc_file <- system.file("example_MADC_FixedAlleleID.csv", package = "BIGr")
+bot_file  <- system.file("example_SNPs_DArTag-probe-design_f180bp.botloci",
+                         package = "BIGr")
+out_vcf <- tempfile(fileext = ".vcf")
 
-#Temp location (only for example)
-output_file <- tempfile()
+# Convert MADC to VCF (attempting to recover REF/ALT from probe sequences)
+\dontrun{
+madc2vcf_targets(
+  madc_file    = madc_file,
+  output.file  = out_vcf,
+  botloci_file = bot_file,
+  get_REF_ALT  = TRUE
+)
+}
 
-# Convert MADC to VCF
-madc2vcf_targets(madc_file = madc_file,
-                 output.file = output_file,
-                 get_REF_ALT = TRUE,
-                 botloci_file = bot_file)
+# Clean up (example)
+unlink(out_vcf)
 
-rm(output_file)
-
+}
+\seealso{
+\code{check_madc_sanity()}, \code{get_countsMADC()}, \code{check_botloci()}
 }

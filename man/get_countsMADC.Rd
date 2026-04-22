@@ -4,18 +4,53 @@
 \alias{get_countsMADC}
 \title{Obtain Read Counts from MADC File}
 \usage{
-get_countsMADC(madc_file)
+get_countsMADC(
+  madc_file = NULL,
+  madc_object = NULL,
+  collapse_matches_counts = FALSE,
+  verbose = TRUE
+)
 }
 \arguments{
-\item{madc_file}{Path to MADC file}
+\item{madc_file}{character or \code{NULL}. Path to the input MADC CSV file.
+At least one of \code{madc_file} or \code{madc_object} must be provided.}
+
+\item{madc_object}{data frame or \code{NULL}. A pre-read MADC data frame
+(e.g., as returned by \code{check_botloci()}). When supplied, file reading is
+skipped. At least one of \code{madc_file} or \code{madc_object} must be provided.}
+
+\item{collapse_matches_counts}{logical. If \code{TRUE}, counts for \verb{|AltMatch}
+and \verb{|RefMatch} rows are summed into their corresponding \verb{|Ref} and \verb{|Alt}
+rows. If \code{FALSE} (default), \verb{|AltMatch} and \verb{|RefMatch} rows are discarded.}
+
+\item{verbose}{logical. Whether to print progress messages. Default is \code{TRUE}.}
 }
 \value{
-A list of read count matrices for reference, alternate, and total read count values
+A named list with two numeric matrices, both with markers as rows
+and samples as columns:
+\describe{
+\item{\code{ref_matrix}}{Reference allele read counts.}
+\item{\code{size_matrix}}{Total read counts (reference + alternative).}
+}
 }
 \description{
-This function takes the MADC file as input and retrieves the ref and alt counts for each sample,
-and converts them to ref, alt, and size(total count) matrices for dosage calling tools. At the moment,
-only the read counts for the Ref and Alt target loci are obtained while the additional loci are ignored.
+Reads a DArTag MADC report and returns reference and total read count matrices
+per marker and sample. Only \code{Ref} and \code{Alt} target loci are retained;
+\verb{|AltMatch} / \verb{|RefMatch} rows are either discarded or collapsed depending on
+\code{collapse_matches_counts}.
+}
+\details{
+Either \code{madc_file} or \code{madc_object} must be provided (not both \code{NULL}).
+When \code{madc_object} is supplied it is passed directly to \code{get_counts()},
+skipping file I/O. The function constructs:
+\itemize{
+\item \code{ref_matrix} — per-sample reference allele counts.
+\item \code{size_matrix} — per-sample total counts (ref + alt).
+}
+
+Markers whose \code{CloneID} appears only in the \code{Ref} or only in the \code{Alt} rows
+are removed with a warning. A summary of the proportion of zero-count
+data points (missing data) is reported via \code{vmsg()}.
 }
 \examples{
 # Get the path to the MADC file
@@ -24,11 +59,13 @@ madc_path <- system.file("iris_DArT_MADC.csv", package = "BIGr")
 # Extract the read count matrices
 counts_matrices <- get_countsMADC(madc_path)
 
-# Access the reference, alternate, and size matrices
-
-# ref_matrix <- counts_matrices$ref_matrix
-# alt_matrix <- counts_matrices$alt_matrix
+# Access the reference and size matrices
+# ref_matrix  <- counts_matrices$ref_matrix
 # size_matrix <- counts_matrices$size_matrix
 
 rm(counts_matrices)
+
+}
+\seealso{
+\code{\link[=check_madc_sanity]{check_madc_sanity()}}
 }

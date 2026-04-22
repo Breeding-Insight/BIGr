@@ -5,8 +5,8 @@
 \title{Converts MADC file to VCF recovering target and off-target SNPs}
 \usage{
 madc2vcf_all(
-  madc = NULL,
-  botloci_file = NULL,
+  madc,
+  botloci_file,
   hap_seq_file = NULL,
   n.cores = 1,
   rm_multiallelic_SNP = FALSE,
@@ -14,13 +14,17 @@ madc2vcf_all(
   multiallelic_SNP_sample_thr = 0,
   alignment_score_thr = 40,
   out_vcf = NULL,
+  markers_info = NULL,
+  add_others = TRUE,
+  others_max_snps = 5,
+  others_rm_with_indels = TRUE,
   verbose = TRUE
 )
 }
 \arguments{
-\item{madc}{A string specifying the path to the MADC file.}
+\item{madc}{Required. A string specifying the path or URL to the MADC file.}
 
-\item{botloci_file}{A string specifying the path to the file containing the target IDs designed in the bottom strand.}
+\item{botloci_file}{Required. A string specifying the path or URL to the file containing the target IDs designed in the bottom strand.}
 
 \item{hap_seq_file}{A string specifying the path to the haplotype database fasta file.}
 
@@ -36,6 +40,14 @@ madc2vcf_all(
 
 \item{out_vcf}{A string specifying the name of the output VCF file. If the file extension is not \code{.vcf}, it will be appended automatically.}
 
+\item{markers_info}{A string specifying the path to a CSV file with marker information (CloneID/BI_markerID, Chr, Pos, Ref, Alt, Type, Indel_pos columns as needed).}
+
+\item{add_others}{A logical value. If TRUE, alleles labeled "Other" in the MADC file are included in off-target SNP extraction. Default is TRUE.}
+
+\item{others_max_snps}{An integer or NULL. If not NULL, Other alleles with more than this many SNP differences versus the Ref sequence (as detected by pairwise alignment) are discarded. Default is NULL (no limit).}
+
+\item{others_rm_with_indels}{A logical value. If TRUE, Other alleles that contain insertions or deletions relative to the Ref sequence (as detected by pairwise alignment) are discarded. Default is TRUE.}
+
 \item{verbose}{A logical value indicating whether to print metrics and progress to the console. Default is TRUE.}
 }
 \value{
@@ -46,6 +58,16 @@ This function processes a MADC file to generate a VCF file containing both targe
 }
 \details{
 The function processes a MADC file to generate a VCF file containing both target and off-target SNPs. It uses parallel processing to improve performance and provides options to filter multiallelic SNPs based on user-defined thresholds. The alignment score threshold can be adjusted using the \code{alignment_score_thr} parameter. The generated VCF file includes metadata about the processing parameters and the BIGr package version. If the \code{alignment_score_thr} is not met, the corresponding SNPs are discarded.
+
+\strong{Sanity check behaviour and requirements}\tabular{lll}{
+   Check \tab Status \tab Required \cr
+   \strong{Indels} \tab detected \tab \code{markers_info} with \code{Ref}/\code{Alt}/\code{Indel_pos}/\code{Indel_length} + \code{botloci_file} \cr
+    \tab not detected \tab \code{botloci_file} \cr
+   \strong{ChromPos} \tab valid \tab \code{botloci_file} \cr
+    \tab invalid \tab \code{markers_info} with \code{Chr}/\code{Pos} + \code{botloci_file} \cr
+   \strong{RefAltSeqs} \tab all paired \tab \code{botloci_file} \cr
+    \tab unpaired \tab \code{botloci_file} + \code{hap_seq_file} (microhaplotype DB) \cr
+}
 }
 \examples{
 # Example usage:

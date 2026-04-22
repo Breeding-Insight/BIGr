@@ -63,10 +63,10 @@ Imports:
     quadprog,
     tibble,
     stringr,
-    ggplot2,
-    data.table,
+    data.table
 Suggests: 
     covr,
+    ggplot2,
     spelling,
     rmdformats,
     knitr (>= 1.10),

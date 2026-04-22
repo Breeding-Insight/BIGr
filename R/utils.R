@@ -27,20 +27,20 @@ convert_to_dosage <- function(gt) {
   })
 }
 
-##' Verbose Message Utility
-##'
-##' Prints a formatted verbose message with timestamp, indentation, and type label, if verbose is TRUE.
-##'
-##' @param text Character string, the message to print (supports sprintf formatting).
-##' @param verbose Logical. If TRUE, prints the message; if FALSE, suppresses output.
-##' @param level Integer, indentation level (0=header, 1=main step, 2=detail, 3=sub-detail).
-##' @param type Character string, message type (e.g., "INFO", "WARN", "ERROR"). Only shown for level 0.
-##' @param ... Additional arguments passed to sprintf for formatting.
-##'
-##' @details Use the verbose argument to control message output. Typically, pass the function's verbose parameter to vmsg.
-##'
-##' @return No return value, called for side effects.
-##' @export
+#' Verbose Message Utility
+#'
+#' Prints a formatted verbose message with timestamp, indentation, and type label, if verbose is TRUE.
+#'
+#' @param text Character string, the message to print (supports sprintf formatting).
+#' @param verbose Logical. If TRUE, prints the message; if FALSE, suppresses output.
+#' @param level Integer, indentation level (0=header, 1=main step, 2=detail, 3=sub-detail).
+#' @param type Character string, message type (e.g., "INFO", "WARN", "ERROR"). Only shown for level 0.
+#' @param ... Additional arguments passed to sprintf for formatting.
+#'
+#' @details Use the verbose argument to control message output. Typically, pass the function's verbose parameter to vmsg.
+#'
+#' @return No return value, called for side effects.
+#' @noRd
 vmsg <- function(text, verbose = FALSE, level = 1, type = ">>", ...) {
   if (!verbose) return(invisible())
   # Format timestamp
@@ -83,7 +83,7 @@ vmsg <- function(text, verbose = FALSE, level = 1, type = ">>", ...) {
 #'
 #' @keywords internal
 #' @noRd
-#' 
+#'
 url_exists <- function(u) {
   tryCatch({
     con <- url(u, open = "rb")

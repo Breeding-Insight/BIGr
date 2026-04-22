@@ -66,6 +66,70 @@ test_that("test madc offtargets",{
 
 })
 
+test_that("madc2vcf_all preserves comma-separated AD for biallelic targets", {
+  madc_file <- system.file("example_MADC_FixedAlleleID.csv", package="BIGr")
+  bot_file <- system.file("example_SNPs_DArTag-probe-design_f180bp.botloci", package="BIGr")
+  db_file <- system.file("example_allele_db.fa", package="BIGr")
+  temp <- tempfile(fileext = ".vcf")
+
+  madc2vcf_all(madc = madc_file,
+               botloci_file = bot_file,
+               hap_seq_file = db_file,
+               n.cores = 1,
+               out_vcf = temp,
+               verbose = FALSE)
+
+  vcf <- read.vcfR(temp, verbose = FALSE)
+  ad <- extract.gt(vcf, "AD")
+  biallelic <- !grepl(",", vcf@fix[, "ALT"])
+
+  expect_true(all(grepl("^[0-9]+,[0-9]+$", ad[biallelic, 1])))
+})
+
+test_that("madc2vcf_all accepts BI_markerID matches when CloneID does not match", {
+  madc_file <- system.file("example_MADC_FixedAlleleID.csv", package="BIGr")
+  bot_file <- system.file("example_SNPs_DArTag-probe-design_f180bp.botloci", package="BIGr")
+  db_file <- system.file("example_allele_db.fa", package="BIGr")
+  temp <- tempfile(fileext = ".vcf")
+  temp_markers <- tempfile(fileext = ".csv")
+
+  report <- read.csv(madc_file, check.names = FALSE)
+  marker_ids <- unique(report$CloneID)
+  markers_info <- data.frame(
+    CloneID = paste0("bogus_", seq_along(marker_ids)),
+    BI_markerID = marker_ids
+  )
+  write.csv(markers_info, temp_markers, row.names = FALSE)
+
+  expect_no_error(
+    madc2vcf_all(madc = madc_file,
+                 botloci_file = bot_file,
+                 hap_seq_file = db_file,
+                 markers_info = temp_markers,
+                 n.cores = 1,
+                 out_vcf = temp,
+                 verbose = FALSE)
+  )
+})
+
+test_that("madc2vcf_all surfaces missing-column validation error without crashing", {
+  madc_file <- system.file("example_MADC_FixedAlleleID.csv", package="BIGr")
+  bot_file <- system.file("example_SNPs_DArTag-probe-design_f180bp.botloci", package="BIGr")
+  temp_madc <- tempfile(fileext = ".csv")
+
+  report <- read.csv(madc_file, check.names = FALSE)
+  report$AlleleSequence <- NULL
+  write.csv(report, temp_madc, row.names = FALSE)
+
+  expect_error(
+    madc2vcf_all(madc = temp_madc,
+                 botloci_file = bot_file,
+                 out_vcf = tempfile(fileext = ".vcf"),
+                 verbose = FALSE),
+    "One or more required columns missing"
+  )
+})
+
 # =======================================================================
 # Using Breeding-Insight/BIGapp-PanelHub test files
 # =======================================================================
@@ -220,7 +284,7 @@ test_that("simu alfalfa",{
                    markers_info = alfalfa_markers_info,
                    out_vcf = out,
                    verbose = FALSE),
-      regexp = "None of the markers_info CloneID values match the MADC CloneID column. Please make sure they use the same marker IDs."
+      regexp = "None of the markers_info CloneID( or BI_markerID)? values match the MADC CloneID column. Please make sure they use the same marker IDs."
     )
 
     # Test error when markers_info_ChromPos is provided but IDs still don't match botloci
@@ -528,4 +592,3 @@ test_that("simu alfalfa",{
     )
   })
 })
-

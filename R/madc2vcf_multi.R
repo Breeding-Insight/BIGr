@@ -1,11 +1,9 @@
 #' Convert MADC file to VCF using polyRAD for multiallelic genotyping
 #'
-#' This function converts a DArTag MADC file to a VCF using the polyRAD package's
-#' `readDArTag` and `RADdata2VCF` pipeline. It runs `check_madc_sanity` before
-#' loading the data, applies corrections for lowercase sequences and all-NA
-#' rows/columns, and sets `n.header.rows` automatically based on whether the
-#' MADC file follows the raw DArT format (6 header rows) or the fixed allele ID
-#' format (no header rows).
+#' This function converts a DArTag fixed allele ID MADC file to a VCF
+#' containing multiallelic markers based on the microhaplotypes using
+#' the polyRAD package's `readDArTag`, `IterateHWE` population model
+#' and `RADdata2VCF` pipeline.
 #'
 #' @param madc_file character. Path or URL to the input MADC CSV file.
 #' @param botloci_file character. Path or URL to the botloci file listing target
@@ -81,7 +79,7 @@ madc2vcf_multi <- function(madc_file,
   checks <- check_madc_sanity(report)
 
   messages_results <- mapply(function(check, message) {
-    if (check) message[1] else message[2]
+    if (isTRUE(check)) message[1] else message[2]
   }, checks$checks, checks$messages)
 
   for (i in seq_along(messages_results))
@@ -166,6 +164,9 @@ madc2vcf_multi <- function(madc_file,
 
   vmsg("Loading MADC into polyRAD", verbose = verbose, level = 0, type = ">>")
 
+  if (!requireNamespace("polyRAD", quietly = TRUE)) {
+    stop("Package 'polyRAD' is required for madc2vcf_multi(). Please install it with install.packages('polyRAD').", call. = FALSE)
+  }
   raddat <- polyRAD::readDArTag(
     file              = input_file,
     botloci           = botloci_input,
@@ -190,4 +191,3 @@ madc2vcf_multi <- function(madc_file,
 
   invisible(NULL)
 }
-

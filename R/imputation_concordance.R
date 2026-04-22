@@ -47,19 +47,31 @@
 #' is generated using \pkg{ggplot2}.
 #'
 #' @import dplyr
-#' @import ggplot2
 #'
 #' @examples
-#' \dontrun{
+#' ref <- data.frame(
+#'   ID = c("S1", "S2", "S3"),
+#'   SNP1 = c(0, 1, 2),
+#'   SNP2 = c(1, 1, 0),
+#'   SNP3 = c(2, 5, 1)
+#' )
+#'
+#' test <- data.frame(
+#'   ID = c("S1", "S2", "S3"),
+#'   SNP1 = c(0, 0, 2),
+#'   SNP2 = c(1, 1, 1),
+#'   SNP3 = c(2, 5, 0)
+#' )
+#'
 #' result <- imputation_concordance(
 #'   reference_genos = ref,
 #'   imputed_genos = test,
-#'   snps_2_exclude = snps,
+#'   snps_2_exclude = "SNP2",
 #'   missing_code = 5,
-#'   verbose = TRUE,
-#'   plot = TRUE
+#'   print_result = FALSE
 #' )
-#' }
+#'
+#' result
 #'
 #' @importFrom stats reorder
 #' @export
@@ -136,21 +148,25 @@ imputation_concordance <- function(reference_genos,
 
   # Optional plot
   if (plot) {
+    if (!requireNamespace("ggplot2", quietly = TRUE)) {
+      stop("Package 'ggplot2' is required when plot = TRUE.", call. = FALSE)
+    }
 
     plot_df <- data.frame(
       ID = imputed_genos$ID,
       Concordance = percentage_match * 100
     )
 
-    concordance_plot <- ggplot(plot_df,
-                               aes(x = reorder(ID, Concordance),
-                                   y = Concordance)) +
-      geom_bar(stat = "identity") +
-      labs(title = "Imputation Concordance by Sample",
-           x = "Sample ID",
-           y = "Concordance (%)") +
-      theme_minimal() +
-      theme(axis.text.x = element_text(angle = 90, hjust = 1))
+    concordance_plot <- ggplot2::ggplot(
+      plot_df,
+      ggplot2::aes(x = reorder(ID, Concordance), y = Concordance)
+    ) +
+      ggplot2::geom_bar(stat = "identity") +
+      ggplot2::labs(title = "Imputation Concordance by Sample",
+                    x = "Sample ID",
+                    y = "Concordance (%)") +
+      ggplot2::theme_minimal() +
+      ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, hjust = 1))
 
     print(concordance_plot)
   }

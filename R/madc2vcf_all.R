@@ -138,7 +138,7 @@ madc2vcf_all <- function(madc,
   checks <- check_madc_sanity(report)
 
   messages_results <- mapply(function(check, message) {
-    if (check)  message[1] else message[2]
+    if (isTRUE(check))  message[1] else message[2]
   }, checks$checks, checks$messages)
 
   for(i in seq_along(messages_results))
@@ -158,12 +158,22 @@ madc2vcf_all <- function(madc,
   # Check whether markers_info is present and contains Ref + Alt columns
   if(!is.null(markers_info)) {
     mi_df <- read.csv(markers_info)
-    # Standardize marker ID column to CloneID
-    if(!"CloneID" %in% colnames(mi_df) && "BI_markerID" %in% colnames(mi_df)) {
-      colnames(mi_df)[colnames(mi_df) == "BI_markerID"] <- "CloneID"
-      vmsg("markers_info: 'BI_markerID' column renamed to 'CloneID' for internal use", verbose = verbose, level = 1)
-    } else if(!"CloneID" %in% colnames(mi_df) && !"BI_markerID" %in% colnames(mi_df)) {
+    id_cols <- intersect(c("CloneID", "BI_markerID"), colnames(mi_df))
+    if(!length(id_cols)) {
       stop("markers_info must contain a marker ID column named either 'CloneID' or 'BI_markerID'.")
+    }
+    match_n <- vapply(id_cols, function(col) {
+      sum(unique(report$CloneID) %in% unique(stats::na.omit(mi_df[[col]])))
+    }, integer(1))
+    if(!any(match_n)) {
+      stop("None of the markers_info CloneID or BI_markerID values match the MADC CloneID column. Please make sure they use the same marker IDs.")
+    }
+    id_col <- id_cols[which.max(match_n)]
+    if(id_col != "CloneID" || !"CloneID" %in% colnames(mi_df)) {
+      mi_df$CloneID <- mi_df[[id_col]]
+      if(id_col == "BI_markerID") {
+        vmsg("markers_info: 'BI_markerID' column copied to 'CloneID' for internal use", verbose = verbose, level = 1)
+      }
     }
     # Validate CloneID values
     if(any(is.na(mi_df$CloneID) | mi_df$CloneID == ""))
@@ -910,7 +920,7 @@ merge_counts <- function(cloneID_unit, rm_multiallelic_SNP = FALSE, multiallelic
     info_mk <- paste0("DP=", sum(c(RefTag, AltTag,total)),";",
                         "ADS=",sum(RefTag),",",sum(AltTag), ads)
   } else {
-    tab_counts <- paste0(RefTag + AltTag, ":", RefTag, ":", RefTag, AltTag)
+    tab_counts <- paste0(RefTag + AltTag, ":", RefTag, ":", RefTag, ",", AltTag)
     alts <- info$Alt
     info_mk <- paste0("DP=", sum(c(RefTag, AltTag)),";",
                       "ADS=",sum(RefTag),",",sum(AltTag))

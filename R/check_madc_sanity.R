@@ -13,7 +13,8 @@
 #'    (prefix matches `"chr"` case-insensitively, suffix is a positive integer);
 #' 7) **allNAcol** - at least one column contains only `NA` or empty values;
 #' 8) **allNArow** - at least one row contains only `NA` or empty values;
-#' 9) **RefAltSeqs** - every `CloneID` has at least one `Ref` and one `Alt` allele row.
+#' 9) **RefAltSeqs** - every `CloneID` has at least one `Ref` and one `Alt` allele row;
+#' 10) **OtherAlleles** - presence of alleles where the target locus differs from both the Ref and Alt in `AlleleSequence`.
 #'
 #' @param report A `data.frame` with at least the columns
 #'   `CloneID`, `AlleleID`, and `AlleleSequence`. The first column is also
@@ -155,7 +156,10 @@ check_madc_sanity <- function(report) {
       pos <- strsplit(report$CloneID, "_")
       format <- all(sapply(pos, length) == 2)
       first <- all(grepl("^[A-Za-z]", sapply(pos, "[", 1)))
-      second <- suppressWarnings(all(sapply(pos, function(x) as.numeric(x[2])) > 0))
+      second <- all(vapply(pos, function(x) {
+        pos_num <- suppressWarnings(as.numeric(x[2]))
+        !is.na(pos_num) && pos_num > 0
+      }, logical(1)))
       checks["ChromPos"] <- all(format, first, second)
     } else checks["ChromPos"] <- FALSE
 
@@ -215,7 +219,9 @@ check_madc_sanity <- function(report) {
 #' @param botloci A data frame containing the botloci markers.
 #' @param report A data frame containing the MADC markers.
 #' @param ChromPos logical value indicating whether the CloneID in the MADC file contains chromosome and position information in the format "Chr_Pos". Default is TRUE
-#' @param mi_df A data frame containing marker information with columns CloneID, Chr, and Pos. Required if `ChromPos` is FALSE.
+#' @param mi_df A data frame containing marker information with one marker ID column
+#'   (`CloneID`, `Marker_ID`, or `BI_markerID`) plus `Chr` and `Pos`. Required if
+#'   `ChromPos` is FALSE.
 #' @param verbose A logical value indicating whether to print detailed messages about the adjustments. Default is TRUE. Required if `ChromPos` is FALSE.
 #'
 #' @return A list containing the adjusted botloci and MADC data frames.
@@ -225,23 +231,42 @@ check_madc_sanity <- function(report) {
 #'
 #' @keywords internal
 #' @noRd
+pick_markers_info_id_col <- function(mi_df, query_ids) {
+  query_ids <- unique(stats::na.omit(query_ids))
+  id_cols <- intersect(c("CloneID", "BI_markerID", "Marker_ID"), colnames(mi_df))
+
+  if (!length(id_cols)) {
+    stop("The markers_info file must contain a marker ID column named either 'CloneID', 'Marker_ID' or 'BI_markerID'.")
+  }
+
+  match_n <- vapply(id_cols, function(col) {
+    sum(query_ids %in% unique(stats::na.omit(mi_df[[col]])))
+  }, integer(1))
+
+  if (!any(match_n)) {
+    stop("None of the MADC CloneID could be found in the markers_info CloneID, Marker_ID or BI_markerID. Please make sure they match.")
+  }
+
+  id_cols[which.max(match_n)]
+}
+
 check_botloci <- function(botloci, report, ChromPos=TRUE, mi_df = NULL, verbose=TRUE){
+  original_clone_ids <- report$CloneID
+  use_col <- NULL
 
   # Check inputs
   if(!ChromPos) {
-    if(is.null(mi_df)) stop("When MADC CloneID don't follow the format Chr_Pos, a marker_info file with CloneID, Chr and Pos columns must be provided.")
-    # if exists, it must contain CloneID or BI_markerID that matches the report$CloneID, and Chr and Pos columns
-    if(!any(mi_df$CloneID %in% report$CloneID) & !any(mi_df$BI_markerID %in% report$CloneID)) {
-      stop("None of the MADC CloneID could be found in the markers_info CloneID or BI_markerID. Please make sure they match.")
-    } else {
-      use_col <- if(any(mi_df$CloneID %in% report$CloneID)) "CloneID" else "BI_markerID"
-      vmsg(paste("Using", use_col, "column in marker_info to match MADC CloneID"), verbose = verbose, level = 1, type = ">>")
-    }
+    if(is.null(mi_df)) stop("When MADC CloneID don't follow the format Chr_Pos, a marker_info file with 'CloneID'/'Marker_ID'/'BI_markerID', 'Chr', and 'Pos' columns must be provided.")
+    use_col <- pick_markers_info_id_col(mi_df, report$CloneID)
+    vmsg(paste("Using", use_col, "column in marker_info to match MADC CloneID"), verbose = verbose, level = 1, type = ">>")
     if(is.null(mi_df$Chr) | is.null(mi_df$Pos)) stop("When MADC CloneID don't follow the format Chr_Pos, Chr and Pos columns must be provided in the markers_info file.")
   }
 
   if(!any(botloci$V1 %in% report$CloneID)) { # First check if any botloci markers are found in MADC file. If not, check for padding mismatch.
     vmsg("No botloci markers found in MADC file. Checking for padding mismatch...", verbose = verbose, level = 1, type = ">>")
+    if(!is.null(mi_df) && is.null(use_col)) {
+      use_col <- pick_markers_info_id_col(mi_df, original_clone_ids)
+    }
 
     pad_madc <- unique(nchar(sub(".*_", "", report$CloneID)))
     pad_botloci <- unique(nchar(sub(".*_", "", botloci$V1)))
@@ -256,10 +281,11 @@ check_botloci <- function(botloci, report, ChromPos=TRUE, mi_df = NULL, verbose=
         )
         report$AlleleID <- paste0(report$CloneID, "|", sapply(strsplit(report$AlleleID, "[|]"), "[[",2))
         if(!is.null(mi_df)) {
-          mi_df$CloneID <- paste0(sub("_(.*)", "", mi_df$CloneID), "_",
-                                  sprintf(paste0("%0", pad_botloci, "d"), as.integer(sub(".*_", "", mi_df$CloneID)))
+          mi_df$CloneID <- paste0(sub("_(.*)", "", mi_df[[use_col]]), "_",
+                                  sprintf(paste0("%0", pad_botloci, "d"), as.integer(sub(".*_", "", mi_df[[use_col]])))
           )
         }
+        if(!any(botloci$V1 %in% report$CloneID)) stop("After matching padding, botloci markers still not found in MADC file. Check marker IDs.\n")
       } else {
         botloci$V1 <- paste0(sub("_(.*)", "", botloci$V1), "_",
                              sprintf(paste0("%0", pad_madc, "d"), as.integer(sub(".*_", "", botloci$V1)))
@@ -269,12 +295,8 @@ check_botloci <- function(botloci, report, ChromPos=TRUE, mi_df = NULL, verbose=
     } else if (!(is.null(mi_df$Chr) | is.null(mi_df$Pos))){
       vmsg("It is not a padding mismatch issue.", verbose = verbose, level = 2, type = ">>")
       vmsg("Checking if jointing provided Chromosome and Position information in marker_file solve the issue", verbose = verbose, level = 2, type = ">>")
-      if(!any(mi_df$CloneID %in% report$CloneID) & !any(mi_df$BI_markerID %in% report$CloneID)) {
-        stop("None of the MADC CloneID could be found in the markers_info CloneID or BI_markerID. Please make sure they match.")
-      } else {
-        use_col <- if(any(mi_df$CloneID %in% report$CloneID)) "CloneID" else "BI_markerID"
-        vmsg(paste("Using", use_col, "column in marker_info to match MADC CloneID"), verbose = verbose, level = 2, type = ">>")
-      }
+      use_col <- pick_markers_info_id_col(mi_df, report$CloneID)
+      vmsg(paste("Using", use_col, "column in marker_info to match MADC CloneID"), verbose = verbose, level = 2, type = ">>")
       mk_info_CloneID <- paste0(mi_df$Chr, "_", sprintf(paste0("%0",pad_botloci, "d"), as.integer(mi_df$Pos)))
 
       if(!any(botloci$V1 %in% mk_info_CloneID)){
@@ -285,6 +307,7 @@ check_botloci <- function(botloci, report, ChromPos=TRUE, mi_df = NULL, verbose=
         vmsg("Chromosome and Position information in marker_file solve the issue.", verbose = verbose, level = 2, type = ">>")
         vmsg("Using this information to modify MADC CloneIDs to match botloci markers.", verbose = verbose, level = 2, type = ">>")
         report$CloneID <- mk_info_CloneID[match(report$CloneID, mi_df[[use_col]])]
+        report$AlleleID <- paste0(report$CloneID, "|", sapply(strsplit(report$AlleleID, "[|]"), "[[",2))
         mi_df$CloneID <- mk_info_CloneID
       }
     } else {

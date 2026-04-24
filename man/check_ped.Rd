@@ -2,48 +2,54 @@
 % Please edit documentation in R/check_ped.R
 \name{check_ped}
 \alias{check_ped}
-\title{Check a pedigree file for accuracy and report/correct common errors}
+\title{Check a pedigree file for structural issues and optionally apply corrections}
 \usage{
-check_ped(ped.file, seed = NULL, verbose = TRUE, correct = TRUE)
+check_ped(
+  ped.file,
+  seed = NULL,
+  verbose = TRUE,
+  correct = TRUE,
+  save_zip = FALSE,
+  save_corrected_zip = FALSE
+)
 }
 \arguments{
 \item{ped.file}{Path to the pedigree text file.}
 
-\item{seed}{Optional seed for reproducibility.}
+\item{seed}{Optional integer seed for reproducibility.}
 
-\item{verbose}{Logical. If TRUE (default), prints findings and prompts for saving.}
+\item{verbose}{Logical. If \code{TRUE} (default), prints findings to the console.}
 
-\item{correct}{Logical. If TRUE (default), saves a corrected pedigree. If FALSE, only reports issues.}
+\item{correct}{Logical. If \code{TRUE} (default), builds and assigns a corrected
+pedigree to the global environment. If \code{FALSE}, issues are only reported.}
+
+\item{save_zip}{Logical. If \code{TRUE}, bundles report components into a \code{.zip}
+archive in the working directory.}
+
+\item{save_corrected_zip}{Logical. If \code{TRUE} (requires \code{save_zip = TRUE} and
+\code{correct = TRUE}), includes the corrected pedigree in the \code{.zip} archive.}
 }
 \value{
-A named list of data.frames with offending rows (including row numbers):
+An invisible named list of data frames describing detected issues:
 \itemize{
-\item \code{exact_duplicates}
-\item \code{repeated_ids_diff}
-\item \code{inconsistent_sex_roles}
-\item \code{missing_parents}
-\item \code{dependencies}
+\item \code{exact_duplicates}: exact duplicate rows.
+\item \code{repeated_ids_diff}: rows where the same \code{id} has conflicting parents.
+\item \code{inconsistent_sex_roles}: rows involving IDs used as both parents.
+\item \code{missing_parents}: rows referencing parent IDs absent from \code{id}.
+\item \code{dependencies}: rows whose \code{id} is involved in a pedigree cycle.
 }
 }
 \description{
-\code{check_ped} reads a 3-column pedigree file (tab-separated, columns labeled \code{id}, \code{sire}, \code{dam} in any order)
-and performs quality checks, optionally correcting or flagging errors.
+Reads a tab-separated pedigree file with columns \code{id}, \code{male_parent}, and
+\code{female_parent} and checks for five classes of issues: missing required
+columns, exact duplicate rows, repeated IDs with conflicting parent
+assignments, inconsistent parent sex roles, and pedigree cycles. The input
+file is never modified. A report list is always assigned to the global
+environment; when \code{correct = TRUE}, a corrected pedigree is assigned as well.
 }
 \details{
-The function checks for:
-\itemize{
-\item Exact duplicate rows and removes them (keeping one copy)
-\item IDs that appear more than once with conflicting sire/dam assignments (sets sire/dam to "0")
-\item IDs that appear in both sire and dam columns
-\item Missing parents (IDs referenced as sire/dam but not in \code{id} column), adds them with sire/dam = "0"
-\item Direct and indirect pedigree dependencies (cycles), such as a parent being its own descendant
-}
-
-After an initial run to clean exact duplicates and repeated IDs, you can run the function again to detect cycles more accurately.
-
-The function does \strong{not} overwrite the input file. Instead, it prints findings to the console and optionally saves:
-\itemize{
-\item Corrected pedigree as a dataframe in the global environment
-\item A report listing all detected issues
-}
+When \code{correct = TRUE}, the function removes exact duplicates, collapses
+conflicting repeated IDs (replacing the inconsistent parent field with \code{"0"}),
+and appends missing parents as founder rows. Inconsistent sex roles and
+pedigree cycles are reported but not corrected and must be resolved manually.
 }

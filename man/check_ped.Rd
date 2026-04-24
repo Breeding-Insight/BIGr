@@ -4,23 +4,25 @@
 \alias{check_ped}
 \title{Check a pedigree file for accuracy and report/correct common errors}
 \usage{
-check_ped(ped.file, seed = NULL, verbose = TRUE)
+check_ped(ped.file, seed = NULL, verbose = TRUE, correct = TRUE)
 }
 \arguments{
 \item{ped.file}{Path to the pedigree text file.}
 
 \item{seed}{Optional seed for reproducibility.}
 
-\item{verbose}{Logical. If TRUE (default), prints errors and prompts for interactive saving.}
+\item{verbose}{Logical. If TRUE (default), prints findings and prompts for saving.}
+
+\item{correct}{Logical. If TRUE (default), saves a corrected pedigree. If FALSE, only reports issues.}
 }
 \value{
-A list of data.frames containing detected issues:
+A named list of data.frames with offending rows (including row numbers):
 \itemize{
-\item \code{exact_duplicates}: rows that were exact duplicates
-\item \code{repeated_ids_diff}: IDs appearing more than once with conflicting sire/dam
-\item \code{messy_parents}: IDs appearing as both sire and dam
-\item \code{missing_parents}: parents added to the pedigree with 0 as sire/dam
-\item \code{dependencies}: detected cycles in the pedigree
+\item \code{exact_duplicates}
+\item \code{repeated_ids_diff}
+\item \code{inconsistent_sex_roles}
+\item \code{missing_parents}
+\item \code{dependencies}
 }
 }
 \description{
@@ -44,16 +46,4 @@ The function does \strong{not} overwrite the input file. Instead, it prints find
 \item Corrected pedigree as a dataframe in the global environment
 \item A report listing all detected issues
 }
-}
-\examples{
-ped_file <- system.file("check_ped_test.txt", package = "BIGr")
-ped_errors <- check_ped(ped.file = ped_file, seed = 101919)
-
-# Access messy parents
-ped_errors$messy_parents
-
-# IDs with messy parents
-messy_ids <- ped_errors$messy_parents$id
-print(messy_ids)
-
 }

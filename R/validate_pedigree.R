@@ -33,6 +33,9 @@
 #'   is also TRUE, the plot is additionally saved as a .jpg file.
 #' @param na_string Character. String for missing values in the output file.
 #'   Use \code{"NA"} or \code{""} (default: \code{"NA"}).
+#' @param corrected_pedigree_filename Character. Path/name of the output file
+#'   for the corrected pedigree (default: "corrected_pedigree.txt"). Set to
+#'   NULL to suppress writing the corrected pedigree.
 #'
 #' @return A data.table (returned invisibly) with one row per trio and
 #'   the following columns:
@@ -65,10 +68,11 @@ validate_pedigree <- function(pedigree_file, genotypes_file,
                               single_parent_error_threshold = 2.0,
                               verbose = TRUE,
                               write_results = TRUE,
-                              output_filename = "__validation_report.txt",
                               plot_results = TRUE,
-                              na_string = "NA") { 
-  
+                              na_string = "NA",
+                              output_filename = "__validation_report.txt",
+                              corrected_pedigree_filename = "corrected_pedigree.txt") {
+
   #### Input validation ####
   if (trio_error_threshold < 0 || trio_error_threshold > 100)
     stop("trio_error_threshold must be between 0 and 100")
@@ -76,14 +80,14 @@ validate_pedigree <- function(pedigree_file, genotypes_file,
     stop("single_parent_error_threshold must be between 0 and 100")
   if (!na_string %in% c("NA", ""))
     stop("na_string must be either 'NA' or ''.")
-  
+
   tryCatch({
     pedigree <- data.table::fread(pedigree_file, sep = "auto", colClasses = "character")
     genos    <- data.table::fread(genotypes_file, sep = "auto")
   }, error = function(e) {
     stop("Error reading input files. Ensure paths are correct and files are TXT/TSV/CSV.")
   })
-  
+
   #### Check required columns ####
   required_ped_cols <- c("ID", "Male_Parent", "Female_Parent")
   missing_cols <- base::setdiff(required_ped_cols, base::names(pedigree))
@@ -92,11 +96,11 @@ validate_pedigree <- function(pedigree_file, genotypes_file,
          base::paste(missing_cols, collapse = ", "))
   if (!"ID" %in% base::names(genos))
     stop("Genotypes file must have an 'ID' column")
-  
+
   pedigree[, Male_Parent   := as.character(Male_Parent)]
   pedigree[, Female_Parent := as.character(Female_Parent)]
   original_pedigree <- data.table::copy(pedigree)
-  
+
   #### Read founders list ####
   if (!is.null(founders_file)) {
     founders_raw <- tryCatch({
@@ -108,7 +112,15 @@ validate_pedigree <- function(pedigree_file, genotypes_file,
   } else {
     founder_ids <- character(0)
   }
-  
+
+  #### Build genotype matrices ####
+  genos_mat <- base::as.matrix(genos, rownames = "ID")
+  genos_hom   <- data.table::copy(genos)
+  marker_cols <- base::setdiff(base::names(genos_hom), "ID")
+  for (col in marker_cols)
+    genos_hom[base::get(col) == 1, (col) := NA_integer_]
+  genos_hom_mat <- base::as.matrix(genos_hom, rownames = "ID")
+
   #### Identify trios missing from the genotype file ####
   valid_ids <- as.character(genos$ID)
   has_geno <- pedigree[ID %in% valid_ids &
@@ -123,15 +135,7 @@ validate_pedigree <- function(pedigree_file, genotypes_file,
   pedigree <- has_geno
   if (base::nrow(pedigree) == 0)
     stop("No valid trios remain after filtering for genotype availability.")
-  
-  #### Build genotype matrices ####
-  genos_mat <- base::as.matrix(genos, rownames = "ID")
-  genos_hom   <- data.table::copy(genos)
-  marker_cols <- base::setdiff(base::names(genos_hom), "ID")
-  for (col in marker_cols)
-    genos_hom[base::get(col) == 1, (col) := NA_integer_]
-  genos_hom_mat <- base::as.matrix(genos_hom, rownames = "ID")
-  
+
   #### Find best matching parent via homozygous mismatch ####
   find_best_parent <- function(prog_id, exclude_ids = base::character(0)) {
     candidates <- base::setdiff(base::rownames(genos_hom_mat),
@@ -145,11 +149,14 @@ validate_pedigree <- function(pedigree_file, genotypes_file,
       if (comparisons == 0) return(NA_real_)
       (base::sum(cand_hom != prog_hom, na.rm = TRUE) / comparisons) * 100
     })
+
+        if (base::all(base::is.na(errors)))
+      return(base::list(id = NA_character_, error_pct = NA_real_))
     best_idx <- base::which.min(errors)
     base::list(id = candidates[best_idx],
                error_pct = base::round(errors[best_idx], 2))
   }
-  
+
   #### Main trio evaluation loop ####
   results_list <- base::lapply(base::seq_len(base::nrow(pedigree)), function(i) {
     prog_id          <- pedigree$ID[i]
@@ -165,7 +172,7 @@ validate_pedigree <- function(pedigree_file, genotypes_file,
     best_male_parent_pct    <- NA_real_
     best_female_parent      <- NA_character_
     best_female_parent_pct  <- NA_real_
-    
+
     if (male_parent_id == "0" && female_parent_id == "0" &&
         prog_id %in% founder_ids) {
       status              <- "FOUNDERS"
@@ -268,7 +275,7 @@ validate_pedigree <- function(pedigree_file, genotypes_file,
         }
       }
     }
-    
+
     data.table::data.table(
       ID                              = prog_id,
       Orig_Male_Parent                = male_parent_id,
@@ -285,9 +292,9 @@ validate_pedigree <- function(pedigree_file, genotypes_file,
       Best_Female_Candidate_Error_Pct = best_female_parent_pct
     )
   })
-  
+
   final_df <- data.table::rbindlist(results_list)
-  
+
   #### Append NO_GENOTYPE_DATA rows ####
   if (base::nrow(no_geno_rows) > 0) {
     no_geno_df <- data.table::data.table(
@@ -307,30 +314,34 @@ validate_pedigree <- function(pedigree_file, genotypes_file,
     )
     final_df <- data.table::rbindlist(list(final_df, no_geno_df))
   }
-  
+
   #### Write corrected pedigree ####
-  corrected_pedigree <- data.table::copy(original_pedigree)
-  for (i in base::seq_len(base::nrow(final_df))) {
-    prog_id  <- final_df$ID[i]
-    decision <- final_df$Recommended_Correction[i]
-    row_idx  <- base::which(corrected_pedigree$ID == prog_id)
-    if (decision == "REMOVE_MALE_PARENT") {
-      data.table::set(corrected_pedigree, row_idx, "Male_Parent", "0")
-    } else if (decision == "REMOVE_FEMALE_PARENT") {
-      data.table::set(corrected_pedigree, row_idx, "Female_Parent", "0")
-    } else if (decision == "REMOVE_BOTH") {
-      data.table::set(corrected_pedigree, row_idx, "Male_Parent", "0")
-      data.table::set(corrected_pedigree, row_idx, "Female_Parent", "0")
+
+    # pass NULL to suppress writing.
+  if (!is.null(corrected_pedigree_filename)) {
+    corrected_pedigree <- data.table::copy(original_pedigree)
+    for (i in base::seq_len(base::nrow(final_df))) {
+      prog_id  <- final_df$ID[i]
+      decision <- final_df$Recommended_Correction[i]
+      row_idx  <- base::which(corrected_pedigree$ID == prog_id)
+      if (decision == "REMOVE_MALE_PARENT") {
+        data.table::set(corrected_pedigree, row_idx, "Male_Parent", "0")
+      } else if (decision == "REMOVE_FEMALE_PARENT") {
+        data.table::set(corrected_pedigree, row_idx, "Female_Parent", "0")
+      } else if (decision == "REMOVE_BOTH") {
+        data.table::set(corrected_pedigree, row_idx, "Male_Parent", "0")
+        data.table::set(corrected_pedigree, row_idx, "Female_Parent", "0")
+      }
     }
+    tryCatch({
+      data.table::fwrite(corrected_pedigree, file = corrected_pedigree_filename,
+                         sep = "\t", quote = FALSE)
+      if (verbose) base::cat("Corrected pedigree written to:", corrected_pedigree_filename, "\n")
+    }, error = function(e) {
+      warning("Could not write corrected pedigree. Error: ", e$message, call. = FALSE)
+    })
   }
-  tryCatch({
-    data.table::fwrite(corrected_pedigree, file = "corrected_pedigree.txt",
-                       sep = "\t", quote = FALSE)
-    if (verbose) base::cat("Corrected pedigree written to: corrected_pedigree.txt\n")
-  }, error = function(e) {
-    warning("Could not write corrected pedigree. Error: ", e$message, call. = FALSE)
-  })
-  
+
   #### Summary output ####
   if (verbose) {
     total_trios   <- base::nrow(final_df)
@@ -352,18 +363,18 @@ validate_pedigree <- function(pedigree_file, genotypes_file,
     base::cat("\n")
     base::print(final_df)
   }
-  
+
   #### Write results ####
   if (write_results) {
     tryCatch({
       data.table::fwrite(final_df, file = output_filename,
-                         sep = "\t", quote = FALSE, na = na_string)   # <-- na_string used here
+                         sep = "\t", quote = FALSE, na = na_string)
       if (verbose) base::cat("Results written to:", output_filename, "\n")
     }, error = function(e) {
       warning("Could not write results. Error: ", e$message, call. = FALSE)
     })
   }
-  
+
   #### Plot results ####
   if (plot_results) {
     if (!requireNamespace("ggplot2", quietly = TRUE)) {
@@ -421,7 +432,9 @@ validate_pedigree <- function(pedigree_file, genotypes_file,
         ggplot2::theme(legend.position = "top")
       print(p)
       if (write_results) {
-        plot_filename <- base::sub("\\.[^.]+$", ".jpg", output_filename)
+        # Fix #3: use tools::file_path_sans_ext() to reliably build the .jpg
+        # filename regardless of whether output_filename has an extension or not.
+        plot_filename <- paste0(tools::file_path_sans_ext(output_filename), ".jpg")
         tryCatch({
           ggplot2::ggsave(plot_filename, plot = p,
                           device = "jpeg", width = 10, height = 6, dpi = 300)
@@ -432,6 +445,6 @@ validate_pedigree <- function(pedigree_file, genotypes_file,
       }
     }
   }
-  
+
   return(base::invisible(final_df))
 }

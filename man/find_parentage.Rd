@@ -15,6 +15,7 @@ find_parentage(
   allow_selfing = TRUE,
   verbose = TRUE,
   write_txt = TRUE,
+  output_filename = "parentage_testing_results.txt",
   na_string = "NA",
   plot_results = TRUE
 )
@@ -53,7 +54,12 @@ female parent IDs are excluded. Default is \code{TRUE}.}
 results to the console. Default is \code{TRUE}.}
 
 \item{write_txt}{Logical. If \code{TRUE}, writes results to
-\code{parentage_testing_results.txt}. Default is \code{TRUE}.}
+\code{output_filename}. The plot will be saved using the same base name
+with a .jpg extension. Default is \code{TRUE}.}
+
+\item{output_filename}{Character. Path/name of the output results file
+(default: \code{"parentage_testing_results.txt"}). The plot will be saved
+using the same base name with a .jpg extension.}
 
 \item{na_string}{Character. String for missing values in output file.
 Use \code{"NA"} or \code{""} (default: \code{"NA"}).}

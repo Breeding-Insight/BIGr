@@ -40,9 +40,11 @@ check_ped <- function(ped.file,
                       correct            = TRUE,
                       save_zip           = FALSE,
                       save_corrected_zip = FALSE) {
+
   #### setup ####
   if (!is.null(seed)) set.seed(seed)
   data <- utils::read.table(ped.file, header = TRUE)
+
   # ── Column alias remapping ──────────────────────────────────────────────────
   # Accept common alternative column names and silently remap them so the rest
   # of the function always works with the canonical names.
@@ -59,6 +61,7 @@ check_ped <- function(ped.file,
       }
     }
   }
+
   # Validate required column names before any processing
   required_cols <- c("id", "male_parent", "female_parent")
   missing_cols  <- setdiff(required_cols, colnames(data))
@@ -75,33 +78,44 @@ check_ped <- function(ped.file,
       male_parent   = as.character(male_parent),
       female_parent = as.character(female_parent)
     )
+
   # Add row numbers before any processing
   data   <- data %>% mutate(row_number = row_number(), .before = id)
   errors <- list()
+
   #### check 1: exact duplicates ####
   exact_duplicates <- data[
     duplicated(data %>% select(-row_number)) |
       duplicated(data %>% select(-row_number), fromLast = TRUE),
   ]
+
   #### check 2: repeated IDs with conflicting male_parent/female_parent ####
   repeated_ids_diff <- data %>%
     group_by(id) %>%
     filter(n() > 1) %>%
     filter(n_distinct(male_parent) > 1 | n_distinct(female_parent) > 1) %>%
     ungroup()
+
   #### check 3: inconsistent parent sex roles ####
   male_ids   <- unique(data$male_parent[data$male_parent   != "0"])
   female_ids <- unique(data$female_parent[data$female_parent != "0"])
   messy_ids  <- intersect(male_ids, female_ids)
   inconsistent_sex_roles <- data %>%
     filter(male_parent %in% messy_ids | female_parent %in% messy_ids)
+
   #### check 4: missing parents ####
-  all_ids     <- unique(data$id)
-  ref_ids     <- unique(c(data$male_parent, data$female_parent))
-  ref_ids     <- ref_ids[ref_ids != "0"]
-  missing_ids <- setdiff(ref_ids, all_ids)
+  all_ids <- unique(data$id)
+  ref_ids <- unique(c(data$male_parent, data$female_parent))
+  # Fix #1: trimws() strips whitespace-only strings; the combined filter then
+  # drops NA (which NA != "0" would not catch), empty strings, and "0"
+  # to prevent spurious founder rows with id = NA in the corrected pedigree.
+  ref_ids <- trimws(ref_ids)
+  ref_ids <- ref_ids[!is.na(ref_ids) & ref_ids != "" & ref_ids != "0"]
+
+  missing_ids     <- setdiff(ref_ids, all_ids)
   missing_parents <- data %>%
     filter(male_parent %in% missing_ids | female_parent %in% missing_ids)
+
   # Only build founder rows if there are actually missing parents to add
   if (length(missing_ids) > 0) {
     missing_founders <- data.frame(
@@ -120,6 +134,7 @@ check_ped <- function(ped.file,
       stringsAsFactors = FALSE
     )
   }
+
   #### check 5: dependencies (cycles) ####
   detect_all_cycles <- function(data) {
     adj_list <- lapply(data$id, function(x) {
@@ -127,6 +142,7 @@ check_ped <- function(ped.file,
       c(row$male_parent, row$female_parent)
     })
     names(adj_list) <- data$id
+
     dfs <- function(node, visited, rec_stack, path) {
       visited[node]   <- TRUE
       rec_stack[node] <- TRUE
@@ -145,6 +161,7 @@ check_ped <- function(ped.file,
       rec_stack[node] <- FALSE
       return(cycles)
     }
+
     visited   <- stats::setNames(rep(FALSE, length(adj_list)), names(adj_list))
     rec_stack <- stats::setNames(rep(FALSE, length(adj_list)), names(adj_list))
     all_cycles <- list()
@@ -156,6 +173,7 @@ check_ped <- function(ped.file,
     }
     return(all_cycles)
   }
+
   cycles    <- detect_all_cycles(data)
   cycle_ids <- character(0)
   if (length(cycles) > 0) {
@@ -172,6 +190,7 @@ check_ped <- function(ped.file,
     dependencies <- data.frame(Dependency = unique(unlist(errors)),
                                stringsAsFactors = FALSE)
   }
+
   #### compile report ####
   input_ped_report <- list(
     exact_duplicates       = exact_duplicates,
@@ -180,11 +199,14 @@ check_ped <- function(ped.file,
     missing_parents        = missing_parents,
     dependencies           = dependencies
   )
+
   #### build corrected pedigree (no row_number column) ####
   if (correct) {
     corrected <- data %>% select(-row_number)
+
     # Remove exact duplicates
     corrected <- distinct(corrected)
+
     # Resolve conflicting IDs
     if (nrow(repeated_ids_diff) > 0) {
       corrected <- corrected %>%
@@ -195,6 +217,7 @@ check_ped <- function(ped.file,
           .groups = "drop"
         )
     }
+
     # Add missing founders
     if (length(missing_ids) > 0) {
       corrected <- bind_rows(
@@ -203,11 +226,13 @@ check_ped <- function(ped.file,
       )
     }
   }
+
   #### file names ####
   file_base      <- tools::file_path_sans_ext(basename(ped.file))
   corrected_name <- paste0(file_base, "_corrected")
   report_name    <- paste0(file_base, "_report")
   zip_name       <- paste0(file_base, "_report.zip")
+
   #### output ####
   if (verbose) {
     cat("\n=== Pedigree Quality Check Report ===\n")
@@ -222,20 +247,28 @@ check_ped <- function(ped.file,
     cat("\n--- Cycles / Dependencies ---\n")
     if (nrow(dependencies) > 0) print(dependencies) else cat("None found.\n")
     if (correct) {
-      cat(paste0("\`correct = TRUE`: saving corrected pedigree as `", corrected_name, "`.\n"))
+      cat(paste0("`correct = TRUE`: saving corrected pedigree as `", corrected_name, "`.\n"))
     } else {
-      cat("\`correct = FALSE`: no changes made to the pedigree.\n")
+      cat("`correct = FALSE`: no changes made to the pedigree.\n")
     }
   }
+
   # Always save report to global environment
   assign(report_name, input_ped_report, envir = .GlobalEnv)
+
   # Save corrected pedigree if correct = TRUE
   if (correct) assign(corrected_name, corrected, envir = .GlobalEnv)
+
   #### zip export ####
   if (save_zip) {
-    tmp_dir   <- tempfile()
+    tmp_dir <- tempfile()
     dir.create(tmp_dir)
+    # Fix #2: register cleanup so the temp directory is always removed on
+    # function exit, whether normal or due to an error.
+    on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
+
     zip_files <- character(0)
+
     # Section headers matching the console output labels
     section_labels <- c(
       exact_duplicates       = "Exact Duplicates",
@@ -262,17 +295,20 @@ check_ped <- function(ped.file,
       }
       zip_files <- c(zip_files, file_path)
     }
+
     if (save_corrected_zip && correct) {
       corrected_path <- file.path(tmp_dir, paste0(corrected_name, ".txt"))
       utils::write.table(corrected, file = corrected_path, sep = "\t",
                          row.names = FALSE, quote = FALSE)
       zip_files <- c(zip_files, corrected_path)
     }
+
     zip_path <- file.path(getwd(), zip_name)
     invisible(capture.output(
       utils::zip(zipfile = zip_path, files = zip_files, flags = "-j")
     ))
     if (verbose) cat(paste0("\nZip archive saved to: ", zip_path, "\n"))
   }
+
   invisible(input_ped_report)
 }

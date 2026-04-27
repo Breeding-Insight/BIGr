@@ -13,9 +13,10 @@ validate_pedigree(
   single_parent_error_threshold = 2,
   verbose = TRUE,
   write_results = TRUE,
-  output_filename = "__validation_report.txt",
   plot_results = TRUE,
-  na_string = "NA"
+  na_string = "NA",
+  output_filename = "__validation_report.txt",
+  corrected_pedigree_filename = "corrected_pedigree.txt"
 )
 }
 \arguments{
@@ -45,16 +46,20 @@ table, and results to the console (default: TRUE).}
 \item{write_results}{Logical. If TRUE, writes the validation results to
 output_filename and saves the plot as a .jpg file (default: TRUE).}
 
-\item{output_filename}{Character. Path/name of the output results file
-(default: "__validation_report.txt"). The plot will be saved using the
-same base name with a .jpg extension.}
-
 \item{plot_results}{Logical. If TRUE, prints a histogram of Trio Mendelian
 Error percentages with a threshold line (default: TRUE). If write_results
 is also TRUE, the plot is additionally saved as a .jpg file.}
 
 \item{na_string}{Character. String for missing values in the output file.
 Use \code{"NA"} or \code{""} (default: \code{"NA"}).}
+
+\item{output_filename}{Character. Path/name of the output results file
+(default: "__validation_report.txt"). The plot will be saved using the
+same base name with a .jpg extension.}
+
+\item{corrected_pedigree_filename}{Character. Path/name of the output file
+for the corrected pedigree (default: "corrected_pedigree.txt"). Set to
+NULL to suppress writing the corrected pedigree.}
 }
 \value{
 A data.table (returned invisibly) with one row per trio and

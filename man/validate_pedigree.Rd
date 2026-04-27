@@ -12,8 +12,10 @@ validate_pedigree(
   min_markers = 10,
   single_parent_error_threshold = 2,
   verbose = TRUE,
-  write_txt = TRUE,
-  output_filename = "pedigree_validation_results.txt"
+  write_results = TRUE,
+  output_filename = "__validation_report.txt",
+  plot_results = TRUE,
+  na_string = "NA"
 )
 }
 \arguments{
@@ -40,34 +42,42 @@ parent-level evaluation (default: 2.0). Must be between 0 and 100.}
 \item{verbose}{Logical. If TRUE, prints progress messages, a summary
 table, and results to the console (default: TRUE).}
 
-\item{write_txt}{Logical. If TRUE, writes validation results to
-output_filename (default: TRUE).}
+\item{write_results}{Logical. If TRUE, writes the validation results to
+output_filename and saves the plot as a .jpg file (default: TRUE).}
 
-\item{output_filename}{Character. Path/name of the output file
-(default: "pedigree_validation_results.txt").}
+\item{output_filename}{Character. Path/name of the output results file
+(default: "__validation_report.txt"). The plot will be saved using the
+same base name with a .jpg extension.}
+
+\item{plot_results}{Logical. If TRUE, prints a histogram of Trio Mendelian
+Error percentages with a threshold line (default: TRUE). If write_results
+is also TRUE, the plot is additionally saved as a .jpg file.}
+
+\item{na_string}{Character. String for missing values in the output file.
+Use \code{"NA"} or \code{""} (default: \code{"NA"}).}
 }
 \value{
 A data.table (returned invisibly) with one row per trio and
 the following columns:
 \describe{
 \item{ID}{Individual ID.}
-\item{Male_Parent}{Declared male parent ID.}
-\item{Female_Parent}{Declared female parent ID.}
-\item{Mendelian_Error_Pct}{Trio-level Mendelian error percentage.}
-\item{Markers_Tested}{Number of markers with non-missing genotypes.}
+\item{Orig_Male_Parent}{Declared male parent ID.}
+\item{Orig_Female_Parent}{Declared female parent ID.}
+\item{Trio_Mendelian_Error_Pct}{Trio-level Mendelian error percentage.}
+\item{Trio_Markers_Tested}{Number of markers with non-missing genotypes.}
 \item{Status}{One of PASS, FAIL, LOW_MARKERS, NO_DATA, FOUNDERS,
 MISSING_MALE_PARENT, MISSING_FEMALE_PARENT, MISSING_BOTH_PARENTS,
 or NO_GENOTYPE_DATA.}
-\item{Correction_Decision}{One of NONE, KEEP_BOTH,
+\item{Recommended_Correction}{One of NONE, KEEP_BOTH,
 REMOVE_MALE_PARENT, REMOVE_FEMALE_PARENT, REMOVE_BOTH,
 LOW_MARKERS_KEEP_BOTH, LOW_MARKERS_REMOVE_MALE_PARENT,
 LOW_MARKERS_REMOVE_FEMALE_PARENT, LOW_MARKERS_REMOVE_BOTH.}
 \item{Male_Parent_Hom_Error_Pct}{Male parent homozygous-marker mismatch percentage.}
 \item{Female_Parent_Hom_Error_Pct}{Female parent homozygous-marker mismatch percentage.}
-\item{Best_Male_Parent}{Best-matching male parent candidate ID.}
-\item{Best_Male_Parent_Error_Pct}{Homozygous mismatch percentage for the best male parent candidate.}
-\item{Best_Female_Parent}{Best-matching female parent candidate ID.}
-\item{Best_Female_Parent_Error_Pct}{Homozygous mismatch percentage for the best female parent candidate.}
+\item{Best_Male_Candidate}{Best-matching male parent candidate ID.}
+\item{Best_Male_Candidate_Error_Pct}{Homozygous mismatch percentage for the best male candidate.}
+\item{Best_Female_Candidate}{Best-matching female parent candidate ID.}
+\item{Best_Female_Candidate_Error_Pct}{Homozygous mismatch percentage for the best female candidate.}
 }
 }
 \description{

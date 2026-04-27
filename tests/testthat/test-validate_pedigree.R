@@ -43,56 +43,84 @@ write_temp_files <- function(genos = make_genos(), ped = make_pedigree()) {
   list(ped = ped_file, genos = genos_file)
 }
 
+# Helper to run validate_pedigree in a temporary working directory
+# so corrected_pedigree.txt doesn't pollute the real wd
+run_in_tmpdir <- function(expr) {
+  tmp_dir <- tempfile()
+  dir.create(tmp_dir)
+  old_wd  <- getwd()
+  setwd(tmp_dir)
+  on.exit({ setwd(old_wd); unlink(tmp_dir, recursive = TRUE) }, add = TRUE)
+  force(expr)
+}
+
 # ==============================================================================
 # 1. Input validation
 # ==============================================================================
 
 test_that("trio_error_threshold out of range raises an error", {
   f <- write_temp_files()
-  expect_error(validate_pedigree(f$ped, f$genos,
-                                 trio_error_threshold = 150,
-                                 verbose = FALSE, write_txt = FALSE))
-  expect_error(validate_pedigree(f$ped, f$genos,
-                                 trio_error_threshold = -1,
-                                 verbose = FALSE, write_txt = FALSE))
+  run_in_tmpdir({
+    expect_error(validate_pedigree(f$ped, f$genos,
+                                   trio_error_threshold = 150,
+                                   verbose = FALSE, write_results = FALSE,
+                                   plot_results = FALSE))
+    expect_error(validate_pedigree(f$ped, f$genos,
+                                   trio_error_threshold = -1,
+                                   verbose = FALSE, write_results = FALSE,
+                                   plot_results = FALSE))
+  })
 })
 
 test_that("single_parent_error_threshold out of range raises an error", {
   f <- write_temp_files()
-  expect_error(validate_pedigree(f$ped, f$genos,
-                                 single_parent_error_threshold = 101,
-                                 verbose = FALSE, write_txt = FALSE))
-  expect_error(validate_pedigree(f$ped, f$genos,
-                                 single_parent_error_threshold = -5,
-                                 verbose = FALSE, write_txt = FALSE))
+  run_in_tmpdir({
+    expect_error(validate_pedigree(f$ped, f$genos,
+                                   single_parent_error_threshold = 101,
+                                   verbose = FALSE, write_results = FALSE,
+                                   plot_results = FALSE))
+    expect_error(validate_pedigree(f$ped, f$genos,
+                                   single_parent_error_threshold = -5,
+                                   verbose = FALSE, write_results = FALSE,
+                                   plot_results = FALSE))
+  })
 })
 
 test_that("missing required pedigree column raises an error", {
   bad_ped <- data.table(ID = "IND_C", Parent1 = "IND_A", Female_Parent = "IND_B")
   f <- write_temp_files(ped = bad_ped)
-  expect_error(
-    validate_pedigree(f$ped, f$genos, verbose = FALSE, write_txt = FALSE),
-    regexp = "missing required columns"
-  )
+  run_in_tmpdir({
+    expect_error(
+      validate_pedigree(f$ped, f$genos, verbose = FALSE, write_results = FALSE,
+                        plot_results = FALSE),
+      regexp = "missing required columns"
+    )
+  })
 })
 
 test_that("missing ID column in genotypes raises an error", {
   bad_genos <- copy(make_genos())
   setnames(bad_genos, "ID", "SampleID")
   f <- write_temp_files(genos = bad_genos)
-  expect_error(
-    validate_pedigree(f$ped, f$genos, verbose = FALSE, write_txt = FALSE),
-    regexp = "ID"
-  )
+  run_in_tmpdir({
+    expect_error(
+      validate_pedigree(f$ped, f$genos, verbose = FALSE, write_results = FALSE,
+                        plot_results = FALSE),
+      regexp = "ID"
+    )
+  })
 })
 
 test_that("all trios with no genotype data stop with an error", {
   ped <- data.table(ID = "GHOST", Male_Parent = "IND_A", Female_Parent = "IND_B")
   f   <- write_temp_files(ped = ped)
-  expect_error(
-    validate_pedigree(f$ped, f$genos, verbose = FALSE, write_txt = FALSE),
-    regexp = "No valid trios remain"
-  )
+  run_in_tmpdir({
+    expect_error(
+      validate_pedigree(f$ped, f$genos, verbose = FALSE, write_results = FALSE,
+                        plot_results = FALSE),
+      regexp = "No valid trios remain"
+    )
+  })
 })
 
 # ==============================================================================
@@ -100,29 +128,38 @@ test_that("all trios with no genotype data stop with an error", {
 # ==============================================================================
 
 test_that("returns a data.table", {
-  f   <- write_temp_files()
-  res <- validate_pedigree(f$ped, f$genos, verbose = FALSE, write_txt = FALSE)
-  expect_s3_class(res, "data.table")
+  f <- write_temp_files()
+  run_in_tmpdir({
+    res <- validate_pedigree(f$ped, f$genos, verbose = FALSE,
+                             write_results = FALSE, plot_results = FALSE)
+    expect_s3_class(res, "data.table")
+  })
 })
 
 test_that("result has one row per pedigree entry", {
-  f   <- write_temp_files()
-  res <- validate_pedigree(f$ped, f$genos, verbose = FALSE, write_txt = FALSE)
-  expect_equal(nrow(res), 2L)
+  f <- write_temp_files()
+  run_in_tmpdir({
+    res <- validate_pedigree(f$ped, f$genos, verbose = FALSE,
+                             write_results = FALSE, plot_results = FALSE)
+    expect_equal(nrow(res), 2L)
+  })
 })
 
 test_that("result has all expected columns", {
-  f   <- write_temp_files()
-  res <- validate_pedigree(f$ped, f$genos, verbose = FALSE, write_txt = FALSE)
-  expected_cols <- c(
-    "ID", "Male_Parent", "Female_Parent",
-    "Mendelian_Error_Pct", "Markers_Tested", "Status",
-    "Correction_Decision",
-    "Male_Parent_Hom_Error_Pct", "Female_Parent_Hom_Error_Pct",
-    "Best_Male_Parent",   "Best_Male_Parent_Error_Pct",
-    "Best_Female_Parent", "Best_Female_Parent_Error_Pct"
-  )
-  expect_true(all(expected_cols %in% names(res)))
+  f <- write_temp_files()
+  run_in_tmpdir({
+    res <- validate_pedigree(f$ped, f$genos, verbose = FALSE,
+                             write_results = FALSE, plot_results = FALSE)
+    expected_cols <- c(
+      "ID", "Orig_Male_Parent", "Orig_Female_Parent",
+      "Trio_Mendelian_Error_Pct", "Trio_Markers_Tested", "Status",
+      "Recommended_Correction",
+      "Male_Parent_Hom_Error_Pct", "Female_Parent_Hom_Error_Pct",
+      "Best_Male_Candidate",   "Best_Male_Candidate_Error_Pct",
+      "Best_Female_Candidate", "Best_Female_Candidate_Error_Pct"
+    )
+    expect_true(all(expected_cols %in% names(res)))
+  })
 })
 
 # ==============================================================================
@@ -130,68 +167,87 @@ test_that("result has all expected columns", {
 # ==============================================================================
 
 test_that("PASS trio is correctly identified", {
-  f   <- write_temp_files()
-  res <- validate_pedigree(f$ped, f$genos, verbose = FALSE, write_txt = FALSE)
-  pass_row <- res[ID == "IND_C"]
-  expect_equal(nrow(pass_row), 1L)
-  expect_equal(pass_row$Status, "PASS")
-  expect_equal(pass_row$Mendelian_Error_Pct, 0)
-  expect_equal(pass_row$Correction_Decision, "NONE")
+  f <- write_temp_files()
+  run_in_tmpdir({
+    res      <- validate_pedigree(f$ped, f$genos, verbose = FALSE,
+                                  write_results = FALSE, plot_results = FALSE)
+    pass_row <- res[ID == "IND_C"]
+    expect_equal(nrow(pass_row), 1L)
+    expect_equal(pass_row$Status, "PASS")
+    expect_equal(pass_row$Trio_Mendelian_Error_Pct, 0)
+    expect_equal(pass_row$Recommended_Correction, "NONE")
+  })
 })
 
 test_that("FAIL trio is correctly identified", {
-  f   <- write_temp_files()
-  res <- validate_pedigree(f$ped, f$genos, verbose = FALSE, write_txt = FALSE)
-  fail_row <- res[ID == "IND_D"]
-  expect_equal(nrow(fail_row), 1L)
-  expect_equal(fail_row$Status, "FAIL")
-  expect_gt(fail_row$Mendelian_Error_Pct, 5.0)
+  f <- write_temp_files()
+  run_in_tmpdir({
+    res      <- validate_pedigree(f$ped, f$genos, verbose = FALSE,
+                                  write_results = FALSE, plot_results = FALSE)
+    fail_row <- res[ID == "IND_D"]
+    expect_equal(nrow(fail_row), 1L)
+    expect_equal(fail_row$Status, "FAIL")
+    expect_gt(fail_row$Trio_Mendelian_Error_Pct, 5.0)
+  })
 })
 
 test_that("FAIL trio has REMOVE_MALE_PARENT decision with best match populated", {
-  f   <- write_temp_files()
-  res <- validate_pedigree(f$ped, f$genos, verbose = FALSE, write_txt = FALSE)
-  fail_row <- res[ID == "IND_D"]
-  expect_equal(fail_row$Correction_Decision, "REMOVE_MALE_PARENT")
-  expect_false(is.na(fail_row$Best_Male_Parent))
-  expect_true(is.na(fail_row$Best_Female_Parent))
+  f <- write_temp_files()
+  run_in_tmpdir({
+    res      <- validate_pedigree(f$ped, f$genos, verbose = FALSE,
+                                  write_results = FALSE, plot_results = FALSE)
+    fail_row <- res[ID == "IND_D"]
+    expect_equal(fail_row$Recommended_Correction, "REMOVE_MALE_PARENT")
+    expect_false(is.na(fail_row$Best_Male_Candidate))
+    expect_true(is.na(fail_row$Best_Female_Candidate))
+  })
 })
 
-test_that("Mendelian_Error_Pct is 0 for a perfect trio", {
-  f   <- write_temp_files()
-  res <- validate_pedigree(f$ped, f$genos, verbose = FALSE, write_txt = FALSE)
-  expect_equal(res[ID == "IND_C"]$Mendelian_Error_Pct, 0)
+test_that("Trio_Mendelian_Error_Pct is 0 for a perfect trio", {
+  f <- write_temp_files()
+  run_in_tmpdir({
+    res <- validate_pedigree(f$ped, f$genos, verbose = FALSE,
+                             write_results = FALSE, plot_results = FALSE)
+    expect_equal(res[ID == "IND_C"]$Trio_Mendelian_Error_Pct, 0)
+  })
 })
 
-test_that("Markers_Tested equals number of markers for complete data", {
-  f   <- write_temp_files()
-  res <- validate_pedigree(f$ped, f$genos, verbose = FALSE, write_txt = FALSE)
-  expect_equal(res[ID == "IND_C"]$Markers_Tested, 20L)
+test_that("Trio_Markers_Tested equals number of markers for complete data", {
+  f <- write_temp_files()
+  run_in_tmpdir({
+    res <- validate_pedigree(f$ped, f$genos, verbose = FALSE,
+                             write_results = FALSE, plot_results = FALSE)
+    expect_equal(res[ID == "IND_C"]$Trio_Markers_Tested, 20L)
+  })
 })
 
 test_that("LOW_MARKERS status assigned when markers_tested < min_markers", {
-  f   <- write_temp_files()
-  res <- validate_pedigree(f$ped, f$genos, verbose = FALSE,
-                           write_txt = FALSE, min_markers = 25L)
-  expect_true(all(res$Status == "LOW_MARKERS"))
-  expect_true(all(grepl("^LOW_MARKERS_", res$Correction_Decision)))
+  f <- write_temp_files()
+  run_in_tmpdir({
+    res <- validate_pedigree(f$ped, f$genos, verbose = FALSE,
+                             write_results = FALSE, plot_results = FALSE,
+                             min_markers = 25L)
+    expect_true(all(res$Status == "LOW_MARKERS"))
+    expect_true(all(grepl("^LOW_MARKERS_", res$Recommended_Correction)))
+  })
 })
 
-test_that("NA markers reduce Markers_Tested and do not cause errors", {
+test_that("NA markers reduce Trio_Markers_Tested and do not cause errors", {
   genos <- make_genos()
   genos[ID == "IND_C", M1 := NA_integer_]
   genos[ID == "IND_C", M2 := NA_integer_]
-  f   <- write_temp_files(genos = genos)
-  res <- validate_pedigree(f$ped, f$genos, verbose = FALSE, write_txt = FALSE)
-  expect_equal(res[ID == "IND_C"]$Markers_Tested, 18L)
-  expect_equal(res[ID == "IND_C"]$Status, "PASS")
+  f <- write_temp_files(genos = genos)
+  run_in_tmpdir({
+    res <- validate_pedigree(f$ped, f$genos, verbose = FALSE,
+                             write_results = FALSE, plot_results = FALSE)
+    expect_equal(res[ID == "IND_C"]$Trio_Markers_Tested, 18L)
+    expect_equal(res[ID == "IND_C"]$Status, "PASS")
+  })
 })
 
 # ==============================================================================
 # 4. Missing parent statuses (MISSING_MALE_PARENT / MISSING_FEMALE_PARENT /
 #    MISSING_BOTH_PARENTS)
-# Note: each test includes make_pedigree() rows so has_geno is never empty,
-#       and filters res by the specific ID under test [3][4]
 # ==============================================================================
 
 test_that("MISSING_MALE_PARENT status and recommendation are correct", {
@@ -199,13 +255,16 @@ test_that("MISSING_MALE_PARENT status and recommendation are correct", {
     make_pedigree(),
     data.table(ID = "IND_E", Male_Parent = "0", Female_Parent = "IND_B")
   )
-  f   <- write_temp_files(ped = ped)
-  res <- validate_pedigree(f$ped, f$genos, verbose = FALSE, write_txt = FALSE)
-  r   <- res[ID == "IND_E"]
-  expect_equal(r$Status,              "MISSING_MALE_PARENT")
-  expect_equal(r$Correction_Decision, "NONE")
-  expect_false(is.na(r$Best_Male_Parent))
-  expect_true(is.na(r$Best_Female_Parent))
+  f <- write_temp_files(ped = ped)
+  run_in_tmpdir({
+    res <- validate_pedigree(f$ped, f$genos, verbose = FALSE,
+                             write_results = FALSE, plot_results = FALSE)
+    r   <- res[ID == "IND_E"]
+    expect_equal(r$Status,                 "MISSING_MALE_PARENT")
+    expect_equal(r$Recommended_Correction, "NONE")
+    expect_false(is.na(r$Best_Male_Candidate))
+    expect_true(is.na(r$Best_Female_Candidate))
+  })
 })
 
 test_that("MISSING_FEMALE_PARENT status and recommendation are correct", {
@@ -213,13 +272,16 @@ test_that("MISSING_FEMALE_PARENT status and recommendation are correct", {
     make_pedigree(),
     data.table(ID = "IND_E", Male_Parent = "IND_A", Female_Parent = "0")
   )
-  f   <- write_temp_files(ped = ped)
-  res <- validate_pedigree(f$ped, f$genos, verbose = FALSE, write_txt = FALSE)
-  r   <- res[ID == "IND_E"]
-  expect_equal(r$Status,              "MISSING_FEMALE_PARENT")
-  expect_equal(r$Correction_Decision, "NONE")
-  expect_true(is.na(r$Best_Male_Parent))
-  expect_false(is.na(r$Best_Female_Parent))
+  f <- write_temp_files(ped = ped)
+  run_in_tmpdir({
+    res <- validate_pedigree(f$ped, f$genos, verbose = FALSE,
+                             write_results = FALSE, plot_results = FALSE)
+    r   <- res[ID == "IND_E"]
+    expect_equal(r$Status,                 "MISSING_FEMALE_PARENT")
+    expect_equal(r$Recommended_Correction, "NONE")
+    expect_true(is.na(r$Best_Male_Candidate))
+    expect_false(is.na(r$Best_Female_Candidate))
+  })
 })
 
 test_that("MISSING_BOTH_PARENTS status and recommendations are correct", {
@@ -227,16 +289,19 @@ test_that("MISSING_BOTH_PARENTS status and recommendations are correct", {
     make_pedigree(),
     data.table(ID = "IND_E", Male_Parent = "0", Female_Parent = "0")
   )
-  f   <- write_temp_files(ped = ped)
-  res <- validate_pedigree(f$ped, f$genos, verbose = FALSE, write_txt = FALSE)
-  r   <- res[ID == "IND_E"]
-  expect_equal(r$Status,              "MISSING_BOTH_PARENTS")
-  expect_equal(r$Correction_Decision, "NONE")
-  expect_false(is.na(r$Best_Male_Parent))
-  expect_false(is.na(r$Best_Female_Parent))
+  f <- write_temp_files(ped = ped)
+  run_in_tmpdir({
+    res <- validate_pedigree(f$ped, f$genos, verbose = FALSE,
+                             write_results = FALSE, plot_results = FALSE)
+    r   <- res[ID == "IND_E"]
+    expect_equal(r$Status,                 "MISSING_BOTH_PARENTS")
+    expect_equal(r$Recommended_Correction, "NONE")
+    expect_false(is.na(r$Best_Male_Candidate))
+    expect_false(is.na(r$Best_Female_Candidate))
+  })
 })
 
-test_that("MISSING_* rows preserve 0s in corrected pedigree", {
+test_that("MISSING_* rows preserve 0s in corrected_pedigree.txt", {
   ped <- rbind(
     make_pedigree(),
     data.table(ID = "IND_E", Male_Parent = "0", Female_Parent = "IND_B")
@@ -247,22 +312,29 @@ test_that("MISSING_* rows preserve 0s in corrected pedigree", {
   old_wd  <- getwd()
   setwd(tmp_dir)
   on.exit({ setwd(old_wd); unlink(tmp_dir, recursive = TRUE) }, add = TRUE)
-  validate_pedigree(f$ped, f$genos, verbose = FALSE, write_txt = FALSE)
+
+  validate_pedigree(f$ped, f$genos, verbose = FALSE,
+                    write_results = FALSE, plot_results = FALSE)
   corr <- fread(file.path(tmp_dir, "corrected_pedigree.txt"),
                 colClasses = "character")
-  expect_equal(corr[ID == "IND_E"]$Male_Parent, "0")
+  # MISSING_MALE_PARENT — male stays "0", female unchanged
+  expect_equal(corr[ID == "IND_E"]$Male_Parent,   "0")
+  expect_equal(corr[ID == "IND_E"]$Female_Parent, "IND_B")
 })
 
-test_that("Best_Male_Parent for MISSING_MALE_PARENT is excluded from being the known female", {
+test_that("Best_Male_Candidate for MISSING_MALE_PARENT is not the known female parent", {
   ped <- rbind(
     make_pedigree(),
     data.table(ID = "IND_E", Male_Parent = "0", Female_Parent = "IND_B")
   )
-  f   <- write_temp_files(ped = ped)
-  res <- validate_pedigree(f$ped, f$genos, verbose = FALSE, write_txt = FALSE)
-  r   <- res[ID == "IND_E"]
-  # The known female parent should not be suggested as the best male parent
-  expect_false(r$Best_Male_Parent == "IND_B")
+  f <- write_temp_files(ped = ped)
+  run_in_tmpdir({
+    res <- validate_pedigree(f$ped, f$genos, verbose = FALSE,
+                             write_results = FALSE, plot_results = FALSE)
+    r   <- res[ID == "IND_E"]
+    # The known female parent should not be suggested as the best male candidate
+    expect_false(r$Best_Male_Candidate == "IND_B")
+  })
 })
 
 # ==============================================================================
@@ -277,16 +349,19 @@ test_that("FOUNDERS status is assigned when ID in founders list with 0 0 parents
   founders_file <- tempfile(fileext = ".txt")
   fwrite(data.table(ID = "IND_A"), founders_file,
          sep = "\t", quote = FALSE, col.names = FALSE)
-  f   <- write_temp_files(ped = ped)
-  res <- validate_pedigree(f$ped, f$genos,
-                           founders_file = founders_file,
-                           verbose       = FALSE,
-                           write_txt     = FALSE)
-  founder_row <- res[ID == "IND_A"]
-  expect_equal(founder_row$Status,              "FOUNDERS")
-  expect_equal(founder_row$Correction_Decision, "NONE")
-  expect_true(is.na(founder_row$Best_Male_Parent))
-  expect_true(is.na(founder_row$Best_Female_Parent))
+  f <- write_temp_files(ped = ped)
+  run_in_tmpdir({
+    res         <- validate_pedigree(f$ped, f$genos,
+                                     founders_file = founders_file,
+                                     verbose       = FALSE,
+                                     write_results = FALSE,
+                                     plot_results  = FALSE)
+    founder_row <- res[ID == "IND_A"]
+    expect_equal(founder_row$Status,                 "FOUNDERS")
+    expect_equal(founder_row$Recommended_Correction, "NONE")
+    expect_true(is.na(founder_row$Best_Male_Candidate))
+    expect_true(is.na(founder_row$Best_Female_Candidate))
+  })
 })
 
 test_that("non-founder rows are still evaluated normally when founders file is supplied", {
@@ -297,13 +372,16 @@ test_that("non-founder rows are still evaluated normally when founders file is s
   founders_file <- tempfile(fileext = ".txt")
   fwrite(data.table(ID = "IND_A"), founders_file,
          sep = "\t", quote = FALSE, col.names = FALSE)
-  f   <- write_temp_files(ped = ped)
-  res <- validate_pedigree(f$ped, f$genos,
-                           founders_file = founders_file,
-                           verbose       = FALSE,
-                           write_txt     = FALSE)
-  # IND_C has real parents — should still get PASS
-  expect_equal(res[ID == "IND_C"]$Status, "PASS")
+  f <- write_temp_files(ped = ped)
+  run_in_tmpdir({
+    res <- validate_pedigree(f$ped, f$genos,
+                             founders_file = founders_file,
+                             verbose       = FALSE,
+                             write_results = FALSE,
+                             plot_results  = FALSE)
+    # IND_C has real parents — should still get PASS
+    expect_equal(res[ID == "IND_C"]$Status, "PASS")
+  })
 })
 
 test_that("0 0 parents NOT in founders list get MISSING_BOTH_PARENTS", {
@@ -311,9 +389,12 @@ test_that("0 0 parents NOT in founders list get MISSING_BOTH_PARENTS", {
     make_pedigree(),
     data.table(ID = "IND_E", Male_Parent = "0", Female_Parent = "0")
   )
-  f   <- write_temp_files(ped = ped)
-  res <- validate_pedigree(f$ped, f$genos, verbose = FALSE, write_txt = FALSE)
-  expect_equal(res[ID == "IND_E"]$Status, "MISSING_BOTH_PARENTS")
+  f <- write_temp_files(ped = ped)
+  run_in_tmpdir({
+    res <- validate_pedigree(f$ped, f$genos, verbose = FALSE,
+                             write_results = FALSE, plot_results = FALSE)
+    expect_equal(res[ID == "IND_E"]$Status, "MISSING_BOTH_PARENTS")
+  })
 })
 
 test_that("0 0 parents with no founders file gets MISSING_BOTH_PARENTS not FOUNDERS", {
@@ -321,12 +402,15 @@ test_that("0 0 parents with no founders file gets MISSING_BOTH_PARENTS not FOUND
     make_pedigree(),
     data.table(ID = "IND_E", Male_Parent = "0", Female_Parent = "0")
   )
-  f   <- write_temp_files(ped = ped)
-  res <- validate_pedigree(f$ped, f$genos,
-                           founders_file = NULL,
-                           verbose       = FALSE,
-                           write_txt     = FALSE)
-  expect_equal(res[ID == "IND_E"]$Status, "MISSING_BOTH_PARENTS")
+  f <- write_temp_files(ped = ped)
+  run_in_tmpdir({
+    res <- validate_pedigree(f$ped, f$genos,
+                             founders_file = NULL,
+                             verbose       = FALSE,
+                             write_results = FALSE,
+                             plot_results  = FALSE)
+    expect_equal(res[ID == "IND_E"]$Status, "MISSING_BOTH_PARENTS")
+  })
 })
 
 # ==============================================================================
@@ -338,36 +422,45 @@ test_that("NO_GENOTYPE_DATA is flagged for progeny absent from genotype file", {
     make_pedigree(),
     data.table(ID = "GHOST", Male_Parent = "IND_A", Female_Parent = "IND_B")
   )
-  f   <- write_temp_files(ped = ped)
-  res <- validate_pedigree(f$ped, f$genos, verbose = FALSE, write_txt = FALSE)
-  ghost_row <- res[ID == "GHOST"]
-  expect_equal(nrow(ghost_row),               1L)
-  expect_equal(ghost_row$Status,              "NO_GENOTYPE_DATA")
-  expect_equal(ghost_row$Correction_Decision, "NONE")
+  f <- write_temp_files(ped = ped)
+  run_in_tmpdir({
+    res       <- validate_pedigree(f$ped, f$genos, verbose = FALSE,
+                                   write_results = FALSE, plot_results = FALSE)
+    ghost_row <- res[ID == "GHOST"]
+    expect_equal(nrow(ghost_row),                    1L)
+    expect_equal(ghost_row$Status,                   "NO_GENOTYPE_DATA")
+    expect_equal(ghost_row$Recommended_Correction,   "NONE")
+  })
 })
 
-test_that("NO_GENOTYPE_DATA rows have NA for all analysis columns", {
+test_that("NO_GENOTYPE_DATA rows have NA/0 for all analysis columns", {
   ped <- rbind(
     make_pedigree(),
     data.table(ID = "GHOST", Male_Parent = "IND_A", Female_Parent = "IND_B")
   )
-  f   <- write_temp_files(ped = ped)
-  res <- validate_pedigree(f$ped, f$genos, verbose = FALSE, write_txt = FALSE)
-  ghost_row <- res[ID == "GHOST"]
-  expect_true(is.na(ghost_row$Mendelian_Error_Pct))
-  expect_equal(ghost_row$Markers_Tested, 0L)
-  expect_true(is.na(ghost_row$Best_Male_Parent))
-  expect_true(is.na(ghost_row$Best_Female_Parent))
+  f <- write_temp_files(ped = ped)
+  run_in_tmpdir({
+    res       <- validate_pedigree(f$ped, f$genos, verbose = FALSE,
+                                   write_results = FALSE, plot_results = FALSE)
+    ghost_row <- res[ID == "GHOST"]
+    expect_true(is.na(ghost_row$Trio_Mendelian_Error_Pct))
+    expect_equal(ghost_row$Trio_Markers_Tested, 0L)
+    expect_true(is.na(ghost_row$Best_Male_Candidate))
+    expect_true(is.na(ghost_row$Best_Female_Candidate))
+  })
 })
 
 test_that("NO_GENOTYPE_DATA flagged when declared parent is absent from genotype file", {
   ped <- rbind(
-    make_pedigree(),   # ensures has_geno is not empty
+    make_pedigree(),
     data.table(ID = "IND_C_GHOST", Male_Parent = "GHOST_DAD", Female_Parent = "IND_B")
   )
-  f   <- write_temp_files(ped = ped)
-  res <- validate_pedigree(f$ped, f$genos, verbose = FALSE, write_txt = FALSE)
-  expect_equal(res[ID == "IND_C_GHOST"]$Status, "NO_GENOTYPE_DATA")
+  f <- write_temp_files(ped = ped)
+  run_in_tmpdir({
+    res <- validate_pedigree(f$ped, f$genos, verbose = FALSE,
+                             write_results = FALSE, plot_results = FALSE)
+    expect_equal(res[ID == "IND_C_GHOST"]$Status, "NO_GENOTYPE_DATA")
+  })
 })
 
 test_that("valid trios still evaluated correctly when ghost rows are present", {
@@ -375,24 +468,29 @@ test_that("valid trios still evaluated correctly when ghost rows are present", {
     make_pedigree(),
     data.table(ID = "GHOST", Male_Parent = "IND_A", Female_Parent = "IND_B")
   )
-  f   <- write_temp_files(ped = ped)
-  res <- validate_pedigree(f$ped, f$genos, verbose = FALSE, write_txt = FALSE)
-  expect_equal(res[ID == "IND_C"]$Status, "PASS")
-  expect_equal(res[ID == "IND_D"]$Status, "FAIL")
+  f <- write_temp_files(ped = ped)
+  run_in_tmpdir({
+    res <- validate_pedigree(f$ped, f$genos, verbose = FALSE,
+                             write_results = FALSE, plot_results = FALSE)
+    expect_equal(res[ID == "IND_C"]$Status, "PASS")
+    expect_equal(res[ID == "IND_D"]$Status, "FAIL")
+  })
 })
 
 # ==============================================================================
 # 7. Corrected pedigree output
 # ==============================================================================
 
-test_that("corrected_pedigree.txt is written and PASS parents are unchanged", {
+test_that("corrected_pedigree.txt is always written and PASS parents are unchanged", {
   f       <- write_temp_files()
   tmp_dir <- tempfile()
   dir.create(tmp_dir)
   old_wd  <- getwd()
   setwd(tmp_dir)
   on.exit({ setwd(old_wd); unlink(tmp_dir, recursive = TRUE) }, add = TRUE)
-  validate_pedigree(f$ped, f$genos, verbose = FALSE, write_txt = FALSE)
+
+  validate_pedigree(f$ped, f$genos, verbose = FALSE,
+                    write_results = FALSE, plot_results = FALSE)
   expect_true(file.exists(file.path(tmp_dir, "corrected_pedigree.txt")))
   corr <- fread(file.path(tmp_dir, "corrected_pedigree.txt"))
   # IND_C passes — parents must be unchanged
@@ -407,7 +505,9 @@ test_that("corrected_pedigree.txt sets bad parent to 0 for FAIL trio", {
   old_wd  <- getwd()
   setwd(tmp_dir)
   on.exit({ setwd(old_wd); unlink(tmp_dir, recursive = TRUE) }, add = TRUE)
-  validate_pedigree(f$ped, f$genos, verbose = FALSE, write_txt = FALSE)
+
+  validate_pedigree(f$ped, f$genos, verbose = FALSE,
+                    write_results = FALSE, plot_results = FALSE)
   corr <- fread(file.path(tmp_dir, "corrected_pedigree.txt"),
                 colClasses = "character")
   # IND_D fails with REMOVE_MALE_PARENT — male should become "0"
@@ -415,45 +515,32 @@ test_that("corrected_pedigree.txt sets bad parent to 0 for FAIL trio", {
   expect_equal(corr[ID == "IND_D"]$Female_Parent, "IND_A")
 })
 
-test_that("corrected_pedigree.txt preserves 0s for MISSING_* rows", {
-  ped <- rbind(
-    make_pedigree(),
-    data.table(ID = "IND_E", Male_Parent = "0", Female_Parent = "IND_B")
-  )
-  f       <- write_temp_files(ped = ped)
-  tmp_dir <- tempfile()
-  dir.create(tmp_dir)
-  old_wd  <- getwd()
-  setwd(tmp_dir)
-  on.exit({ setwd(old_wd); unlink(tmp_dir, recursive = TRUE) }, add = TRUE)
-  validate_pedigree(f$ped, f$genos, verbose = FALSE, write_txt = FALSE)
-  corr <- fread(file.path(tmp_dir, "corrected_pedigree.txt"),
-                colClasses = "character")
-  # MISSING_MALE_PARENT — male stays "0", female unchanged
-  expect_equal(corr[ID == "IND_E"]$Male_Parent,   "0")
-  expect_equal(corr[ID == "IND_E"]$Female_Parent, "IND_B")
-})
-
 # ==============================================================================
-# 8. write_txt / output file
+# 8. write_results / output file
 # ==============================================================================
 
-test_that("write_txt = TRUE writes output file with correct row count", {
+test_that("write_results = TRUE writes output file with correct row count", {
   f        <- write_temp_files()
   out_file <- tempfile(fileext = ".txt")
-  validate_pedigree(f$ped, f$genos, verbose = FALSE,
-                    write_txt = TRUE, output_filename = out_file)
-  expect_true(file.exists(out_file))
-  written <- fread(out_file)
-  expect_equal(nrow(written), 2L)
+  run_in_tmpdir({
+    validate_pedigree(f$ped, f$genos, verbose = FALSE,
+                      write_results = TRUE, output_filename = out_file,
+                      plot_results  = FALSE)
+    expect_true(file.exists(out_file))
+    written <- fread(out_file)
+    expect_equal(nrow(written), 2L)
+  })
 })
 
-test_that("write_txt = FALSE does not create output file", {
+test_that("write_results = FALSE does not create output file", {
   f        <- write_temp_files()
   out_file <- tempfile(fileext = ".txt")
-  validate_pedigree(f$ped, f$genos, verbose = FALSE,
-                    write_txt = FALSE, output_filename = out_file)
-  expect_false(file.exists(out_file))
+  run_in_tmpdir({
+    validate_pedigree(f$ped, f$genos, verbose = FALSE,
+                      write_results = FALSE, output_filename = out_file,
+                      plot_results  = FALSE)
+    expect_false(file.exists(out_file))
+  })
 })
 
 test_that("output file contains correct number of rows when ghost rows present", {
@@ -463,9 +550,12 @@ test_that("output file contains correct number of rows when ghost rows present",
   )
   f        <- write_temp_files(ped = ped)
   out_file <- tempfile(fileext = ".txt")
-  validate_pedigree(f$ped, f$genos, verbose = FALSE,
-                    write_txt = TRUE, output_filename = out_file)
-  written <- fread(out_file)
-  # 2 valid trios + 1 ghost = 3 rows total
-  expect_equal(nrow(written), 3L)
+  run_in_tmpdir({
+    validate_pedigree(f$ped, f$genos, verbose = FALSE,
+                      write_results = TRUE, output_filename = out_file,
+                      plot_results  = FALSE)
+    written <- fread(out_file)
+    # 2 valid trios + 1 ghost = 3 rows total
+    expect_equal(nrow(written), 3L)
+  })
 })

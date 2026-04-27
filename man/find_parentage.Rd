@@ -14,7 +14,9 @@ find_parentage(
   show_ties = TRUE,
   allow_selfing = TRUE,
   verbose = TRUE,
-  write_txt = TRUE
+  write_txt = TRUE,
+  na_string = "NA",
+  plot_results = TRUE
 )
 }
 \arguments{
@@ -23,117 +25,77 @@ Must include an 'ID' column followed by marker columns coded as 0, 1, 2
 (allele dosage).}
 
 \item{parents_file}{Path to a TSV/CSV/TXT file listing candidate parent IDs.
-Must include an 'ID' column. An optional 'Sex' column with values
-'M' (male parent), 'F' (female parent), or 'A' (ambiguous) determines
-which parents are tested for each role. If absent, all parents are treated
-as ambiguous.}
+Must include an 'ID' column. An optional 'Sex' column ('M', 'F', or 'A')
+determines parent roles. If absent, all parents are treated as ambiguous.}
 
-\item{progeny_file}{Path to a TSV/CSV/TXT file listing progeny IDs to assign.
+\item{progeny_file}{Path to a TSV/CSV/TXT file listing progeny IDs.
 Must include an 'ID' column.}
 
-\item{method}{Character. Parentage assignment method. One of:
-\itemize{
-\item \code{"best_male_parent"}  — finds the best male parent for each
-progeny using homozygous mismatch rate.
-\item \code{"best_female_parent"} — finds the best female parent for each
-progeny using homozygous mismatch rate.
-\item \code{"best_match"} — finds the single best parent (either sex)
-using homozygous mismatch rate.
-\item \code{"best_pair"}  — finds the best male-female parent pair for
-each progeny using full Mendelian error rate (default).
-}}
+\item{method}{Character. One of \code{"best_male_parent"},
+\code{"best_female_parent"}, \code{"best_match"}, or
+\code{"best_pair"} (default). See Details.}
 
-\item{min_markers}{Integer. Minimum number of non-missing markers required
-to report a parentage assignment. Progeny-parent comparisons with fewer
-markers are flagged as \code{LOW_MARKERS} and no assignment is made
-(default: \code{10}).}
+\item{min_markers}{Integer. Minimum markers required for a valid assignment.
+Fewer markers flags \code{LOW_MARKERS} (default: \code{10}).}
 
-\item{error_threshold}{Numeric. Maximum mismatch percentage to report a
-parentage assignment as confident. Assignments above this threshold are
-flagged as \code{HIGH_ERROR} in the \code{Assignment_Status} column
-(default: \code{5.0}). Must be between 0 and 100.}
+\item{error_threshold}{Numeric. Maximum mismatch percentage for a confident
+assignment. Exceeded values flag \code{HIGH_ERROR} (default: \code{5.0}).
+Must be between 0 and 100.}
 
-\item{show_ties}{Logical. If \code{TRUE}, all tied best pairs (after
-tie-breaking by maximum markers tested) are reported as additional columns
-(\code{Male_Parent_1}, \code{Male_Parent_2}, etc.) when
-\code{method = "best_pair"}. The base columns (\code{Male_Parent},
-\code{Female_Parent}, etc.) are always populated with the top result.
-If \code{FALSE}, only one tied pair is reported with a warning.
-Default is \code{TRUE}.}
+\item{show_ties}{Logical. If \code{TRUE}, tied best pairs are reported as
+additional suffix columns (e.g. \code{Male_Parent_2}) when
+\code{method = "best_pair"}. Default is \code{TRUE}.}
 
-\item{allow_selfing}{Logical. If \code{FALSE}, male-female parent pairs where
-both IDs are identical are excluded when \code{method = "best_pair"}.
-Default is \code{TRUE}.}
+\item{allow_selfing}{Logical. If \code{FALSE}, pairs with identical male and
+female parent IDs are excluded. Default is \code{TRUE}.}
 
-\item{verbose}{Logical. If \code{TRUE}, prints progress messages, summary
-statistics, and the results table to the console. Default is \code{TRUE}.}
+\item{verbose}{Logical. If \code{TRUE}, prints progress, summary, and
+results to the console. Default is \code{TRUE}.}
 
 \item{write_txt}{Logical. If \code{TRUE}, writes results to
-\code{parentage_results_dt.txt} in the working directory. Default is
-\code{TRUE}.}
+\code{parentage_testing_results.txt}. Default is \code{TRUE}.}
+
+\item{na_string}{Character. String for missing values in output file.
+Use \code{"NA"} or \code{""} (default: \code{"NA"}).}
+
+\item{plot_results}{Logical. If \code{TRUE}, plots the Mendelian error
+distribution colored by assignment status. Requires \code{ggplot2}.
+Plot is saved as \code{.jpg} when \code{write_txt = TRUE}.
+Default is \code{TRUE}.}
 }
 \value{
-A \code{data.table} with one row per progeny. Columns depend on the
-method used:
-\itemize{
-\item \code{best_male_parent} / \code{best_female_parent} / \code{best_match}:
-\code{Progeny}, \code{Best_Match}, \code{Mendelian_Error_Pct},
-\code{Markers_Tested}, \code{Assignment_Status}.
-\item \code{best_pair} (no ties after tie-breaking): \code{Progeny},
-\code{Male_Parent}, \code{Female_Parent}, \code{Mendelian_Error_Pct},
-\code{Markers_Tested}, \code{Assignment_Status}.
-\item \code{best_pair} (ties remain after tie-breaking,
-\code{show_ties = TRUE}): base columns are always populated with the
-top result, plus suffix columns \code{Male_Parent_1},
-\code{Female_Parent_1}, etc. for each tied pair.
-}
-\code{Assignment_Status} is one of \code{PASS}, \code{HIGH_ERROR}, or
-\code{LOW_MARKERS}. Returned invisibly when \code{verbose = TRUE}.
+A \code{data.table} with one row per progeny. Base columns are
+\code{Progeny}, \code{Male_Parent} (or \code{Best_Match}),
+\code{Female_Parent}, \code{Mendelian_Error_Pct}, \code{Markers_Tested},
+and \code{Assignment_Status} (\code{PASS}, \code{HIGH_ERROR}, or
+\code{LOW_MARKERS}). Tie suffix columns (\code{Male_Parent_2}, etc.) are
+appended when \code{show_ties = TRUE} and ties remain after tie-breaking.
+Returned invisibly when \code{verbose = TRUE}.
 }
 \description{
 Assigns the most likely parent(s) to each progeny individual based on
 genotypic data using Mendelian error rates or homozygous mismatch rates.
 }
 \details{
-A homozygous-only genotype matrix is pre-computed once at startup and shared
-across all methods that require it, avoiding redundant computation.
+A homozygous-only matrix is pre-computed once and shared across
+\code{"best_male_parent"}, \code{"best_female_parent"}, and
+\code{"best_match"}, where heterozygous markers (coded 1) are set to
+\code{NA} to reduce false mismatches from phase ambiguity.
 
-For \code{"best_male_parent"}, \code{"best_female_parent"}, and
-\code{"best_match"}, only homozygous markers (coded 0 or 2) are used for
-comparison; heterozygous markers (coded 1) are set to \code{NA}. This
-reduces false mismatches caused by phase ambiguity.
+For \code{"best_pair"}, full Mendelian inheritance rules are applied across
+all marker and pair combinations using vectorised \code{vapply} calls,
+producing \code{n_pairs x n_progeny} mismatch and comparison matrices.
 
-For \code{"best_pair"}, all markers are used and full Mendelian inheritance
-rules are applied. Mismatch rates and comparison counts are computed across
-all progeny simultaneously using vectorised \code{vapply} calls, producing
-\code{n_pairs x n_progeny} matrices and giving substantial speed gains for
-large datasets. Both matrices are explicitly coerced to matrix form to
-handle the edge case of a single parent pair correctly.
+Ties on mismatch rate are broken by maximum markers tested. Remaining ties
+are reported as suffix columns when \code{show_ties = TRUE}. Base columns
+are always populated with the top result.
 
-When multiple pairs share the lowest Mendelian error rate, ties are broken
-by selecting the pair(s) with the greatest number of markers tested. If ties
-still remain after this step, all remaining tied pairs are reported when
-\code{show_ties = TRUE}.
-
-The base columns (\code{Male_Parent}, \code{Female_Parent},
-\code{Mendelian_Error_Pct}, \code{Markers_Tested}) are always populated with
-the top result, ensuring no missing values in these columns regardless of
-tie status.
-
-Output rows are pre-allocated as a \code{data.table} and filled by reference
-using \code{data.table::set()}, avoiding repeated memory allocation during
-the results-building step.
-
-Individuals in \code{parents_file} or \code{progeny_file} that are absent
-from \code{genotypes_file} are removed with a warning.
-
-Progeny with fewer non-missing markers than \code{min_markers} are flagged
-\code{LOW_MARKERS} and no parent assignment is reported. Progeny whose best
-match exceeds \code{error_threshold} are flagged \code{HIGH_ERROR}.
+Parents or progeny absent from \code{genotypes_file} are removed with a
+warning. Progeny below \code{min_markers} are flagged \code{LOW_MARKERS};
+those exceeding \code{error_threshold} are flagged \code{HIGH_ERROR}.
 }
 \examples{
 \dontrun{
-# Assign best male-female parent pair to each progeny
 results <- find_parentage(
   genotypes_file  = "genotypes.txt",
   parents_file    = "parents.txt",
@@ -142,10 +104,11 @@ results <- find_parentage(
   min_markers     = 50,
   error_threshold = 5.0,
   show_ties       = TRUE,
-  allow_selfing   = FALSE
+  allow_selfing   = FALSE,
+  na_string       = "NA",
+  plot_results    = TRUE
 )
 
-# Find best individual parent match (ignoring sex)
 results <- find_parentage(
   genotypes_file  = "genotypes.txt",
   parents_file    = "parents.txt",

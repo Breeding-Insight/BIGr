@@ -17,11 +17,12 @@ make_files <- function(genos, parents, progeny, dir = tempdir()) {
   list(g = geno_file, p = parent_file, pr = progeny_file)
 }
 
-# ------------------------------------------------------------------------------
+# ==============================================================================
 # Base toy data
 # S1 / D1: all 0  → child1 (all 0) is a perfect Mendelian child of S1 x D1
 # S2 / D2: all 2  → child2 (all 2) is a perfect Mendelian child of S2 x D2
-# ------------------------------------------------------------------------------
+# ==============================================================================
+
 base_genos <- data.table::data.table(
   ID = c("S1","S2","D1","D2","child1","child2"),
   M1 = c(0L, 2L, 0L, 2L, 0L, 2L),
@@ -54,7 +55,7 @@ test_that("invalid method throws an error", {
   f <- make_files(base_genos, base_parents, child1_progeny)
   expect_error(
     find_parentage(f$g, f$p, f$pr, method = "bad_method",
-                   verbose = FALSE, write_txt = FALSE),
+                   verbose = FALSE, write_txt = FALSE, plot_results = FALSE),
     regexp = "Method must be one of"
   )
 })
@@ -63,7 +64,7 @@ test_that("min_markers < 1 throws an error", {
   f <- make_files(base_genos, base_parents, child1_progeny)
   expect_error(
     find_parentage(f$g, f$p, f$pr, min_markers = 0,
-                   verbose = FALSE, write_txt = FALSE),
+                   verbose = FALSE, write_txt = FALSE, plot_results = FALSE),
     regexp = "min_markers"
   )
 })
@@ -72,13 +73,22 @@ test_that("error_threshold out of range throws an error", {
   f <- make_files(base_genos, base_parents, child1_progeny)
   expect_error(
     find_parentage(f$g, f$p, f$pr, error_threshold = 150,
-                   verbose = FALSE, write_txt = FALSE),
+                   verbose = FALSE, write_txt = FALSE, plot_results = FALSE),
     regexp = "error_threshold"
   )
   expect_error(
     find_parentage(f$g, f$p, f$pr, error_threshold = -1,
-                   verbose = FALSE, write_txt = FALSE),
+                   verbose = FALSE, write_txt = FALSE, plot_results = FALSE),
     regexp = "error_threshold"
+  )
+})
+
+test_that("invalid na_string throws an error", {
+  f <- make_files(base_genos, base_parents, child1_progeny)
+  expect_error(
+    find_parentage(f$g, f$p, f$pr, na_string = "NULL",
+                   verbose = FALSE, write_txt = FALSE, plot_results = FALSE),
+    regexp = "na_string"
   )
 })
 
@@ -86,7 +96,8 @@ test_that("missing genotype file throws an error", {
   f <- make_files(base_genos, base_parents, child1_progeny)
   expect_error(
     find_parentage("nonexistent.txt", f$p, f$pr,
-                   verbose = FALSE, write_txt = FALSE)
+                   verbose = FALSE, write_txt = FALSE, plot_results = FALSE),
+    regexp = "Error reading input files"
   )
 })
 
@@ -96,7 +107,7 @@ test_that("parent IDs absent from genotype file raise a warning and are dropped"
   f <- make_files(base_genos, extra_parents, child1_progeny)
   expect_warning(
     find_parentage(f$g, f$p, f$pr, method = "best_pair",
-                   verbose = FALSE, write_txt = FALSE),
+                   verbose = FALSE, write_txt = FALSE, plot_results = FALSE),
     regexp = "GHOST"
   )
 })
@@ -107,7 +118,7 @@ test_that("progeny IDs absent from genotype file raise a warning and are dropped
   f <- make_files(base_genos, base_parents, extra_progeny)
   expect_warning(
     find_parentage(f$g, f$p, f$pr, method = "best_pair",
-                   verbose = FALSE, write_txt = FALSE),
+                   verbose = FALSE, write_txt = FALSE, plot_results = FALSE),
     regexp = "GHOST_KID"
   )
 })
@@ -118,7 +129,7 @@ test_that("no valid progeny candidates after filtering stops with an error", {
   expect_warning(
     expect_error(
       find_parentage(f$g, f$p, f$pr, method = "best_pair",
-                     verbose = FALSE, write_txt = FALSE),
+                     verbose = FALSE, write_txt = FALSE, plot_results = FALSE),
       regexp = "No valid progeny"
     )
   )
@@ -129,7 +140,7 @@ test_that("missing Sex column raises a warning and defaults to ambiguous", {
   f <- make_files(base_genos, parents_no_sex, child1_progeny)
   expect_warning(
     find_parentage(f$g, f$p, f$pr, method = "best_match",
-                   verbose = FALSE, write_txt = FALSE),
+                   verbose = FALSE, write_txt = FALSE, plot_results = FALSE),
     regexp = "Sex"
   )
 })
@@ -141,7 +152,8 @@ test_that("missing Sex column raises a warning and defaults to ambiguous", {
 test_that("best_pair returns a data.table with expected columns (no ties)", {
   f   <- make_files(base_genos, base_parents, child1_progeny)
   res <- find_parentage(f$g, f$p, f$pr, method = "best_pair",
-                        show_ties = FALSE, verbose = FALSE, write_txt = FALSE)
+                        show_ties = FALSE, verbose = FALSE,
+                        write_txt = FALSE, plot_results = FALSE)
   expect_s3_class(res, "data.table")
   expect_true(all(c("Progeny","Male_Parent","Female_Parent",
                     "Mendelian_Error_Pct","Markers_Tested",
@@ -152,17 +164,18 @@ test_that("best_pair returns a data.table with expected columns (no ties)", {
 test_that("best_male_parent returns expected columns", {
   f   <- make_files(base_genos, base_parents, child1_progeny)
   res <- find_parentage(f$g, f$p, f$pr, method = "best_male_parent",
-                        verbose = FALSE, write_txt = FALSE)
+                        verbose = FALSE, write_txt = FALSE, plot_results = FALSE)
   expect_s3_class(res, "data.table")
   expect_true(all(c("Progeny","Best_Match","Mendelian_Error_Pct",
                     "Markers_Tested","Assignment_Status") %in% names(res)))
+  expect_false("Male_Parent" %in% names(res))
   expect_equal(nrow(res), 1L)
 })
 
 test_that("best_female_parent returns expected columns", {
   f   <- make_files(base_genos, base_parents, child1_progeny)
   res <- find_parentage(f$g, f$p, f$pr, method = "best_female_parent",
-                        verbose = FALSE, write_txt = FALSE)
+                        verbose = FALSE, write_txt = FALSE, plot_results = FALSE)
   expect_s3_class(res, "data.table")
   expect_true(all(c("Progeny","Best_Match","Mendelian_Error_Pct",
                     "Markers_Tested","Assignment_Status") %in% names(res)))
@@ -172,7 +185,7 @@ test_that("best_female_parent returns expected columns", {
 test_that("best_match returns expected columns", {
   f   <- make_files(base_genos, base_parents, child1_progeny)
   res <- find_parentage(f$g, f$p, f$pr, method = "best_match",
-                        verbose = FALSE, write_txt = FALSE)
+                        verbose = FALSE, write_txt = FALSE, plot_results = FALSE)
   expect_s3_class(res, "data.table")
   expect_true(all(c("Progeny","Best_Match","Mendelian_Error_Pct",
                     "Markers_Tested","Assignment_Status") %in% names(res)))
@@ -183,7 +196,7 @@ test_that("one row returned per progeny for single-parent methods", {
   f <- make_files(base_genos, base_parents, child1_progeny)
   for (m in c("best_male_parent","best_female_parent","best_match")) {
     res <- find_parentage(f$g, f$p, f$pr, method = m,
-                          verbose = FALSE, write_txt = FALSE)
+                          verbose = FALSE, write_txt = FALSE, plot_results = FALSE)
     expect_equal(nrow(res), 1L, label = paste("row count for method", m))
   }
 })
@@ -191,14 +204,16 @@ test_that("one row returned per progeny for single-parent methods", {
 test_that("Markers_Tested equals the number of non-NA marker columns", {
   f   <- make_files(base_genos, base_parents, child1_progeny)
   res <- find_parentage(f$g, f$p, f$pr, method = "best_pair",
-                        show_ties = FALSE, verbose = FALSE, write_txt = FALSE)
+                        show_ties = FALSE, verbose = FALSE,
+                        write_txt = FALSE, plot_results = FALSE)
   expect_equal(res$Markers_Tested, ncol(base_genos) - 1L)
 })
 
 test_that("Mendelian_Error_Pct is between 0 and 100", {
   f   <- make_files(base_genos, base_parents, child1_progeny)
   res <- find_parentage(f$g, f$p, f$pr, method = "best_pair",
-                        show_ties = FALSE, verbose = FALSE, write_txt = FALSE)
+                        show_ties = FALSE, verbose = FALSE,
+                        write_txt = FALSE, plot_results = FALSE)
   pct <- as.numeric(res$Mendelian_Error_Pct)
   expect_true(all(pct >= 0 & pct <= 100, na.rm = TRUE))
 })
@@ -210,7 +225,8 @@ test_that("Mendelian_Error_Pct is between 0 and 100", {
 test_that("best_pair correctly identifies S1 x D1 for child1 with 0% error", {
   f   <- make_files(base_genos, base_parents, child1_progeny)
   res <- find_parentage(f$g, f$p, f$pr, method = "best_pair",
-                        show_ties = FALSE, verbose = FALSE, write_txt = FALSE)
+                        show_ties = FALSE, verbose = FALSE,
+                        write_txt = FALSE, plot_results = FALSE)
   expect_equal(res$Male_Parent,   "S1")
   expect_equal(res$Female_Parent, "D1")
   expect_equal(as.numeric(res$Mendelian_Error_Pct), 0)
@@ -219,7 +235,8 @@ test_that("best_pair correctly identifies S1 x D1 for child1 with 0% error", {
 test_that("best_pair correctly identifies S2 x D2 for child2 with 0% error", {
   f   <- make_files(base_genos, base_parents, child2_progeny)
   res <- find_parentage(f$g, f$p, f$pr, method = "best_pair",
-                        show_ties = FALSE, verbose = FALSE, write_txt = FALSE)
+                        show_ties = FALSE, verbose = FALSE,
+                        write_txt = FALSE, plot_results = FALSE)
   expect_equal(res$Male_Parent,   "S2")
   expect_equal(res$Female_Parent, "D2")
   expect_equal(as.numeric(res$Mendelian_Error_Pct), 0)
@@ -228,22 +245,37 @@ test_that("best_pair correctly identifies S2 x D2 for child2 with 0% error", {
 test_that("best_male_parent identifies S1 as best male for child1", {
   f   <- make_files(base_genos, base_parents, child1_progeny)
   res <- find_parentage(f$g, f$p, f$pr, method = "best_male_parent",
-                        verbose = FALSE, write_txt = FALSE)
+                        verbose = FALSE, write_txt = FALSE, plot_results = FALSE)
   expect_equal(res$Best_Match, "S1")
 })
 
 test_that("best_female_parent identifies D1 as best female for child1", {
   f   <- make_files(base_genos, base_parents, child1_progeny)
   res <- find_parentage(f$g, f$p, f$pr, method = "best_female_parent",
-                        verbose = FALSE, write_txt = FALSE)
+                        verbose = FALSE, write_txt = FALSE, plot_results = FALSE)
   expect_equal(res$Best_Match, "D1")
 })
 
 test_that("Mendelian_Error_Pct is 0 for a perfect parent-progeny trio", {
   f   <- make_files(base_genos, base_parents, child1_progeny)
   res <- find_parentage(f$g, f$p, f$pr, method = "best_pair",
-                        show_ties = FALSE, verbose = FALSE, write_txt = FALSE)
+                        show_ties = FALSE, verbose = FALSE,
+                        write_txt = FALSE, plot_results = FALSE)
   expect_equal(as.numeric(res$Mendelian_Error_Pct), 0)
+})
+
+test_that("both child1 and child2 are correctly assigned when run together", {
+  f   <- make_files(base_genos, base_parents, base_progeny)
+  res <- find_parentage(f$g, f$p, f$pr, method = "best_pair",
+                        show_ties = FALSE, verbose = FALSE,
+                        write_txt = FALSE, plot_results = FALSE)
+  expect_equal(nrow(res), 2L)
+  child1_row <- res[Progeny == "child1"]
+  child2_row <- res[Progeny == "child2"]
+  expect_equal(child1_row$Male_Parent,   "S1")
+  expect_equal(child1_row$Female_Parent, "D1")
+  expect_equal(child2_row$Male_Parent,   "S2")
+  expect_equal(child2_row$Female_Parent, "D2")
 })
 
 # ==============================================================================
@@ -254,7 +286,8 @@ test_that("Assignment_Status = PASS for perfect trio within thresholds", {
   f   <- make_files(base_genos, base_parents, child1_progeny)
   res <- find_parentage(f$g, f$p, f$pr, method = "best_pair",
                         min_markers = 3, error_threshold = 5.0,
-                        show_ties = FALSE, verbose = FALSE, write_txt = FALSE)
+                        show_ties = FALSE, verbose = FALSE,
+                        write_txt = FALSE, plot_results = FALSE)
   expect_equal(res$Assignment_Status, "PASS")
 })
 
@@ -262,7 +295,8 @@ test_that("Assignment_Status = LOW_MARKERS when min_markers exceeds available ma
   f   <- make_files(base_genos, base_parents, child1_progeny)
   res <- find_parentage(f$g, f$p, f$pr, method = "best_pair",
                         min_markers = 99999, error_threshold = 5.0,
-                        show_ties = FALSE, verbose = FALSE, write_txt = FALSE)
+                        show_ties = FALSE, verbose = FALSE,
+                        write_txt = FALSE, plot_results = FALSE)
   expect_equal(res$Assignment_Status, "LOW_MARKERS")
 })
 
@@ -281,7 +315,8 @@ test_that("Assignment_Status = HIGH_ERROR when error rate exceeds threshold", {
   f        <- make_files(high_error_genos, parents, progeny)
   res      <- find_parentage(f$g, f$p, f$pr, method = "best_pair",
                              min_markers = 3, error_threshold = 5.0,
-                             show_ties = FALSE, verbose = FALSE, write_txt = FALSE)
+                             show_ties = FALSE, verbose = FALSE,
+                             write_txt = FALSE, plot_results = FALSE)
   expect_equal(res$Assignment_Status, "HIGH_ERROR")
 })
 
@@ -289,9 +324,21 @@ test_that("Assignment_Status column is present in all methods", {
   f <- make_files(base_genos, base_parents, child1_progeny)
   for (m in c("best_pair","best_male_parent","best_female_parent","best_match")) {
     res <- find_parentage(f$g, f$p, f$pr, method = m,
-                          show_ties = FALSE, verbose = FALSE, write_txt = FALSE)
+                          show_ties = FALSE, verbose = FALSE,
+                          write_txt = FALSE, plot_results = FALSE)
     expect_true("Assignment_Status" %in% names(res),
                 label = paste("Assignment_Status present for method", m))
+  }
+})
+
+test_that("LOW_MARKERS is flagged for single-parent methods too", {
+  f <- make_files(base_genos, base_parents, child1_progeny)
+  for (m in c("best_male_parent","best_female_parent","best_match")) {
+    res <- find_parentage(f$g, f$p, f$pr, method = m,
+                          min_markers = 99999, verbose = FALSE,
+                          write_txt = FALSE, plot_results = FALSE)
+    expect_equal(res$Assignment_Status, "LOW_MARKERS",
+                 label = paste("LOW_MARKERS for method", m))
   }
 })
 
@@ -302,11 +349,10 @@ test_that("Assignment_Status column is present in all methods", {
 test_that("allow_selfing = FALSE removes self-pairs from candidates", {
   ambig_parents <- data.table::data.table(ID = c("S1","D1"), Sex = c("A","A"))
   f <- make_files(base_genos, ambig_parents, child1_progeny)
-  expect_warning(
-    res <- find_parentage(f$g, f$p, f$pr, method = "best_pair",
-                          allow_selfing = FALSE, show_ties = FALSE,
-                          verbose = FALSE, write_txt = FALSE),
-    regexp = "tied"
+  res <- suppressWarnings(
+    find_parentage(f$g, f$p, f$pr, method = "best_pair",
+                   allow_selfing = FALSE, show_ties = FALSE,
+                   verbose = FALSE, write_txt = FALSE, plot_results = FALSE)
   )
   if (!is.na(res$Male_Parent) && !is.na(res$Female_Parent))
     expect_false(res$Male_Parent == res$Female_Parent)
@@ -316,10 +362,11 @@ test_that("allow_selfing = FALSE removes self-pairs from candidates", {
 # 6. show_ties
 # ==============================================================================
 
-test_that("show_ties = TRUE produces _1/_2 suffixed columns when ties exist", {
+test_that("show_ties = TRUE produces suffixed columns when ties exist", {
   f   <- make_files(tied_genos, tied_parents, tied_progeny)
   res <- find_parentage(f$g, f$p, f$pr, method = "best_pair",
-                        show_ties = TRUE, verbose = FALSE, write_txt = FALSE)
+                        show_ties = TRUE, verbose = FALSE,
+                        write_txt = FALSE, plot_results = FALSE)
   expect_true(any(grepl("^Male_Parent_",   names(res))))
   expect_true(any(grepl("^Female_Parent_", names(res))))
 })
@@ -328,7 +375,8 @@ test_that("show_ties = FALSE warns about ties and returns single-result columns"
   f <- make_files(tied_genos, tied_parents, tied_progeny)
   expect_warning(
     res <- find_parentage(f$g, f$p, f$pr, method = "best_pair",
-                          show_ties = FALSE, verbose = FALSE, write_txt = FALSE),
+                          show_ties = FALSE, verbose = FALSE,
+                          write_txt = FALSE, plot_results = FALSE),
     regexp = "tied"
   )
   expect_true("Male_Parent"   %in% names(res))
@@ -337,33 +385,42 @@ test_that("show_ties = FALSE warns about ties and returns single-result columns"
   expect_false(any(grepl("^Female_Parent_\\d", names(res))))
 })
 
+test_that("base columns are always populated even when ties exist", {
+  f   <- make_files(tied_genos, tied_parents, tied_progeny)
+  res <- find_parentage(f$g, f$p, f$pr, method = "best_pair",
+                        show_ties = TRUE, verbose = FALSE,
+                        write_txt = FALSE, plot_results = FALSE)
+  expect_false(is.na(res$Male_Parent[1]))
+  expect_false(is.na(res$Female_Parent[1]))
+})
+
 # ==============================================================================
 # 7. verbose / write_txt
 # ==============================================================================
 
-test_that("verbose = TRUE returns the result invisibly as data.table", {
+test_that("verbose = TRUE returns the result as data.table", {
   f   <- make_files(base_genos, base_parents, child1_progeny)
   res <- find_parentage(f$g, f$p, f$pr, method = "best_pair",
-                        verbose = TRUE, write_txt = FALSE)
+                        verbose = TRUE, write_txt = FALSE, plot_results = FALSE)
   expect_s3_class(res, "data.table")
 })
 
 test_that("verbose = FALSE returns the result as data.table", {
   f   <- make_files(base_genos, base_parents, child1_progeny)
   res <- find_parentage(f$g, f$p, f$pr, method = "best_pair",
-                        verbose = FALSE, write_txt = FALSE)
+                        verbose = FALSE, write_txt = FALSE, plot_results = FALSE)
   expect_s3_class(res, "data.table")
 })
 
-test_that("write_txt = TRUE creates the output file", {
+test_that("write_txt = TRUE creates parentage_testing_results.txt", {
   old_wd <- getwd()
   tmp    <- tempdir()
   setwd(tmp)
   on.exit(setwd(old_wd), add = TRUE)
   f <- make_files(base_genos, base_parents, child1_progeny, dir = tmp)
   find_parentage(f$g, f$p, f$pr, method = "best_pair",
-                 verbose = FALSE, write_txt = TRUE)
-  expect_true(file.exists(file.path(tmp, "parentage_results_dt.txt")))
+                 verbose = FALSE, write_txt = TRUE, plot_results = FALSE)
+  expect_true(file.exists(file.path(tmp, "parentage_testing_results.txt")))
 })
 
 test_that("write_txt = FALSE does not create the output file", {
@@ -371,12 +428,21 @@ test_that("write_txt = FALSE does not create the output file", {
   tmp      <- tempdir()
   setwd(tmp)
   on.exit(setwd(old_wd), add = TRUE)
-  out_file <- file.path(tmp, "parentage_results_dt.txt")
+  out_file <- file.path(tmp, "parentage_testing_results.txt")
   if (file.exists(out_file)) file.remove(out_file)
   f <- make_files(base_genos, base_parents, child1_progeny, dir = tmp)
   find_parentage(f$g, f$p, f$pr, method = "best_pair",
-                 verbose = FALSE, write_txt = FALSE)
+                 verbose = FALSE, write_txt = FALSE, plot_results = FALSE)
   expect_false(file.exists(out_file))
+})
+
+test_that("na_string = '' is accepted without error", {
+  f <- make_files(base_genos, base_parents, child1_progeny)
+  expect_no_error(
+    find_parentage(f$g, f$p, f$pr, method = "best_pair",
+                   na_string = "", verbose = FALSE,
+                   write_txt = FALSE, plot_results = FALSE)
+  )
 })
 
 # ==============================================================================
@@ -386,7 +452,7 @@ test_that("write_txt = FALSE does not create the output file", {
 test_that("best_male_parent only assigns M or A parents", {
   f   <- make_files(base_genos, base_parents, child1_progeny)
   res <- find_parentage(f$g, f$p, f$pr, method = "best_male_parent",
-                        verbose = FALSE, write_txt = FALSE)
+                        verbose = FALSE, write_txt = FALSE, plot_results = FALSE)
   valid_male_parents <- base_parents[Sex %in% c("M","A")]$ID
   expect_true(res$Best_Match %in% valid_male_parents)
 })
@@ -394,9 +460,27 @@ test_that("best_male_parent only assigns M or A parents", {
 test_that("best_female_parent only assigns F or A parents", {
   f   <- make_files(base_genos, base_parents, child1_progeny)
   res <- find_parentage(f$g, f$p, f$pr, method = "best_female_parent",
-                        verbose = FALSE, write_txt = FALSE)
+                        verbose = FALSE, write_txt = FALSE, plot_results = FALSE)
   valid_female_parents <- base_parents[Sex %in% c("F","A")]$ID
   expect_true(res$Best_Match %in% valid_female_parents)
+})
+
+test_that("best_pair male slot contains only M or A parents", {
+  f   <- make_files(base_genos, base_parents, child1_progeny)
+  res <- find_parentage(f$g, f$p, f$pr, method = "best_pair",
+                        show_ties = FALSE, verbose = FALSE,
+                        write_txt = FALSE, plot_results = FALSE)
+  valid_males <- base_parents[Sex %in% c("M","A")]$ID
+  expect_true(res$Male_Parent %in% valid_males)
+})
+
+test_that("best_pair female slot contains only F or A parents", {
+  f   <- make_files(base_genos, base_parents, child1_progeny)
+  res <- find_parentage(f$g, f$p, f$pr, method = "best_pair",
+                        show_ties = FALSE, verbose = FALSE,
+                        write_txt = FALSE, plot_results = FALSE)
+  valid_females <- base_parents[Sex %in% c("F","A")]$ID
+  expect_true(res$Female_Parent %in% valid_females)
 })
 
 # ==============================================================================
@@ -406,7 +490,8 @@ test_that("best_female_parent only assigns F or A parents", {
 test_that("single progeny individual is handled correctly", {
   f   <- make_files(base_genos, base_parents, child1_progeny)
   res <- find_parentage(f$g, f$p, f$pr, method = "best_pair",
-                        show_ties = FALSE, verbose = FALSE, write_txt = FALSE)
+                        show_ties = FALSE, verbose = FALSE,
+                        write_txt = FALSE, plot_results = FALSE)
   expect_equal(nrow(res), 1L)
 })
 
@@ -416,20 +501,33 @@ test_that("all-NA marker column does not cause an error", {
   f <- make_files(na_genos, base_parents, child1_progeny)
   expect_no_error(
     find_parentage(f$g, f$p, f$pr, method = "best_pair",
-                   verbose = FALSE, write_txt = FALSE)
+                   verbose = FALSE, write_txt = FALSE, plot_results = FALSE)
   )
 })
 
 test_that("Progeny column contains the correct progeny IDs", {
   f   <- make_files(base_genos, base_parents, child1_progeny)
   res <- find_parentage(f$g, f$p, f$pr, method = "best_pair",
-                        show_ties = FALSE, verbose = FALSE, write_txt = FALSE)
+                        show_ties = FALSE, verbose = FALSE,
+                        write_txt = FALSE, plot_results = FALSE)
   expect_setequal(res$Progeny, child1_progeny$ID)
 })
 
 test_that("multiple progeny are all represented in output", {
   f   <- make_files(base_genos, base_parents, base_progeny)
   res <- find_parentage(f$g, f$p, f$pr, method = "best_pair",
-                        show_ties = FALSE, verbose = FALSE, write_txt = FALSE)
+                        show_ties = FALSE, verbose = FALSE,
+                        write_txt = FALSE, plot_results = FALSE)
   expect_setequal(res$Progeny, base_progeny$ID)
+})
+
+test_that("single parent pair (n_pairs = 1) does not cause dimension errors", {
+  single_pair_parents <- data.table::data.table(ID  = c("S1","D1"),
+                                                Sex = c("M","F"))
+  f   <- make_files(base_genos, single_pair_parents, child1_progeny)
+  expect_no_error(
+    find_parentage(f$g, f$p, f$pr, method = "best_pair",
+                   show_ties = FALSE, verbose = FALSE,
+                   write_txt = FALSE, plot_results = FALSE)
+  )
 })

@@ -1,35 +1,38 @@
-#' Check a pedigree file for structural issues and optionally apply corrections
+#' @title Check a pedigree file for structural issues
 #'
-#' Reads a tab-separated pedigree file with columns `id`, `male_parent`, and
-#' `female_parent` and checks for five classes of issues: missing required
-#' columns, exact duplicate rows, repeated IDs with conflicting parent
-#' assignments, inconsistent parent sex roles, and pedigree cycles. The input
-#' file is never modified. A report list is always assigned to the global
-#' environment; when `correct = TRUE`, a corrected pedigree is assigned as well.
-#'
-#' When `correct = TRUE`, the function removes exact duplicates, collapses
-#' conflicting repeated IDs (replacing the inconsistent parent field with `"0"`),
-#' and appends missing parents as founder rows. Inconsistent sex roles and
-#' pedigree cycles are reported but not corrected and must be resolved manually.
+#' @description
+#' Reads a tab‑separated pedigree file with columns `id`,
+#' `male_parent`, and `female_parent` and checks for five classes of
+#' errors: missing required columns, exact duplicate rows,
+#' repeated IDs with conflicting parents, inconsistent parent
+#' sex roles, and pedigree cycles.  The input file is never
+#' modified.  A report list is always assigned to the global
+#' environment; when `correct = TRUE` a corrected pedigree is
+#' assigned as well.
 #'
 #' @param ped.file Path to the pedigree text file.
 #' @param seed Optional integer seed for reproducibility.
-#' @param verbose Logical. If `TRUE` (default), prints findings to the console.
-#' @param correct Logical. If `TRUE` (default), builds and assigns a corrected
-#'   pedigree to the global environment. If `FALSE`, issues are only reported.
-#' @param save_zip Logical. If `TRUE`, bundles report components into a `.zip`
-#'   archive in the working directory.
-#' @param save_corrected_zip Logical. If `TRUE` (requires `save_zip = TRUE` and
-#'   `correct = TRUE`), includes the corrected pedigree in the `.zip` archive.
+#' @param verbose Logical. If `TRUE` (default), prints findings to the
+#'   console.
+#' @param correct Logical. If `TRUE` (default), builds and assigns a
+#'   corrected pedigree to the global environment. If `FALSE`, issues
+#'   are only reported.
+#' @param save_zip Logical. If `TRUE`, bundles report components into a
+#'   `.zip` archive in the working directory.
+#' @param save_corrected_zip Logical. If `TRUE` (requires `save_zip =
+#'   TRUE` and `correct = TRUE`), includes the corrected pedigree in
+#'   the `.zip` archive.
 #'
-#' @return An invisible named list of data frames describing detected issues:
-#'   * `exact_duplicates`: exact duplicate rows.
-#'   * `repeated_ids_diff`: rows where the same `id` has conflicting parents.
-#'   * `inconsistent_sex_roles`: rows involving IDs used as both parents.
-#'   * `missing_parents`: rows referencing parent IDs absent from `id`.
-#'   * `dependencies`: rows whose `id` is involved in a pedigree cycle.
+#' @return An invisible named list of data frames describing detected
+#'   issues:
+#'   \item{exact_duplicates}{exact duplicate rows}
+#'   \item{repeated_ids_diff}{rows where the same `id` has conflicting parents}
+#'   \item{inconsistent_sex_roles}{rows involving IDs used as both parents}
+#'   \item{missing_parents}{rows referencing parent IDs absent from `id`}
+#'   \item{dependencies}{rows whose `id` is involved in a pedigree cycle}
 #'
-#' @importFrom dplyr %>% group_by filter ungroup distinct mutate summarize first bind_rows n_distinct n select row_number
+#' @importFrom dplyr %>% group_by filter ungroup distinct mutate
+#'   summarize first bind_rows n_distinct n select row_number
 #' @importFrom stats setNames
 #' @importFrom utils read.table write.table zip capture.output
 #' @importFrom tools file_path_sans_ext
@@ -40,14 +43,11 @@ check_ped <- function(ped.file,
                       correct            = TRUE,
                       save_zip           = FALSE,
                       save_corrected_zip = FALSE) {
-
   #### setup ####
   if (!is.null(seed)) set.seed(seed)
   data <- utils::read.table(ped.file, header = TRUE)
 
   # ── Column alias remapping ──────────────────────────────────────────────────
-  # Accept common alternative column names and silently remap them so the rest
-  # of the function always works with the canonical names.
   col_aliases <- list(
     id            = c("id", "ID", "animal", "Animal", "ind", "Ind"),
     male_parent   = c("male_parent", "sire",   "Sire",   "father", "Father", "pat", "Pat"),
@@ -73,48 +73,47 @@ check_ped <- function(ped.file,
     )
   }
   data <- data %>%
-    mutate(
+    dplyr::mutate(
       id            = as.character(id),
       male_parent   = as.character(male_parent),
       female_parent = as.character(female_parent)
     )
 
   # Add row numbers before any processing
-  data   <- data %>% mutate(row_number = row_number(), .before = id)
+  data   <- data %>% dplyr::mutate(row_number = dplyr::row_number(), .before = id)
   errors <- list()
 
   #### check 1: exact duplicates ####
   exact_duplicates <- data[
-    duplicated(data %>% select(-row_number)) |
-      duplicated(data %>% select(-row_number), fromLast = TRUE),
+    duplicated(data %>% dplyr::select(-row_number)) |
+      duplicated(data %>% dplyr::select(-row_number), fromLast = TRUE),
   ]
 
   #### check 2: repeated IDs with conflicting male_parent/female_parent ####
   repeated_ids_diff <- data %>%
-    group_by(id) %>%
-    filter(n() > 1) %>%
-    filter(n_distinct(male_parent) > 1 | n_distinct(female_parent) > 1) %>%
-    ungroup()
+    dplyr::group_by(id) %>%
+    dplyr::filter(dplyr::n() > 1) %>%
+    dplyr::filter(dplyr::n_distinct(male_parent) > 1 |
+                    dplyr::n_distinct(female_parent) > 1) %>%
+    dplyr::ungroup()
 
   #### check 3: inconsistent parent sex roles ####
   male_ids   <- unique(data$male_parent[data$male_parent   != "0"])
   female_ids <- unique(data$female_parent[data$female_parent != "0"])
   messy_ids  <- intersect(male_ids, female_ids)
   inconsistent_sex_roles <- data %>%
-    filter(male_parent %in% messy_ids | female_parent %in% messy_ids)
+    dplyr::filter(male_parent %in% messy_ids | female_parent %in% messy_ids)
 
   #### check 4: missing parents ####
   all_ids <- unique(data$id)
   ref_ids <- unique(c(data$male_parent, data$female_parent))
-  # Fix #1: trimws() strips whitespace-only strings; the combined filter then
-  # drops NA (which NA != "0" would not catch), empty strings, and "0"
-  # to prevent spurious founder rows with id = NA in the corrected pedigree.
+
+  # Trim, remove NAs and zeros
   ref_ids <- trimws(ref_ids)
   ref_ids <- ref_ids[!is.na(ref_ids) & ref_ids != "" & ref_ids != "0"]
-
   missing_ids     <- setdiff(ref_ids, all_ids)
   missing_parents <- data %>%
-    filter(male_parent %in% missing_ids | female_parent %in% missing_ids)
+    dplyr::filter(male_parent %in% missing_ids | female_parent %in% missing_ids)
 
   # Only build founder rows if there are actually missing parents to add
   if (length(missing_ids) > 0) {
@@ -173,7 +172,6 @@ check_ped <- function(ped.file,
     }
     return(all_cycles)
   }
-
   cycles    <- detect_all_cycles(data)
   cycle_ids <- character(0)
   if (length(cycles) > 0) {
@@ -185,7 +183,7 @@ check_ped <- function(ped.file,
                                 paste(ids, collapse = " -> ")))
     }
   }
-  dependencies <- data %>% filter(id %in% cycle_ids)
+  dependencies <- data %>% dplyr::filter(id %in% cycle_ids)
   if (nrow(dependencies) == 0 && length(errors) > 0) {
     dependencies <- data.frame(Dependency = unique(unlist(errors)),
                                stringsAsFactors = FALSE)
@@ -202,27 +200,27 @@ check_ped <- function(ped.file,
 
   #### build corrected pedigree (no row_number column) ####
   if (correct) {
-    corrected <- data %>% select(-row_number)
+    corrected <- data %>% dplyr::select(-row_number)
 
     # Remove exact duplicates
-    corrected <- distinct(corrected)
+    corrected <- dplyr::distinct(corrected)
 
     # Resolve conflicting IDs
     if (nrow(repeated_ids_diff) > 0) {
       corrected <- corrected %>%
-        group_by(id) %>%
-        summarize(
-          male_parent   = if (n_distinct(male_parent)   > 1) "0" else first(male_parent),
-          female_parent = if (n_distinct(female_parent) > 1) "0" else first(female_parent),
+        dplyr::group_by(id) %>%
+        dplyr::summarize(
+          male_parent   = if (dplyr::n_distinct(male_parent)   > 1) "0" else dplyr::first(male_parent),
+          female_parent = if (dplyr::n_distinct(female_parent) > 1) "0" else dplyr::first(female_parent),
           .groups = "drop"
         )
     }
 
     # Add missing founders
     if (length(missing_ids) > 0) {
-      corrected <- bind_rows(
+      corrected <- dplyr::bind_rows(
         corrected,
-        missing_founders %>% select(-row_number)
+        missing_founders %>% dplyr::select(-row_number)
       )
     }
   }
@@ -253,45 +251,42 @@ check_ped <- function(ped.file,
     }
   }
 
-  # Always save report to global environment
-  assign(report_name, input_ped_report, envir = .GlobalEnv)
+  # Section headers matching the console output labels
+  section_labels <- c(
+    exact_duplicates       = "Exact Duplicates",
+    repeated_ids_diff      = "Conflicting IDs",
+    inconsistent_sex_roles = "Inconsistent Parent Sex Roles",
+    missing_parents        = "Missing Parents (rows that reference them)",
+    dependencies           = "Cycles / Dependencies"
+  )
 
-  # Save corrected pedigree if correct = TRUE
-  if (correct) assign(corrected_name, corrected, envir = .GlobalEnv)
-
-  #### zip export ####
   if (save_zip) {
     tmp_dir <- tempfile()
     dir.create(tmp_dir)
-    # Fix #2: register cleanup so the temp directory is always removed on
-    # function exit, whether normal or due to an error.
     on.exit(unlink(tmp_dir, recursive = TRUE), add = TRUE)
-
     zip_files <- character(0)
 
-    # Section headers matching the console output labels
-    section_labels <- c(
-      exact_duplicates       = "Exact Duplicates",
-      repeated_ids_diff      = "Conflicting IDs",
-      inconsistent_sex_roles = "Inconsistent Parent Sex Roles",
-      missing_parents        = "Missing Parents (rows that reference them)",
-      dependencies           = "Cycles / Dependencies"
-    )
     for (component in names(section_labels)) {
       df        <- input_ped_report[[component]]
       file_path <- file.path(tmp_dir, paste0(file_base, "_", component, ".txt"))
       if (nrow(df) == 0) {
         writeLines(
-          c(paste0("--- ", section_labels[[component]], " ---"), "None found."),
+          c(paste0("--- ", section_labels[[component]], " ---"),
+            "None found."),
           con = file_path
         )
       } else {
         file_con <- file(file_path, open = "wt")
-        writeLines(paste0("--- ", section_labels[[component]], " ---"), con = file_con)
-        writeLines(paste(colnames(df), collapse = "\t"), con = file_con)
+        writeLines(paste0("--- ", section_labels[[component]], " ---"),
+                   con = file_con)
+        writeLines(paste(colnames(df), collapse = "\t"),
+                   con = file_con)
         close(file_con)
-        utils::write.table(df, file = file_path, sep = "\t", row.names = FALSE,
-                           quote = FALSE, append = TRUE, col.names = FALSE)
+        utils::write.table(df, file = file_path, sep = "\t",
+                           row.names = FALSE,
+                           quote = FALSE,
+                           append = TRUE,
+                           col.names = FALSE)
       }
       zip_files <- c(zip_files, file_path)
     }
@@ -299,7 +294,8 @@ check_ped <- function(ped.file,
     if (save_corrected_zip && correct) {
       corrected_path <- file.path(tmp_dir, paste0(corrected_name, ".txt"))
       utils::write.table(corrected, file = corrected_path, sep = "\t",
-                         row.names = FALSE, quote = FALSE)
+                         row.names = FALSE,
+                         quote = FALSE)
       zip_files <- c(zip_files, corrected_path)
     }
 
@@ -309,6 +305,10 @@ check_ped <- function(ped.file,
     ))
     if (verbose) cat(paste0("\nZip archive saved to: ", zip_path, "\n"))
   }
+
+  # Assign objects to the global environment
+  assign(report_name, input_ped_report, envir = .GlobalEnv)
+  if (correct) assign(corrected_name, corrected, envir = .GlobalEnv)
 
   invisible(input_ped_report)
 }

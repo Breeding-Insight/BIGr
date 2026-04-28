@@ -90,6 +90,8 @@
 #' )
 #' }
 #'
+#' @author Josué Chinchilla-Vargas
+#'
 #' @importFrom data.table fread fwrite copy CJ rbindlist set data.table as.data.table
 #' @export
 find_parentage <- function(genotypes_file, parents_file, progeny_file,

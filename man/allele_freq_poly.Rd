@@ -2,48 +2,51 @@
 % Please edit documentation in R/breedtools_functions.R
 \name{allele_freq_poly}
 \alias{allele_freq_poly}
-\title{Compute Allele Frequencies for Populations}
+\title{Compute allele frequencies for populations}
 \usage{
 allele_freq_poly(geno, populations, ploidy = 2)
 }
 \arguments{
-\item{geno}{matrix of genotypes coded as the dosage of allele B \code{{0, 1, 2, ..., ploidy}}
-with individuals in rows (named) and SNPs in columns (named)}
+\item{geno}{Numeric matrix of genotypes coded as dosage of allele B
+\code{{0, 1, 2, ..., ploidy}}, with individuals in rows (named) and
+SNPs in columns (named).}
 
-\item{populations}{list of named populations. Each population has a vector of IDs
-that belong to the population. Allele frequencies will be derived from all animals}
+\item{populations}{Named list of populations, each containing a character
+vector of individual IDs belonging to that population.}
 
-\item{ploidy}{integer indicating the ploidy level (default is 2 for diploid)}
+\item{ploidy}{Integer. Ploidy level of the species. Default is \code{2}.}
 }
 \value{
-data.frame consisting of allele_frequencies for populations (columns) for
-each SNP (rows)
+A data frame of allele frequencies with SNPs as rows and populations
+as columns.
 }
 \description{
-Computes allele frequencies for specified populations given SNP array data
+Computes allele frequencies for specified populations from SNP array data
+coded as dosage of allele B.
 }
 \examples{
-# Example inputs
 geno_matrix <- matrix(
-c(4, 1, 4, 0, # S1
-  2, 2, 1, 3, # S2
-  0, 4, 0, 4, # S3
-  3, 3, 2, 2, # S4
-  1, 4, 2, 3),# S5
-nrow = 4, ncol = 5, byrow = FALSE, # individuals=rows, SNPs=cols
-dimnames = list(paste0("Ind", 1:4), paste0("S", 1:5))
+  c(4, 1, 4, 0,
+    2, 2, 1, 3,
+    0, 4, 0, 4,
+    3, 3, 2, 2,
+    1, 4, 2, 3),
+  nrow = 4, ncol = 5, byrow = FALSE,
+  dimnames = list(paste0("Ind", 1:4), paste0("S", 1:5))
 )
-
 pop_list <- list(
-PopA = c("Ind1", "Ind2"),
-PopB = c("Ind3", "Ind4")
+  PopA = c("Ind1", "Ind2"),
+  PopB = c("Ind3", "Ind4")
 )
-
 allele_freqs <- allele_freq_poly(geno = geno_matrix, populations = pop_list, ploidy = 4)
 print(allele_freqs)
 
 }
 \references{
-Funkhouser SA, Bates RO, Ernst CW, Newcom D, Steibel JP. Estimation of genome-wide and locus-specific
-breed composition in pigs. Transl Anim Sci. 2017 Feb 1;1(1):36-44.
+Funkhouser SA, Bates RO, Ernst CW, Newcom D, Steibel JP.
+Estimation of genome-wide and locus-specific breed composition in pigs.
+\emph{Transl Anim Sci.} 2017;1(1):36–44.
+}
+\author{
+Josué Chinchilla-Vargas
 }

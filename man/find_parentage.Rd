@@ -126,3 +126,6 @@ results <- find_parentage(
 }
 
 }
+\author{
+Josué Chinchilla-Vargas
+}

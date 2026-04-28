@@ -2,7 +2,7 @@
 % Please edit documentation in R/check_ped.R
 \name{check_ped}
 \alias{check_ped}
-\title{Check a pedigree file for structural issues}
+\title{Check and optionally correct a pedigree file}
 \usage{
 check_ped(
   ped.file,
@@ -18,35 +18,63 @@ check_ped(
 
 \item{seed}{Optional integer seed for reproducibility.}
 
-\item{verbose}{Logical. If \code{TRUE} (default), prints findings to the
-console.}
+\item{verbose}{Logical. Print findings to the console? Default \code{TRUE}.}
 
-\item{correct}{Logical. If \code{TRUE} (default), builds and assigns a
-corrected pedigree to the global environment. If \code{FALSE}, issues
-are only reported.}
+\item{correct}{Logical. Build and save a corrected pedigree? Default \code{TRUE}.}
 
-\item{save_zip}{Logical. If \code{TRUE}, bundles report components into a
-\code{.zip} archive in the working directory.}
+\item{save_zip}{Logical. Export report components as a \code{.zip} archive? Default \code{FALSE}.}
 
-\item{save_corrected_zip}{Logical. If \code{TRUE} (requires \code{save_zip = TRUE} and \code{correct = TRUE}), includes the corrected pedigree in
-the \code{.zip} archive.}
+\item{save_corrected_zip}{Logical. Include corrected pedigree in the \code{.zip}?
+Only applies when \code{save_zip = TRUE} and \code{correct = TRUE}. Default \code{FALSE}.}
 }
 \value{
-An invisible named list of data frames describing detected
-issues:
-\item{exact_duplicates}{exact duplicate rows}
-\item{repeated_ids_diff}{rows where the same \code{id} has conflicting parents}
-\item{inconsistent_sex_roles}{rows involving IDs used as both parents}
-\item{missing_parents}{rows referencing parent IDs absent from \code{id}}
-\item{dependencies}{rows whose \code{id} is involved in a pedigree cycle}
+An invisible named list of data frames:
+\describe{
+\item{exact_duplicates}{Exact duplicate rows.}
+\item{repeated_ids_diff}{Rows with the same \code{id} but conflicting parent assignments.}
+\item{inconsistent_sex_roles}{Rows involving IDs used as both male and female parent.}
+\item{missing_parents}{Rows referencing parent IDs absent from \code{id}.}
+\item{dependencies}{Rows whose \code{id} is involved in a detected cycle.}
+}
 }
 \description{
-Reads a tab‑separated pedigree file with columns \code{id},
-\code{male_parent}, and \code{female_parent} and checks for five classes of
-errors: missing required columns, exact duplicate rows,
-repeated IDs with conflicting parents, inconsistent parent
-sex roles, and pedigree cycles.  The input file is never
-modified.  A report list is always assigned to the global
-environment; when \code{correct = TRUE} a corrected pedigree is
-assigned as well.
+Reads a tab-separated pedigree file with columns \code{id}, \code{male_parent}, and
+\code{female_parent} (any column order), performs structural and consistency checks,
+reports findings, and optionally builds a partially corrected pedigree object.
+}
+\details{
+The input file is never modified. Findings are printed to the console when
+\code{verbose = TRUE}, a report list is assigned to the global environment, and when
+\code{correct = TRUE}, a corrected pedigree data frame is also assigned there.
+}
+\section{Checks performed}{
+
+\describe{
+\item{Missing required columns}{Stops immediately if \code{id}, \code{male_parent}, or
+\code{female_parent} are absent.}
+\item{Exact duplicate rows}{Rows identical across all three fields. Removed
+when \code{correct = TRUE}.}
+\item{Repeated IDs with conflicting parents}{Same \code{id} with differing parent
+assignments. Collapsed to one row when \code{correct = TRUE}; conflicting fields
+are set to \code{"0"}.}
+\item{Inconsistent sex roles}{IDs appearing as both \code{male_parent} and
+\code{female_parent}. Reported only; no automatic correction.}
+\item{Missing parents}{Parent IDs not listed as individuals. Reported, and
+added as founder rows (\code{"0"/"0"}) when \code{correct = TRUE}.}
+\item{Cycles}{Direct or indirect ancestry loops. Reported only; must be
+resolved manually.}
+}
+}
+
+\section{Correction behavior}{
+
+When \code{correct = TRUE}, the function removes exact duplicates, collapses
+conflicting repeated IDs (replacing inconsistent parent fields with \code{"0"}),
+and appends missing parents as founders. Inconsistent sex roles and cycles are
+not automatically corrected. Running the function again on the corrected
+pedigree is recommended to reassess downstream issues.
+}
+
+\author{
+Josué Chinchilla-Vargas
 }

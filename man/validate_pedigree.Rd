@@ -93,3 +93,6 @@ are declared founders (both parents coded as 0) are preserved unchanged
 with no recommendations. Trios removed due to missing genotype data are
 retained in the output with a NO_GENOTYPE_DATA status.
 }
+\author{
+Josué Chinchilla-Vargas
+}

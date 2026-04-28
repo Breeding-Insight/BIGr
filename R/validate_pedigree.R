@@ -60,6 +60,9 @@
 #'     \item{Best_Female_Candidate_Error_Pct}{Homozygous mismatch percentage for the best female candidate.}
 #'   }
 #' @export
+#'
+#' @author Josué Chinchilla-Vargas
+#'
 #' @importFrom data.table fread fwrite copy data.table set rbindlist
 validate_pedigree <- function(pedigree_file, genotypes_file,
                               founders_file = NULL,

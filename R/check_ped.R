@@ -41,8 +41,8 @@ check_ped <- function(ped.file,
                       seed               = NULL,
                       verbose            = TRUE,
                       correct            = TRUE,
-                      save_zip           = FALSE,
-                      save_corrected_zip = FALSE) {
+                      save_zip           = TRUE,
+                      save_corrected_zip = TRUE) {
   #### setup ####
   if (!is.null(seed)) set.seed(seed)
   data <- utils::read.table(ped.file, header = TRUE)

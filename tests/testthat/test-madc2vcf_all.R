@@ -159,6 +159,7 @@ test_that("simu alfalfa",{
   potato_markers_info_ChromPos   <- paste0(github_path, "test_madcs/potato_marker_info_chrompos.csv") # markers_info: CloneID/BI_markerID, Chr, Pos
   potato_microhapDB <- paste0(github_path, "potato/potato_allele_db_v001.fa")
 
+  skip_on_cran()
   skip_if_offline("raw.githubusercontent.com")
 
   test_that("ALFALFA — clean fixed allele ID MADC", {

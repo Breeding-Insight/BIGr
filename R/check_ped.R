@@ -12,13 +12,13 @@
 #'
 #' After an initial run to clean exact duplicates and repeated IDs, you can run the function again to detect cycles more accurately.
 #'
-#' The function does **not** overwrite the input file. Instead, it prints findings to the console and optionally saves:
-#' * Corrected pedigree as a dataframe in the global environment
-#' * A report listing all detected issues
+#' The function does **not** overwrite the input file or create objects in the
+#' global environment. Instead, it returns the report and corrected pedigree in
+#' a list.
 #'
 #' @param ped.file Path to the pedigree text file.
 #' @param seed Optional seed for reproducibility.
-#' @param verbose Logical. If TRUE (default), prints errors and prompts for interactive saving.
+#' @param verbose Logical. If TRUE (default), prints the report to the console.
 #'
 #' @return A list of data.frames containing detected issues:
 #' * `exact_duplicates`: rows that were exact duplicates
@@ -26,13 +26,17 @@
 #' * `messy_parents`: IDs appearing as both sire and dam
 #' * `missing_parents`: parents added to the pedigree with 0 as sire/dam
 #' * `dependencies`: detected cycles in the pedigree
+#' * `corrected_pedigree`: corrected pedigree table
 #'
 #' @examples
 #' ped_file <- system.file("check_ped_test.txt", package = "BIGr")
-#' ped_errors <- check_ped(ped.file = ped_file, seed = 101919)
+#' ped_errors <- check_ped(ped.file = ped_file, seed = 101919, verbose = FALSE)
 #'
 #' # Access messy parents
 #' ped_errors$messy_parents
+#'
+#' # Access corrected pedigree
+#' ped_errors$corrected_pedigree
 #'
 #' # IDs with messy parents
 #' messy_ids <- ped_errors$messy_parents$id
@@ -179,13 +183,9 @@ check_ped <- function(ped.file, seed = NULL, verbose = TRUE) {
     repeated_ids_diff = repeated_ids_report,
     messy_parents = messy_parents,
     missing_parents = missing_parents,
-    dependencies = data.frame(Dependency = unique(unlist(errors)))
+    dependencies = data.frame(Dependency = unique(unlist(errors))),
+    corrected_pedigree = data
   )
-
-  #### file names ####
-  file_base <- tools::file_path_sans_ext(basename(ped.file))
-  corrected_name <- paste0(file_base, "_corrected")
-  report_name <- paste0(file_base, "_report")
 
   #### output ####
   if (verbose) {
@@ -217,21 +217,7 @@ check_ped <- function(ped.file, seed = NULL, verbose = TRUE) {
       print(input_ped_report$dependencies)
     } else cat("\nNo dependencies detected.\n")
 
-    #### interactive save ####
-    cat(paste0("\nDo you want to save the corrected pedigree as dataframe `", corrected_name, "`? (y/n): "))
-    ans <- tolower(trimws(readline()))
-    if (ans == "y") {
-      assign(corrected_name, data, envir = .GlobalEnv)
-      assign("input_ped_report", input_ped_report, envir = .GlobalEnv)
-      cat(paste0("Saved corrected pedigree as `", corrected_name, "` and report as `input_ped_report`.\n"))
-    } else {
-      cat("No corrected pedigree was saved.\n")
-    }
-
-  } else {
-    # Silent automatic mode
-    assign(corrected_name, data, envir = .GlobalEnv)
-    assign(report_name, input_ped_report, envir = .GlobalEnv)
+    cat("\nThe corrected pedigree is included in the returned list as `corrected_pedigree`.\n")
   }
 
   invisible(input_ped_report)

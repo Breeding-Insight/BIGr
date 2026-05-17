@@ -11,7 +11,7 @@ check_ped(ped.file, seed = NULL, verbose = TRUE)
 
 \item{seed}{Optional seed for reproducibility.}
 
-\item{verbose}{Logical. If TRUE (default), prints errors and prompts for interactive saving.}
+\item{verbose}{Logical. If TRUE (default), prints the report to the console.}
 }
 \value{
 A list of data.frames containing detected issues:
@@ -21,6 +21,7 @@ A list of data.frames containing detected issues:
 \item \code{messy_parents}: IDs appearing as both sire and dam
 \item \code{missing_parents}: parents added to the pedigree with 0 as sire/dam
 \item \code{dependencies}: detected cycles in the pedigree
+\item \code{corrected_pedigree}: corrected pedigree table
 }
 }
 \description{
@@ -39,18 +40,19 @@ The function checks for:
 
 After an initial run to clean exact duplicates and repeated IDs, you can run the function again to detect cycles more accurately.
 
-The function does \strong{not} overwrite the input file. Instead, it prints findings to the console and optionally saves:
-\itemize{
-\item Corrected pedigree as a dataframe in the global environment
-\item A report listing all detected issues
-}
+The function does \strong{not} overwrite the input file or create objects in the
+global environment. Instead, it returns the report and corrected pedigree in
+a list.
 }
 \examples{
 ped_file <- system.file("check_ped_test.txt", package = "BIGr")
-ped_errors <- check_ped(ped.file = ped_file, seed = 101919)
+ped_errors <- check_ped(ped.file = ped_file, seed = 101919, verbose = FALSE)
 
 # Access messy parents
 ped_errors$messy_parents
+
+# Access corrected pedigree
+ped_errors$corrected_pedigree
 
 # IDs with messy parents
 messy_ids <- ped_errors$messy_parents$id

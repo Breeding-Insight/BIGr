@@ -1,3 +1,8 @@
+# BIGr 0.7.1
+
+- Updated `check_ped()` to return corrected pedigree data in the result list instead of assigning objects to the global environment
+- Skipped long remote `madc2vcf_all` integration tests on CRAN while keeping them enabled in GitHub Actions
+
 # BIGr 0.7.0
 
 ## Updates on `dosage2vcf`

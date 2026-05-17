@@ -1,5 +1,12 @@
 # BIGr 0.7.0
 
+## Updates on `dosage2vcf`
+
+- Added support for DArT SNP/INDEL 1-row and 2-row report formats
+- `dosage2vcf` now validates marker and sample sets between report and counts files, then aligns counts to the report order before writing VCF genotypes
+- VCF `CHROM` and `POS` are derived from `Chrom`/`ChromPos` when present, otherwise from `MarkerName`; `MarkerName` is retained in the VCF `ID` field
+- Missing SNP/INDEL genotype calls (`-`/`NA`) are written as diploid missing genotypes (`./.`)
+
 ## New function `madc2vcf_multi`
 
 - New function `madc2vcf_multi` to convert a DArTag MADC file to a VCF using the polyRAD pipeline for multiallelic genotyping
@@ -139,4 +146,3 @@ FixAlleleIDs | TRUE | TRUE | botloci or markers_info REF/ALT
 -   updog2vcf function option to output compressed VCF (.vcf.gz) - set as default
 -   remove need for defining ploidy
 -   add metadata at the VCF header
-

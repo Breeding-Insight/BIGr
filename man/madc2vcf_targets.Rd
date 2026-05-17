@@ -32,8 +32,8 @@ metadata. Matching is done by column name, not column position. Accepted columns
 \itemize{
 \item one marker identifier column named \code{CloneID}, \code{Marker_ID}, or \code{BI_markerID}
 (required; a generic \code{ID} column is not accepted);
-\item \code{Chr}, \code{Pos} — required when \code{CloneID} does not follow the \code{Chr_Pos} format;
-\item \code{Ref}, \code{Alt} — required when \code{get_REF_ALT = TRUE} and probe-sequence
+\item \code{Chr}, \code{Pos} - required when \code{CloneID} does not follow the \code{Chr_Pos} format;
+\item \code{Ref}, \code{Alt} - required when \code{get_REF_ALT = TRUE} and probe-sequence
 inference is not possible (IUPAC codes, indels, or unfixed allele IDs). When
 \code{get_REF_ALT = TRUE}, \code{botloci_file} is still required unless \code{Ref} and \code{Alt}
 are supplied here.
@@ -61,7 +61,7 @@ samples in the MADC file.
 }
 \description{
 Parses a DArTag \strong{MADC} report and writes a \strong{VCF v4.3} containing per-target
-read counts for the panel’s target loci. This is useful because MADC is not
+read counts for the panel's target loci. This is useful because MADC is not
 widely supported by general-purpose tools, while VCF is.
 }
 \details{
@@ -73,7 +73,7 @@ Convert DArTag MADC target read counts to a VCF
 presence, fixed allele IDs, IUPAC/ambiguous bases, lowercase bases, indels,
 chromosome/position format, all-NA rows/columns, Ref/Alt sequence presence).
 \item Extracts reference and total read counts per sample and target.
-\item Derives \code{AD} (ref,alt) by subtraction (alt = total − ref).
+\item Derives \code{AD} (ref,alt) by subtraction (alt = total - ref).
 \item If \code{get_REF_ALT = TRUE}, recovers REF/ALT bases either from \code{markers_info}
 (when \code{Ref}/\code{Alt} columns are present) or by comparing the Ref/Alt probe
 sequences in the MADC file (with strand correction via \code{botloci_file}).
@@ -86,14 +86,14 @@ Targets with >1 polymorphism between sequences are discarded.
 \itemize{
 \item \code{INFO} fields:
 \itemize{
-\item \code{DP}   — total depth across all samples for the locus
-\item \code{ADS}  — total counts across samples in the order \verb{ref,alt}
+\item \code{DP}   - total depth across all samples for the locus
+\item \code{ADS}  - total counts across samples in the order \verb{ref,alt}
 }
 \item \code{FORMAT} fields (per sample):
 \itemize{
-\item \code{DP}   — total reads (ref + alt)
-\item \code{RA}   — reads supporting the reference allele
-\item \code{AD}   — \code{"ref,alt"} counts
+\item \code{DP}   - total reads (ref + alt)
+\item \code{RA}   - reads supporting the reference allele
+\item \code{AD}   - \code{"ref,alt"} counts
 }
 }
 
@@ -111,21 +111,21 @@ For the remaining checks the required inputs depend on the combination of
 check result and \code{get_REF_ALT}:\tabular{llll}{
    Check \tab Status \tab \code{get_REF_ALT} \tab Required \cr
    \strong{IUPAC codes} \tab detected \tab \code{TRUE} \tab \code{markers_info} with \code{Ref}/\code{Alt} \cr
-    \tab detected \tab \code{FALSE} \tab — \cr
+    \tab detected \tab \code{FALSE} \tab none \cr
     \tab not detected \tab \code{TRUE} \tab \code{botloci_file} \strong{or} \code{markers_info} with \code{Ref}/\code{Alt} \cr
-    \tab not detected \tab \code{FALSE} \tab — \cr
+    \tab not detected \tab \code{FALSE} \tab none \cr
    \strong{Indels} \tab detected \tab \code{TRUE} \tab \code{markers_info} with \code{Ref}/\code{Alt} \cr
-    \tab detected \tab \code{FALSE} \tab — \cr
+    \tab detected \tab \code{FALSE} \tab none \cr
     \tab not detected \tab \code{TRUE} \tab \code{botloci_file} \strong{or} \code{markers_info} with \code{Ref}/\code{Alt} \cr
-    \tab not detected \tab \code{FALSE} \tab — \cr
+    \tab not detected \tab \code{FALSE} \tab none \cr
    \strong{ChromPos} \tab valid \tab \code{TRUE} \tab \code{botloci_file} \strong{or} \code{markers_info} with \code{Ref}/\code{Alt} \cr
-    \tab valid \tab \code{FALSE} \tab — \cr
+    \tab valid \tab \code{FALSE} \tab none \cr
     \tab invalid \tab \code{TRUE} \tab \code{markers_info} with \code{Chr}/\code{Pos}/\code{Ref}/\code{Alt} \strong{or} \code{markers_info} with \code{Chr}/\code{Pos} + \code{botloci_file} \cr
     \tab invalid \tab \code{FALSE} \tab \code{markers_info} with \code{Chr}/\code{Pos} \cr
    \strong{FixAlleleIDs} \tab fixed \tab \code{TRUE} \tab \code{botloci_file} \strong{or} \code{markers_info} with \code{Ref}/\code{Alt} \cr
-    \tab fixed \tab \code{FALSE} \tab — \cr
+    \tab fixed \tab \code{FALSE} \tab none \cr
     \tab not fixed \tab \code{TRUE} \tab \code{markers_info} with \code{Ref}/\code{Alt} \cr
-    \tab not fixed \tab \code{FALSE} \tab — \cr
+    \tab not fixed \tab \code{FALSE} \tab none \cr
 }
 }
 \section{Dependencies}{

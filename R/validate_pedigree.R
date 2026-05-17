@@ -166,7 +166,7 @@ validate_pedigree <- function(pedigree_file, genotypes_file,
     best_female_parent      <- NA_character_
     best_female_parent_pct  <- NA_real_
 
-    ## Founder check — both parents "0" and ID in founders list
+    ## Founder check - both parents "0" and ID in founders list
     if (male_parent_id == "0" && female_parent_id == "0" &&
         prog_id %in% founder_ids) {
       status              <- "FOUNDERS"
@@ -174,7 +174,7 @@ validate_pedigree <- function(pedigree_file, genotypes_file,
 
     } else {
 
-      ## Missing parent(s) — recommendations only, "0"s preserved in pedigree
+      ## Missing parent(s) - recommendations only, "0"s preserved in pedigree
       if (male_parent_id == "0" && female_parent_id == "0") {
         status              <- "MISSING_BOTH_PARENTS"
         correction_decision <- "NONE"
@@ -205,7 +205,7 @@ validate_pedigree <- function(pedigree_file, genotypes_file,
 
       } else {
 
-        ## Both parents present — Mendelian error calculation
+        ## Both parents present - Mendelian error calculation
         progeny_vec       <- genos_mat[prog_id, ]
         male_parent_vec   <- genos_mat[male_parent_id, ]
         female_parent_vec <- genos_mat[female_parent_id, ]

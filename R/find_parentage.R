@@ -15,13 +15,13 @@
 #'   Must include an 'ID' column.
 #' @param method Character. Parentage assignment method. One of:
 #'   \itemize{
-#'     \item \code{"best_male_parent"}  — finds the best male parent for each
+#'     \item \code{"best_male_parent"}  - finds the best male parent for each
 #'       progeny using homozygous mismatch rate.
-#'     \item \code{"best_female_parent"} — finds the best female parent for each
+#'     \item \code{"best_female_parent"} - finds the best female parent for each
 #'       progeny using homozygous mismatch rate.
-#'     \item \code{"best_match"} — finds the single best parent (either sex)
+#'     \item \code{"best_match"} - finds the single best parent (either sex)
 #'       using homozygous mismatch rate.
-#'     \item \code{"best_pair"}  — finds the best male-female parent pair for
+#'     \item \code{"best_pair"}  - finds the best male-female parent pair for
 #'       each progeny using full Mendelian error rate (default).
 #'   }
 #' @param min_markers Integer. Minimum number of non-missing markers required
@@ -235,7 +235,7 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
 
       best_idx <- base::which.min(percent_mismatch)
 
-      # No candidate found — flag LOW_MARKERS and continue
+      # No candidate found - flag LOW_MARKERS and continue
       if (base::length(best_idx) == 0) {
         data.table::set(results_dt, i, "Markers_Tested",    0L)
         data.table::set(results_dt, i, "Assignment_Status", "LOW_MARKERS")
@@ -327,7 +327,7 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
       comparisons      <- comparison_mat[,  j]
       min_mismatch_val <- base::min(percent_mismatch, na.rm = TRUE)
 
-      # No markers overlap at all — flag LOW_MARKERS
+      # No markers overlap at all - flag LOW_MARKERS
       if (base::is.infinite(min_mismatch_val)) {
         data.table::set(results_dt, j, "Markers_Tested",    0L)
         data.table::set(results_dt, j, "Assignment_Status", "LOW_MARKERS")

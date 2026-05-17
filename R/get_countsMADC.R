@@ -9,8 +9,8 @@
 #' Either `madc_file` or `madc_object` must be provided (not both `NULL`).
 #' When `madc_object` is supplied it is passed directly to `get_counts()`,
 #' skipping file I/O. The function constructs:
-#' - `ref_matrix` — per-sample reference allele counts.
-#' - `size_matrix` — per-sample total counts (ref + alt).
+#' - `ref_matrix` - per-sample reference allele counts.
+#' - `size_matrix` - per-sample total counts (ref + alt).
 #'
 #' Markers whose `CloneID` appears only in the `Ref` or only in the `Alt` rows
 #' are removed with a warning. A summary of the proportion of zero-count
@@ -152,9 +152,9 @@ get_countsMADC <- function(madc_file = NULL, madc_object = NULL, collapse_matche
 #'
 #' **Format detection** (applied to file or object alike): the first seven rows
 #' of the first column are inspected:
-#' - **Standard format**: all entries are blank or `"*"` — the first 7 rows are
+#' - **Standard format**: all entries are blank or `"*"` - the first 7 rows are
 #'   treated as DArT placeholder rows and skipped.
-#' - **Fixed-allele-ID format**: no filler rows — data are used as-is.
+#' - **Fixed-allele-ID format**: no filler rows - data are used as-is.
 #'
 #' **`|AltMatch` / `|RefMatch` handling** (controlled by `collapse_matches_counts`):
 #' - `FALSE` (default): these rows are simply discarded.

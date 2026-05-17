@@ -1,3 +1,7 @@
+# BIGr 0.7.2
+
+- Fixed manual text errors
+
 # BIGr 0.7.1
 
 - Updated `check_ped()` to return corrected pedigree data in the result list instead of assigning objects to the global environment

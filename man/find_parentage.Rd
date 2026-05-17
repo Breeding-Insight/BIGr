@@ -33,13 +33,13 @@ Must include an 'ID' column.}
 
 \item{method}{Character. Parentage assignment method. One of:
 \itemize{
-\item \code{"best_male_parent"}  — finds the best male parent for each
+\item \code{"best_male_parent"}  - finds the best male parent for each
 progeny using homozygous mismatch rate.
-\item \code{"best_female_parent"} — finds the best female parent for each
+\item \code{"best_female_parent"} - finds the best female parent for each
 progeny using homozygous mismatch rate.
-\item \code{"best_match"} — finds the single best parent (either sex)
+\item \code{"best_match"} - finds the single best parent (either sex)
 using homozygous mismatch rate.
-\item \code{"best_pair"}  — finds the best male-female parent pair for
+\item \code{"best_pair"}  - finds the best male-female parent pair for
 each progeny using full Mendelian error rate (default).
 }}
 

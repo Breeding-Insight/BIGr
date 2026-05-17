@@ -69,7 +69,7 @@ dosage2vcf <- function(dart.report, dart.counts, ploidy, output.file) {
     '##FORMAT=<ID=MPP,Number=1,Type=Float,Description="Maximum posterior probability for that dosage call from updog">'
   )
 
-  ## Helper functions ---------------------------------------------------------
+  ##
   is_missing_value <- function(x) {
     x_chr <- trimws(as.character(x))
     is.na(x) | x_chr %in% c("", "-", "NA")

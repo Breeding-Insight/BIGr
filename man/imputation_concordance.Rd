@@ -9,55 +9,83 @@ imputation_concordance(
   imputed_genos,
   missing_code = NULL,
   snps_2_exclude = NULL,
-  verbose = FALSE
+  verbose = FALSE,
+  plot = FALSE,
+  print_result = TRUE
 )
 }
 \arguments{
-\item{reference_genos}{A data frame containing reference genotype data, with rows as samples and columns as markers. Dosage format (0, 1, 2) is recommended.}
+\item{reference_genos}{A data frame containing reference genotype data,
+with rows as samples and columns as markers. Must include a column named \code{ID}.}
 
-\item{imputed_genos}{A data frame containing imputed genotype data, with rows as samples and columns as markers. Dosage format (0, 1, 2) is recommended.}
+\item{imputed_genos}{A data frame containing imputed genotype data,
+with rows as samples and columns as markers. Must include a column named \code{ID}.}
 
-\item{missing_code}{An optional value to specify missing data. If provided, loci with this value in either dataset will be excluded from the concordance calculation.}
+\item{missing_code}{Optional value specifying missing data. If provided,
+loci with this value in either dataset will be excluded from the concordance calculation.}
 
-\item{snps_2_exclude}{An optional vector of marker IDs to exclude from the concordance calculation.}
+\item{snps_2_exclude}{Optional vector of marker IDs to exclude from the concordance calculation.}
 
-\item{verbose}{A logical value indicating whether to print a summary of the concordance results. Default is FALSE.}
+\item{verbose}{Logical. If \code{TRUE}, prints summary statistics (minimum, quartiles,
+median, mean, maximum) of concordance percentages.}
+
+\item{plot}{Logical. If \code{TRUE}, produces a bar plot of concordance percentage
+by sample.}
+
+\item{print_result}{Logical. If \code{TRUE} (default), prints the concordance
+results data frame to the console. If \code{FALSE}, results are returned invisibly.}
 }
 \value{
-A list with two elements:
+A data frame with:
 \itemize{
-\item \code{result_df}: A data frame with sample IDs and their concordance percentages.
-\item \code{summary_concordance}: A summary of concordance percentages, including minimum, maximum, mean, and quartiles.
+\item \code{ID}: Sample identifiers shared between the datasets.
+\item \code{Concordance}: Percentage of matching genotypes per sample.
 }
+If \code{print_result = FALSE}, the data frame is returned invisibly.
 }
 \description{
-This function calculates the concordance between imputed and reference genotypes. It assumes that samples are rows and markers are columns.
-It is recommended to use allele dosages (0, 1, 2) but will work with other formats. Missing data in reference or imputed genotypes
-will not be considered for concordance if the \code{missing_code} argument is used. If a specific subset of markers should be excluded,
-it can be provided using the \code{snps_2_exclude} argument.
+This function calculates the concordance between imputed and reference
+genotypes. It assumes that samples are rows and markers are columns.
+Allele dosages (0, 1, 2) are recommended but other numeric formats are supported.
+Missing data in either dataset can be excluded from the concordance calculation
+using the \code{missing_code} argument. Specific markers can be excluded using
+the \code{snps_2_exclude} argument.
 }
 \details{
-The function identifies common samples and markers between the reference and imputed genotype datasets. It calculates the percentage of matching genotypes for each sample, excluding missing data and specified markers. The concordance is reported as a percentage for each sample, along with a summary of the overall concordance distribution.
+The function:
+\enumerate{
+\item Identifies common samples and markers between the datasets.
+\item Optionally excludes specified SNPs.
+\item Removes loci with missing data (if \code{missing_code} is provided).
+\item Computes per-sample concordance as the percentage of matching genotypes.
+}
+
+When \code{plot = TRUE}, a bar plot showing concordance percentage per sample
+is generated using \pkg{ggplot2}.
 }
 \examples{
+ref <- data.frame(
+  ID = c("S1", "S2", "S3"),
+  SNP1 = c(0, 1, 2),
+  SNP2 = c(1, 1, 0),
+  SNP3 = c(2, 5, 1)
+)
 
-# Example Input variables
-ignore_file <- system.file("imputation_ignore.txt", package="BIGr")
-ref_file <- system.file("imputation_reference.txt", package="BIGr")
-test_file <- system.file("imputation_test.txt", package="BIGr")
+test <- data.frame(
+  ID = c("S1", "S2", "S3"),
+  SNP1 = c(0, 0, 2),
+  SNP2 = c(1, 1, 1),
+  SNP3 = c(2, 5, 0)
+)
 
-# Import files
-snps = read.table(ignore_file, header = TRUE)
-ref = read.table(ref_file, header = TRUE)
-test = read.table(test_file, header = TRUE)
+result <- imputation_concordance(
+  reference_genos = ref,
+  imputed_genos = test,
+  snps_2_exclude = "SNP2",
+  missing_code = 5,
+  print_result = FALSE
+)
 
-#Calculations
-result <- imputation_concordance(reference_genos = ref,
-                                 imputed_genos = test,
-                                 snps_2_exclude = snps,
-                                 missing_code = 5,
-                                 verbose = FALSE)
-
-
+result
 
 }

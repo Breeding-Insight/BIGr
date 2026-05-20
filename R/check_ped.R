@@ -93,18 +93,18 @@ check_ped <- function(ped.file,
       dplyr::mutate(row_number = dplyr::row_number(), .before = id)
   }
 
-  #### check 2: repeated IDs with conflicting male_parent/female_parent ####
+  #### check 2: conflicting trios ####
   repeated_ids <- data %>%
     dplyr::group_by(id) %>%
     dplyr::filter(dplyr::n() > 1) %>%
     dplyr::ungroup()
 
-  conflicting_ids <- repeated_ids %>%
+  conflicting_trios_ids <- repeated_ids %>%
     dplyr::group_by(id) %>%
     dplyr::filter(dplyr::n_distinct(male_parent) > 1 | dplyr::n_distinct(female_parent) > 1) %>%
     dplyr::ungroup()
 
-  if (correct_conflicting_trios && nrow(conflicting_ids) > 0) {
+  if (correct_conflicting_trios && nrow(conflicting_trios_ids) > 0) {
     # Set conflicting parents to "0" -- rows become exact duplicates, summarize collapses to one [1]
     data <- data %>%
       dplyr::group_by(id) %>%
@@ -117,7 +117,7 @@ check_ped <- function(ped.file,
       dplyr::select(row_number, id, male_parent, female_parent)
   }
 
-  repeated_ids_report <- conflicting_ids
+  conflicting_trios <- conflicting_trios_ids
 
   #### check 3: missing parents (always fixed) ####
   for (i in seq_len(nrow(data))) {
@@ -225,7 +225,7 @@ check_ped <- function(ped.file,
   #### compile findings ####
   input_ped_report <- list(
     exact_duplicates       = exact_duplicates,
-    conflicting_trios      = repeated_ids_report,
+    conflicting_trios      = conflicting_trios,
     inconsistent_sex_roles = inconsistent_sex_roles,
     missing_parents        = missing_parents,
     dependencies           = data.frame(Dependency = unique(unlist(errors)),
@@ -242,9 +242,9 @@ check_ped <- function(ped.file,
       print(exact_duplicates)
     } else cat("\nNo exact duplicate trios found.\n")
 
-    if (nrow(repeated_ids_report) > 0) {
+    if (nrow(conflicting_trios) > 0) {
       cat("\nConflicting trios detected:\n")
-      print(repeated_ids_report)
+      print(conflicting_trios)
       if (correct_conflicting_trios) {
         cat("  -> parents set to 0 and collapsed to one row in corrected pedigree.\n")
       } else {

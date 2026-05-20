@@ -51,8 +51,7 @@
 #'
 #' @author Josué Chinchilla-Vargas
 #'
-#' @importFrom dplyr %>% group_by filter ungroup distinct mutate summarize first
-#'   bind_rows n_distinct n select row_number
+#' @importFrom dplyr %>% group_by filter ungroup distinct mutate summarize first bind_rows n_distinct n select row_number
 #' @importFrom stats setNames
 #' @importFrom utils read.table write.table zip
 #' @importFrom tools file_path_sans_ext
@@ -60,11 +59,10 @@
 check_ped <- function(ped.file,
                       seed               = NULL,
                       verbose            = TRUE,
-                      correct            = TRUE,
-                      save_zip           = FALSE,
+                      correct            = TRUE,  #add arguments for removing/filtering conflicting ids, repeated ids and founders are always fixed, dependencies are always manual.
+                      save_zip           = FALSE, #remove all save zips, export each report and corrected_pedigree as a list
                       save_corrected_zip = FALSE) {
 
-  #### setup ####
   #### setup ####
   if (!is.null(seed)) set.seed(seed)
   data <- utils::read.table(ped.file, header = TRUE)

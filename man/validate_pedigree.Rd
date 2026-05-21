@@ -26,73 +26,63 @@ with columns: ID, Male_Parent, Female_Parent.}
 \item{genotypes_file}{Character. Path to the genotypes file (TSV/CSV/TXT)
 with an ID column followed by marker columns coded as 0, 1, 2.}
 
-\item{founders_file}{Character, optional. Path to a one-column file
-listing the IDs of founder individuals. Founders with both parents
-coded as 0 are left unchanged with no recommendations. Defaults to NULL.}
+\item{founders_file}{Character, optional. Path to a one-column file listing
+founder IDs. Founders with both parents coded as 0 are left unchanged.
+Defaults to NULL.}
 
-\item{trio_error_threshold}{Numeric. Maximum Mendelian error percentage
-to classify a trio as PASS (default: 5.0). Must be between 0 and 100.}
+\item{trio_error_threshold}{Numeric. Maximum Mendelian error percentage to
+classify a trio as PASS (default: 5.0). Must be between 0 and 100.}
 
-\item{min_markers}{Integer. Minimum number of non-missing markers
-required to evaluate a trio (default: 10).}
+\item{min_markers}{Integer. Minimum non-missing markers required to evaluate
+a trio (default: 10).}
 
 \item{single_parent_error_threshold}{Numeric. Maximum homozygous-marker
-mismatch percentage for a parent to be considered acceptable during
-parent-level evaluation (default: 2.0). Must be between 0 and 100.}
+mismatch percentage for a parent to be considered acceptable
+(default: 2.0). Must be between 0 and 100.}
 
-\item{verbose}{Logical. If TRUE, prints progress messages, a summary
-table, and results to the console (default: TRUE).}
+\item{verbose}{Logical. If TRUE, prints progress, summary, and results to
+the console (default: TRUE).}
 
-\item{write_results}{Logical. If TRUE, writes the validation results to
-output_filename and saves the plot as a .jpg file (default: TRUE).}
+\item{write_results}{Logical. If TRUE, writes results to
+\code{output_filename} and saves the plot as a .jpg (default: TRUE).}
 
-\item{plot_results}{Logical. If TRUE, prints a histogram of Trio Mendelian
-Error percentages with a threshold line (default: TRUE). If write_results
-is also TRUE, the plot is additionally saved as a .jpg file.}
+\item{plot_results}{Logical. If TRUE, prints a histogram of trio Mendelian
+error percentages with a threshold line. Saved as .jpg when
+\code{write_results = TRUE} (default: TRUE).}
 
-\item{na_string}{Character. String for missing values in the output file.
+\item{na_string}{Character. Missing value string in the output file.
 Use \code{"NA"} or \code{""} (default: \code{"NA"}).}
 
 \item{output_filename}{Character. Path/name of the output results file
-(default: "__validation_report.txt"). The plot will be saved using the
-same base name with a .jpg extension.}
+(default: \code{"__validation_report.txt"}). The plot uses the same base
+name with a .jpg extension.}
 
-\item{corrected_pedigree_filename}{Character. Path/name of the output file
-for the corrected pedigree (default: "corrected_pedigree.txt"). Set to
-NULL to suppress writing the corrected pedigree.}
+\item{corrected_pedigree_filename}{Character. Path/name for the corrected
+pedigree output (default: \code{"corrected_pedigree.txt"}). Set to NULL
+to suppress writing.}
 }
 \value{
-A data.table (returned invisibly) with one row per trio and
-the following columns:
+A named list (returned invisibly) with the following elements:
 \describe{
-\item{ID}{Individual ID.}
-\item{Orig_Male_Parent}{Declared male parent ID.}
-\item{Orig_Female_Parent}{Declared female parent ID.}
-\item{Trio_Mendelian_Error_Pct}{Trio-level Mendelian error percentage.}
-\item{Trio_Markers_Tested}{Number of markers with non-missing genotypes.}
-\item{Status}{One of PASS, FAIL, LOW_MARKERS, NO_DATA, FOUNDERS,
-MISSING_MALE_PARENT, MISSING_FEMALE_PARENT, MISSING_BOTH_PARENTS,
-or NO_GENOTYPE_DATA.}
-\item{Recommended_Correction}{One of NONE, KEEP_BOTH,
-REMOVE_MALE_PARENT, REMOVE_FEMALE_PARENT, REMOVE_BOTH,
-LOW_MARKERS_KEEP_BOTH, LOW_MARKERS_REMOVE_MALE_PARENT,
-LOW_MARKERS_REMOVE_FEMALE_PARENT, LOW_MARKERS_REMOVE_BOTH.}
-\item{Male_Parent_Hom_Error_Pct}{Male parent homozygous-marker mismatch percentage.}
-\item{Female_Parent_Hom_Error_Pct}{Female parent homozygous-marker mismatch percentage.}
-\item{Best_Male_Candidate}{Best-matching male parent candidate ID.}
-\item{Best_Male_Candidate_Error_Pct}{Homozygous mismatch percentage for the best male candidate.}
-\item{Best_Female_Candidate}{Best-matching female parent candidate ID.}
-\item{Best_Female_Candidate_Error_Pct}{Homozygous mismatch percentage for the best female candidate.}
+\item{pass}{Trios that passed the Mendelian error threshold.}
+\item{fail}{Trios that failed the Mendelian error threshold.}
+\item{low_markers}{Trios with insufficient markers for evaluation.}
+\item{no_data}{Trios with no overlapping genotype data.}
+\item{no_genotype_data}{Trios absent from the genotype file.}
+\item{founders}{Trios identified as founders.}
+\item{missing_parents}{Trios with one or both parents coded as 0 (non-founders).}
+\item{full_results}{Complete data.table with all trios and all output columns.}
+\item{corrected_pedigree}{Pedigree table after applying recommended corrections.}
 }
 }
 \description{
-Validates parent-offspring trios by calculating Mendelian error rates from
-SNP genotype data. Identifies incorrect parentage assignments and suggests
-best-matching replacements. If a list of founders is supplied, trios that
-are declared founders (both parents coded as 0) are preserved unchanged
-with no recommendations. Trios removed due to missing genotype data are
-retained in the output with a NO_GENOTYPE_DATA status.
+Validates parent-offspring trios against SNP genotype data using Mendelian
+error rates. Identifies incorrect parentage assignments, suggests
+best-matching replacements, and outputs a corrected pedigree. Founder trios
+(both parents coded as 0) are preserved unchanged if a founders file is
+supplied. Trios absent from the genotype file are retained as
+\code{NO_GENOTYPE_DATA}.
 }
 \author{
-Josué Chinchilla-Vargas
+Josue Chinchilla-Vargas
 }

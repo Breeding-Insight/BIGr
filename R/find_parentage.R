@@ -1,51 +1,44 @@
 #' Find Parentage Assignments for Progeny
 #'
-#' Assigns the most likely parent(s) to each progeny individual based on
-#' genotypic data using Mendelian error rates or homozygous mismatch rates.
+#' Assigns the most likely parent(s) to each progeny from SNP genotype data
+#' using Mendelian error rates or homozygous mismatch rates. Parents or progeny
+#' absent from the genotype file are removed with a warning.
 #'
-#' @param genotypes_file Path to a TSV/CSV/TXT file containing genotype data.
-#'   Must include an 'ID' column followed by marker columns coded as 0, 1, 2
-#'   (allele dosage).
-#' @param parents_file Path to a TSV/CSV/TXT file listing candidate parent IDs.
-#'   Must include an 'ID' column. An optional 'Sex' column ('M', 'F', or 'A')
-#'   determines parent roles. If absent, all parents are treated as ambiguous.
-#' @param progeny_file Path to a TSV/CSV/TXT file listing progeny IDs.
-#'   Must include an 'ID' column.
+#' @param genotypes_file Path to a TSV/CSV/TXT file with an 'ID' column
+#'   followed by marker columns coded as 0, 1, 2 (allele dosage).
+#' @param parents_file Path to a TSV/CSV/TXT file with an 'ID' column and an
+#'   optional 'Sex' column ('M', 'F', or 'A'). If absent, all parents are
+#'   treated as ambiguous.
+#' @param progeny_file Path to a TSV/CSV/TXT file with an 'ID' column.
 #' @param method Character. One of \code{"best_male_parent"},
 #'   \code{"best_female_parent"}, \code{"best_match"}, or
 #'   \code{"best_pair"} (default). See Details.
-#' @param min_markers Integer. Minimum markers required for a valid assignment.
-#'   Fewer markers flags \code{LOW_MARKERS} (default: \code{10}).
-#' @param error_threshold Numeric. Maximum mismatch percentage for a confident
-#'   assignment. Exceeded values flag \code{HIGH_ERROR} (default: \code{5.0}).
-#'   Must be between 0 and 100.
-#' @param show_ties Logical. If \code{TRUE}, tied best pairs are reported as
-#'   additional suffix columns (e.g. \code{Male_Parent_2}) when
-#'   \code{method = "best_pair"}. Default is \code{TRUE}.
+#' @param min_markers Integer. Minimum markers required; fewer flags
+#'   \code{LOW_MARKERS} (default: \code{10}).
+#' @param error_threshold Numeric. Maximum mismatch percentage; exceeded values
+#'   flag \code{HIGH_ERROR} (default: \code{5.0}). Must be between 0 and 100.
+#' @param show_ties Logical. If \code{TRUE}, tied best pairs are appended as
+#'   suffix columns (e.g. \code{Male_Parent_2}) for \code{"best_pair"}.
+#'   Default is \code{TRUE}.
 #' @param allow_selfing Logical. If \code{FALSE}, pairs with identical male and
 #'   female parent IDs are excluded. Default is \code{TRUE}.
-#' @param verbose Logical. If \code{TRUE}, prints progress, summary, and
-#'   results to the console. Default is \code{TRUE}.
+#' @param verbose Logical. If \code{TRUE}, prints progress and summary to the
+#'   console. Default is \code{TRUE}.
 #' @param write_txt Logical. If \code{TRUE}, writes results to
-#'   \code{output_filename}. The plot will be saved using the same base name
-#'   with a .jpg extension. Default is \code{TRUE}.
-#' @param output_filename Character. Path/name of the output results file
-#'   (default: \code{"parentage_testing_results.txt"}). The plot will be saved
-#'   using the same base name with a .jpg extension.
-#' @param na_string Character. String for missing values in output file.
+#'   \code{parentage_testing_results.txt}. Default is \code{TRUE}.
+#' @param na_string Character. Missing value string in output.
 #'   Use \code{"NA"} or \code{""} (default: \code{"NA"}).
 #' @param plot_results Logical. If \code{TRUE}, plots the Mendelian error
-#'   distribution colored by assignment status. Requires \code{ggplot2}.
-#'   Plot is saved as \code{.jpg} when \code{write_txt = TRUE}.
-#'   Default is \code{TRUE}.
+#'   distribution colored by status. Requires \code{ggplot2}. Saved as
+#'   \code{.jpg} when \code{write_txt = TRUE}. Default is \code{TRUE}.
 #'
-#' @return A \code{data.table} with one row per progeny. Base columns are
-#'   \code{Progeny}, \code{Male_Parent} (or \code{Best_Match}),
-#'   \code{Female_Parent}, \code{Mendelian_Error_Pct}, \code{Markers_Tested},
-#'   and \code{Assignment_Status} (\code{PASS}, \code{HIGH_ERROR}, or
-#'   \code{LOW_MARKERS}). Tie suffix columns (\code{Male_Parent_2}, etc.) are
-#'   appended when \code{show_ties = TRUE} and ties remain after tie-breaking.
-#'   Returned invisibly when \code{verbose = TRUE}.
+#' @return A named list (returned invisibly) with the following elements:
+#'   \describe{
+#'     \item{pass}{Progeny with a confident parentage assignment.}
+#'     \item{high_error}{Progeny whose best assignment exceeds the error threshold.}
+#'     \item{low_markers}{Progeny with insufficient markers for a valid assignment.}
+#'     \item{full_results}{Complete data.table with all progeny and all output columns.}
+#'   }
 #'
 #' @details
 #' A homozygous-only matrix is pre-computed once and shared across
@@ -56,14 +49,8 @@
 #' For \code{"best_pair"}, full Mendelian inheritance rules are applied across
 #' all marker and pair combinations using vectorised \code{vapply} calls,
 #' producing \code{n_pairs x n_progeny} mismatch and comparison matrices.
-#'
-#' Ties on mismatch rate are broken by maximum markers tested. Remaining ties
-#' are reported as suffix columns when \code{show_ties = TRUE}. Base columns
-#' are always populated with the top result.
-#'
-#' Parents or progeny absent from \code{genotypes_file} are removed with a
-#' warning. Progeny below \code{min_markers} are flagged \code{LOW_MARKERS};
-#' those exceeding \code{error_threshold} are flagged \code{HIGH_ERROR}.
+#' Ties are broken by maximum markers tested; remaining ties are appended as
+#' suffix columns when \code{show_ties = TRUE}.
 #'
 #' @examples
 #' \dontrun{
@@ -90,9 +77,10 @@
 #' )
 #' }
 #'
-#' @author Josué Chinchilla-Vargas
+#' @author Josue Chinchilla-Vargas
 #'
 #' @importFrom data.table fread fwrite copy CJ rbindlist set data.table as.data.table
+#' @importFrom tools file_path_sans_ext
 #' @export
 find_parentage <- function(genotypes_file, parents_file, progeny_file,
                            method          = "best_pair",
@@ -102,9 +90,12 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
                            allow_selfing   = TRUE,
                            verbose         = TRUE,
                            write_txt       = TRUE,
-                           output_filename = "parentage_testing_results.txt",
                            na_string       = "NA",
                            plot_results    = TRUE) {
+
+  ## ---- silence R CMD check NOTEs for data.table / ggplot2 NSE columns ----
+  ID <- Sex <- Male_Parent <- Female_Parent <- NULL
+  Mendelian_Error_Pct <- Plot_Status <- Assignment_Status <- NULL
 
   #### Input Validation and Data Loading ####
   allowed_methods <- c("best_male_parent", "best_female_parent", "best_match", "best_pair")
@@ -157,20 +148,14 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
     stop("No valid progeny candidates remain after filtering.")
 
   #### Pre-compute genotype matrices once (shared across all methods) ####
-
-  # Full genotype matrix used by best_pair
-  genos_mat <- base::as.matrix(genos, rownames = "ID")
-
-  # Homozygous-only matrix (het markers set to NA) used by hom methods
+  genos_mat   <- base::as.matrix(genos, rownames = "ID")
   genos_hom   <- data.table::copy(genos)
   marker_cols <- base::setdiff(base::names(genos_hom), "ID")
   for (col in marker_cols)
     genos_hom[base::get(col) == 1, (col) := NA_integer_]
   genos_hom_mat <- base::as.matrix(genos_hom, rownames = "ID")
 
-  #### Assignment_Status from markers and error rate ####
-
-  # Returns LOW_MARKERS, HIGH_ERROR, or PASS
+  #### Assignment_Status helper ####
   assign_status <- function(markers, error_pct) {
     base::ifelse(markers < min_markers, "LOW_MARKERS",
                  base::ifelse(error_pct > error_threshold, "HIGH_ERROR", "PASS"))
@@ -183,12 +168,8 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
                                "best_female_parent" = female_parent_candidates$ID,
                                "best_match"         = base::union(male_parent_candidates$ID,
                                                                   female_parent_candidates$ID))
-
-    # Subset pre-computed homozygous matrix for relevant parents and progeny
     parent_genos  <- genos_hom_mat[base::rownames(genos_hom_mat) %in% parent_ids,           , drop = FALSE]
     progeny_genos <- genos_hom_mat[base::rownames(genos_hom_mat) %in% progeny_candidates$ID, , drop = FALSE]
-
-    # Pre-allocate results data.table; fill by reference with set()
     n_progeny  <- base::nrow(progeny_genos)
     results_dt <- data.table::data.table(
       Progeny             = base::rownames(progeny_genos),
@@ -197,26 +178,20 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
       Markers_Tested      = NA_integer_,
       Assignment_Status   = NA_character_
     )
-
     for (i in base::seq_len(n_progeny)) {
       progeny_vec      <- progeny_genos[i, ]
       mismatches       <- base::rowSums(parent_genos != progeny_vec, na.rm = TRUE)
       comparisons      <- base::rowSums(!base::is.na(parent_genos) & !base::is.na(progeny_vec))
       percent_mismatch <- (mismatches / comparisons) * 100
       percent_mismatch[base::is.nan(percent_mismatch)] <- NA
-
       best_idx <- base::which.min(percent_mismatch)
-
-      # No candidate found — flag LOW_MARKERS and continue
       if (base::length(best_idx) == 0) {
         data.table::set(results_dt, i, "Markers_Tested",    0L)
         data.table::set(results_dt, i, "Assignment_Status", "LOW_MARKERS")
         next
       }
-
       best_markers <- comparisons[best_idx]
       best_error   <- base::round(percent_mismatch[best_idx], 2)
-
       data.table::set(results_dt, i, "Best_Match",          base::rownames(parent_genos)[best_idx])
       data.table::set(results_dt, i, "Mendelian_Error_Pct", best_error)
       data.table::set(results_dt, i, "Markers_Tested",      base::as.integer(best_markers))
@@ -235,17 +210,13 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
     }
     if (base::nrow(parent_pairs) == 0) stop("No valid parent pairs to test.")
 
-    # Pre-extract parent genotype row blocks for vectorised operations
     male_parent_genos_mat   <- genos_mat[parent_pairs$Male_Parent,   , drop = FALSE]
     female_parent_genos_mat <- genos_mat[parent_pairs$Female_Parent, , drop = FALSE]
-
-    # Subset full genotype matrix to progeny only
     progeny_ids <- progeny_candidates$ID
     progeny_mat <- genos_mat[progeny_ids, , drop = FALSE]
     n_progeny   <- base::nrow(progeny_mat)
     n_pairs     <- base::nrow(parent_pairs)
 
-    # Wrapped in matrix() to handle the n_pairs = 1 edge case
     mismatch_mat <- base::matrix(
       base::vapply(base::seq_len(n_progeny), function(j) {
         progeny_vec <- progeny_mat[j, ]
@@ -264,7 +235,6 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
       nrow = n_pairs, ncol = n_progeny
     )
 
-    # Wrapped in matrix() to handle the n_pairs = 1 edge case
     comparison_mat <- base::matrix(
       base::vapply(base::seq_len(n_progeny), function(j) {
         progeny_vec <- progeny_mat[j, ]
@@ -275,11 +245,9 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
       nrow = n_pairs, ncol = n_progeny
     )
 
-    # Percent mismatch matrix: n_pairs x n_progeny
     pct_mismatch_mat <- (mismatch_mat / comparison_mat) * 100
     pct_mismatch_mat[base::is.nan(pct_mismatch_mat)] <- NA
 
-    # Pre-allocate base results data.table; tie columns added dynamically
     results_dt <- data.table::data.table(
       Progeny             = progeny_ids,
       Male_Parent         = NA_character_,
@@ -289,7 +257,6 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
       Assignment_Status   = NA_character_
     )
 
-    # Per-progeny result extraction from pre-computed matrices
     results_list <- base::vector("list", n_progeny)
     for (j in base::seq_len(n_progeny)) {
       prog_id          <- progeny_ids[j]
@@ -297,7 +264,6 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
       comparisons      <- comparison_mat[,  j]
       min_mismatch_val <- base::min(percent_mismatch, na.rm = TRUE)
 
-      # No markers overlap at all — flag LOW_MARKERS and continue
       if (base::is.infinite(min_mismatch_val)) {
         data.table::set(results_dt, j, "Markers_Tested",    0L)
         data.table::set(results_dt, j, "Assignment_Status", "LOW_MARKERS")
@@ -305,8 +271,6 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
       }
 
       best_indices <- base::which(percent_mismatch == min_mismatch_val)
-
-      # Tie-break: prefer pair(s) with the most markers tested
       if (base::length(best_indices) > 1) {
         best_markers_per_pair <- comparisons[best_indices]
         max_markers           <- base::max(best_markers_per_pair)
@@ -326,15 +290,12 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
       num_to_report <- base::min(base::nrow(best_pairs),
                                  if (show_ties) base::nrow(best_pairs) else 1)
 
-      # Always populate base columns with the top result
       data.table::set(results_dt, j, "Male_Parent",         best_pairs$Male_Parent[1])
       data.table::set(results_dt, j, "Female_Parent",       best_pairs$Female_Parent[1])
       data.table::set(results_dt, j, "Mendelian_Error_Pct", base::sprintf("%.2f", min_mismatch_val))
       data.table::set(results_dt, j, "Markers_Tested",      base::as.integer(best_markers))
       data.table::set(results_dt, j, "Assignment_Status",   a_status)
 
-      # If ties remain after tie-breaking and show_ties is TRUE,
-      # store tie details for later column binding
       if (show_ties && num_to_report > 1) {
         tie_row <- base::list(Progeny = prog_id)
         for (k in base::seq(2, num_to_report)) {
@@ -347,7 +308,6 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
       }
     }
 
-    # Merge any tie suffix columns onto the pre-allocated base table
     tie_rows <- data.table::rbindlist(
       base::Filter(Negate(base::is.null), results_list),
       fill      = TRUE,
@@ -355,41 +315,66 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
     )
     if (base::nrow(tie_rows) > 0) {
       final_df <- merge(results_dt, tie_rows, by = "Progeny", all.x = TRUE)
-
-      char_cols <- base::names(final_df)[
-        base::vapply(final_df, base::is.character, logical(1))
-      ]
-      for (col in char_cols) {
-        empty_idx <- which(final_df[[col]] == "")
-        if (base::length(empty_idx) > 0) {
-          data.table::set(final_df, empty_idx, col, NA_character_)
-        }
-      }
+      for (col in base::names(final_df))
+        data.table::set(final_df, which(final_df[[col]] == ""), col, NA_character_)
     } else {
       final_df <- results_dt
     }
   }
 
-  #### Summary ####
+  #### Compile named list (mirrors check_ped structure) ####
+  output_list <- list(
+    pass         = final_df[Assignment_Status == "PASS"],
+    high_error   = final_df[Assignment_Status == "HIGH_ERROR"],
+    low_markers  = final_df[Assignment_Status == "LOW_MARKERS"],
+    full_results = final_df
+  )
+
+  #### Verbose output (mirrors check_ped reporting style) ####
   if (verbose) {
-    total    <- base::nrow(final_df)
-    a_counts <- base::table(final_df$Assignment_Status)
-    base::cat("\n--- Parentage Assignment Summary ---\n")
-    base::cat("Total progeny evaluated:", total, "\n")
-    for (s in base::names(a_counts))
-      base::cat(base::sprintf("  %-14s: %d (%.1f%%)\n", s,
-                              a_counts[s], (a_counts[s] / total) * 100))
-    base::cat("Min markers threshold :", min_markers,     "\n")
-    base::cat("Error threshold       :", error_threshold, "%\n\n")
+    total_progeny <- base::nrow(final_df)
+    base::cat("\n=== Parentage Assignment Report ===\n")
+    base::cat("\nTotal progeny evaluated:", total_progeny, "\n")
+    base::cat("Method:", method, "  |  ",
+              "Error threshold:", error_threshold, "%  |  ",
+              "Minimum markers:", min_markers, "\n")
+
+    n_pass <- base::nrow(output_list$pass)
+    if (n_pass > 0) {
+      base::cat(base::sprintf("\n%d progeny PASSED (%.1f%%).\n",
+                              n_pass, (n_pass / total_progeny) * 100))
+    } else {
+      base::cat("\nNo progeny passed.\n")
+    }
+
+    n_high <- base::nrow(output_list$high_error)
+    if (n_high > 0) {
+      base::cat(base::sprintf("\n%d progeny flagged HIGH_ERROR (%.1f%%):\n",
+                              n_high, (n_high / total_progeny) * 100))
+      base::print(output_list$high_error)
+    } else {
+      base::cat("\nNo progeny flagged for high error.\n")
+    }
+
+    n_low <- base::nrow(output_list$low_markers)
+    if (n_low > 0) {
+      base::cat(base::sprintf("\n%d progeny flagged LOW_MARKERS (%.1f%%):\n",
+                              n_low, (n_low / total_progeny) * 100))
+      base::print(output_list$low_markers)
+    } else {
+      base::cat("\nNo progeny flagged for low marker count.\n")
+    }
+
+    base::cat("\nFull results are included in the returned list as $full_results.\n")
   }
 
-  #### Output ####
-
+  #### Write results ####
   if (write_txt) {
+    output_filename <- "parentage_testing_results.txt"
     tryCatch({
-      data.table::fwrite(final_df, file = output_filename, sep = "\t", quote = FALSE,
-                         na = na_string)
-      if (verbose) base::cat("Results successfully written to:", output_filename, "\n")
+      data.table::fwrite(final_df, file = output_filename, sep = "\t",
+                         quote = FALSE, na = na_string)
+      if (verbose) base::cat("Results written to:", output_filename, "\n")
     }, error = function(e) {
       warning("Could not write results to file. Error: ", e$message, call. = FALSE)
     })
@@ -402,12 +387,15 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
     } else {
       plot_df <- final_df[!is.na(final_df$Mendelian_Error_Pct)]
       plot_df$Mendelian_Error_Pct <- base::as.numeric(plot_df$Mendelian_Error_Pct)
-
-      plot_df$Plot_Status <- dplyr::case_when(
-        plot_df$Assignment_Status == "PASS"        ~ "PASS",
-        plot_df$Assignment_Status == "HIGH_ERROR"  ~ "HIGH_ERROR",
-        plot_df$Assignment_Status == "LOW_MARKERS" ~ "LOW_MARKERS",
-        TRUE                                       ~ "OTHER"
+      plot_df$Plot_Status <- base::ifelse(
+        plot_df$Assignment_Status == "PASS",        "PASS",
+        base::ifelse(
+          plot_df$Assignment_Status == "HIGH_ERROR",  "HIGH_ERROR",
+          base::ifelse(
+            plot_df$Assignment_Status == "LOW_MARKERS", "LOW_MARKERS",
+            "OTHER"
+          )
+        )
       )
 
       n_total <- base::nrow(plot_df)
@@ -427,28 +415,19 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
         ggplot2::aes(x = Mendelian_Error_Pct, fill = Plot_Status)
       ) +
         ggplot2::geom_histogram(binwidth = 1, color = "white", alpha = 0.9) +
-        ggplot2::geom_vline(
-          xintercept = error_threshold,
-          linetype   = "dashed",
-          color      = "black",
-          linewidth  = 1
-        ) +
+        ggplot2::geom_vline(xintercept = error_threshold,
+                            linetype = "dashed", color = "black", linewidth = 1) +
         ggplot2::scale_x_continuous(breaks = seq(0, 100, by = 5)) +
-
-        ggplot2::scale_y_continuous(breaks = scales::pretty_breaks()) +
+        ggplot2::scale_y_continuous(breaks = seq(0, 10000, by = 5)) +
         ggplot2::scale_fill_manual(
-          values = c(
-            "PASS"        = "#339900",
-            "HIGH_ERROR"  = "#cc3333",
-            "LOW_MARKERS" = "#F1C40F",
-            "OTHER"       = "#BDC3C7"
-          ),
-          labels = c(
-            "PASS"        = "Pass",
-            "HIGH_ERROR"  = "High Error",
-            "LOW_MARKERS" = "Low Markers",
-            "OTHER"       = "Other"
-          )
+          values = c("PASS"        = "#339900",
+                     "HIGH_ERROR"  = "#cc3333",
+                     "LOW_MARKERS" = "#F1C40F",
+                     "OTHER"       = "#BDC3C7"),
+          labels = c("PASS"        = "Pass",
+                     "HIGH_ERROR"  = "High Error",
+                     "LOW_MARKERS" = "Low Markers",
+                     "OTHER"       = "Other")
         ) +
         ggplot2::labs(
           title    = "Parentage Mendelian Error Distribution",
@@ -463,8 +442,7 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
       base::print(p)
 
       if (write_txt) {
-
-        plot_filename <- paste0(tools::file_path_sans_ext(output_filename), ".jpg")
+        plot_filename <- paste0(tools::file_path_sans_ext("parentage_testing_results.txt"), ".jpg")
         tryCatch({
           ggplot2::ggsave(plot_filename, plot = p,
                           device = "jpeg", width = 10, height = 6, dpi = 300)
@@ -476,11 +454,5 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
     }
   }
 
-  if (verbose) {
-    base::cat("\n--- Parentage Assignment Results ---\n")
-    base::print(final_df)
-    return(base::invisible(final_df))
-  } else {
-    return(final_df)
-  }
+  return(base::invisible(output_list))
 }

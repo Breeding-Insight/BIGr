@@ -1,12 +1,9 @@
-#' Check a pedigree file for accuracy and report and correct common errors
+#' Check and Correct Common Pedigree Errors
 #'
-#' Reads a 3-column pedigree file (tab-separated, columns id, male_parent,
-#' female_parent in any order) and performs quality checks, optionally
-#' correcting detected errors.
-#'
-#' Exact duplicate rows and missing parents are always corrected.
-#' Conflicting trios and inconsistent sex roles are corrected when their
-#' respective arguments are TRUE. Cycles and dependencies are always
+#' Reads a 3-column pedigree file (id, male_parent, female_parent) and performs
+#' quality checks, optionally correcting detected errors. Exact duplicates and
+#' missing parents are always corrected. Conflicting trios and inconsistent sex
+#' roles are corrected when their respective arguments are TRUE. Cycles are
 #' reported only and must be resolved manually.
 #'
 #' @param ped.file Path to the pedigree text file.
@@ -37,6 +34,8 @@
 #'
 #' conflicting_sex_ids <- ped_errors$inconsistent_sex_roles$id
 #' print(conflicting_sex_ids)
+#'
+#' @author Josue Chinchilla-Vargas
 #'
 #' @importFrom dplyr %>% mutate filter group_by ungroup summarize distinct bind_rows select first n n_distinct if_else row_number
 #' @importFrom stats setNames

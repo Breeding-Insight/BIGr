@@ -19,7 +19,7 @@
 #' \describe{
 #'   \item{exact_duplicates}{Exact duplicate rows found in the input.}
 #'   \item{conflicting_trios}{IDs with conflicting male_parent or female_parent assignments.}
-#'   \item{inconsistent_sex_roles}{IDs appearing as both male_parent and female_parent.}
+#'   \item{inconsistent_sex_roles}{Rows where a conflicting ID appears as male_parent or female_parent.}
 #'   \item{missing_parents}{Parent IDs absent from id, added as founders.}
 #'   \item{dependencies}{Cycles detected in the pedigree. Must be resolved manually.}
 #'   \item{corrected_pedigree}{Corrected pedigree table.}
@@ -32,7 +32,11 @@
 #' ped_errors$inconsistent_sex_roles
 #' ped_errors$corrected_pedigree
 #'
-#' conflicting_sex_ids <- ped_errors$inconsistent_sex_roles$id
+#' # Identify the conflicting IDs from the parent columns
+#' conflicting_sex_ids <- unique(c(
+#'   ped_errors$inconsistent_sex_roles$male_parent,
+#'   ped_errors$inconsistent_sex_roles$female_parent
+#' ))
 #' print(conflicting_sex_ids)
 #'
 #' @author Josue Chinchilla-Vargas
@@ -50,14 +54,11 @@ check_ped <- function(ped.file,
   #### setup ####
   if (!is.null(seed)) set.seed(seed)
 
-  data <- utils::read.table(ped.file, header = TRUE) %>%
-    dplyr::mutate(
-      id            = as.character(id),
-      male_parent   = as.character(male_parent),
-      female_parent = as.character(female_parent)
-    )
+  # read inputs first, then normalize column names to lowercase
+  data <- utils::read.table(ped.file, header = TRUE)
+  names(data) <- tolower(names(data))
 
-  # Validate required column names before any processing
+  # validate required columns after normalization
   required_cols <- c("id", "male_parent", "female_parent")
   missing_cols  <- setdiff(required_cols, colnames(data))
   if (length(missing_cols) > 0) {
@@ -68,7 +69,17 @@ check_ped <- function(ped.file,
     )
   }
 
-  # Add row numbers before any processing so all reports reference original rows [1]
+  # reorder so required columns always come first regardless of column order in the input file
+  extra_cols <- setdiff(names(data), required_cols)
+  data       <- data[, c(required_cols, extra_cols)]
+
+  data <- data %>%
+    dplyr::mutate(
+      id            = as.character(id),
+      male_parent   = as.character(male_parent),
+      female_parent = as.character(female_parent)
+    )
+
   data <- data %>% dplyr::mutate(row_number = dplyr::row_number(), .before = id)
 
   errors          <- list()
@@ -104,7 +115,6 @@ check_ped <- function(ped.file,
     dplyr::ungroup()
 
   if (correct_conflicting_trios && nrow(conflicting_trios_ids) > 0) {
-    # Set conflicting parents to "0" -- rows become exact duplicates, summarize collapses to one [1]
     data <- data %>%
       dplyr::group_by(id) %>%
       dplyr::summarize(
@@ -155,11 +165,14 @@ check_ped <- function(ped.file,
   male_ids            <- unique(data$male_parent[data$male_parent   != "0"])
   female_ids          <- unique(data$female_parent[data$female_parent != "0"])
   conflicting_sex_ids <- intersect(male_ids, female_ids)
-  inconsistent_sex_roles <- data %>% dplyr::filter(id %in% conflicting_sex_ids)
+
+  # FIX 4: return the rows where the conflicting ID appears AS A PARENT
+  # (not the row where it is the subject) — this shows the actual contradiction
+  inconsistent_sex_roles <- data %>%
+    dplyr::filter(male_parent %in% conflicting_sex_ids |
+                    female_parent %in% conflicting_sex_ids)
 
   if (correct_inconsistent_sex_roles && length(conflicting_sex_ids) > 0) {
-    # Zero out male_parent/female_parent wherever a conflicting ID appears,
-    # then distinct() removes any rows that became exact duplicates [1]
     data <- data %>%
       dplyr::mutate(
         male_parent   = dplyr::if_else(male_parent   %in% conflicting_sex_ids, "0", male_parent),
@@ -227,7 +240,7 @@ check_ped <- function(ped.file,
     conflicting_trios      = conflicting_trios,
     inconsistent_sex_roles = inconsistent_sex_roles,
     missing_parents        = missing_parents,
-    dependencies           = data.frame(Dependency = unique(unlist(errors)),
+    dependencies           = data.frame(dependency = unique(unlist(errors)),
                                         stringsAsFactors = FALSE),
     corrected_pedigree     = data %>% dplyr::select(-row_number)
   )

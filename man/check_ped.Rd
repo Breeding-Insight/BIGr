@@ -31,7 +31,7 @@ An invisible named list of data frames:
 \describe{
 \item{exact_duplicates}{Exact duplicate rows found in the input.}
 \item{conflicting_trios}{IDs with conflicting male_parent or female_parent assignments.}
-\item{inconsistent_sex_roles}{IDs appearing as both male_parent and female_parent.}
+\item{inconsistent_sex_roles}{Rows where a conflicting ID appears as male_parent or female_parent.}
 \item{missing_parents}{Parent IDs absent from id, added as founders.}
 \item{dependencies}{Cycles detected in the pedigree. Must be resolved manually.}
 \item{corrected_pedigree}{Corrected pedigree table.}
@@ -51,7 +51,11 @@ ped_errors <- check_ped(ped.file = ped_file, seed = 101919, verbose = FALSE)
 ped_errors$inconsistent_sex_roles
 ped_errors$corrected_pedigree
 
-conflicting_sex_ids <- ped_errors$inconsistent_sex_roles$id
+# Identify the conflicting IDs from the parent columns
+conflicting_sex_ids <- unique(c(
+  ped_errors$inconsistent_sex_roles$male_parent,
+  ped_errors$inconsistent_sex_roles$female_parent
+))
 print(conflicting_sex_ids)
 
 }

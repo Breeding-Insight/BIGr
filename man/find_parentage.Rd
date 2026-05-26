@@ -14,33 +14,31 @@ find_parentage(
   show_ties = TRUE,
   allow_selfing = TRUE,
   verbose = TRUE,
-  write_txt = TRUE,
-  na_string = "NA",
   plot_results = TRUE
 )
 }
 \arguments{
-\item{genotypes_file}{Path to a TSV/CSV/TXT file with an 'ID' column
+\item{genotypes_file}{Path to a TSV/CSV/TXT file with an 'id' column
 followed by marker columns coded as 0, 1, 2 (allele dosage).}
 
-\item{parents_file}{Path to a TSV/CSV/TXT file with an 'ID' column and an
-optional 'Sex' column ('M', 'F', or 'A'). If absent, all parents are
+\item{parents_file}{Path to a TSV/CSV/TXT file with an 'id' column and an
+optional 'sex' column ('M', 'F', or 'A'). If absent, all parents are
 treated as ambiguous.}
 
-\item{progeny_file}{Path to a TSV/CSV/TXT file with an 'ID' column.}
+\item{progeny_file}{Path to a TSV/CSV/TXT file with an 'id' column.}
 
 \item{method}{Character. One of \code{"best_male_parent"},
 \code{"best_female_parent"}, \code{"best_match"}, or
 \code{"best_pair"} (default). See Details.}
 
 \item{min_markers}{Integer. Minimum markers required; fewer flags
-\code{LOW_MARKERS} (default: \code{10}).}
+\code{low_markers} (default: \code{10}).}
 
 \item{error_threshold}{Numeric. Maximum mismatch percentage; exceeded values
-flag \code{HIGH_ERROR} (default: \code{5.0}). Must be between 0 and 100.}
+flag \code{high_error} (default: \code{5.0}). Must be between 0 and 100.}
 
 \item{show_ties}{Logical. If \code{TRUE}, tied best pairs are appended as
-suffix columns (e.g. \code{Male_Parent_2}) for \code{"best_pair"}.
+suffix columns (e.g. \code{male_parent_2}) for \code{"best_pair"}.
 Default is \code{TRUE}.}
 
 \item{allow_selfing}{Logical. If \code{FALSE}, pairs with identical male and
@@ -49,15 +47,8 @@ female parent IDs are excluded. Default is \code{TRUE}.}
 \item{verbose}{Logical. If \code{TRUE}, prints progress and summary to the
 console. Default is \code{TRUE}.}
 
-\item{write_txt}{Logical. If \code{TRUE}, writes results to
-\code{parentage_testing_results.txt}. Default is \code{TRUE}.}
-
-\item{na_string}{Character. Missing value string in output.
-Use \code{"NA"} or \code{""} (default: \code{"NA"}).}
-
 \item{plot_results}{Logical. If \code{TRUE}, plots the Mendelian error
-distribution colored by status. Requires \code{ggplot2}. Saved as
-\code{.jpg} when \code{write_txt = TRUE}. Default is \code{TRUE}.}
+distribution colored by status. Requires \code{ggplot2}. Default is \code{TRUE}.}
 }
 \value{
 A named list (returned invisibly) with the following elements:
@@ -66,50 +57,13 @@ A named list (returned invisibly) with the following elements:
 \item{high_error}{Progeny whose best assignment exceeds the error threshold.}
 \item{low_markers}{Progeny with insufficient markers for a valid assignment.}
 \item{full_results}{Complete data.table with all progeny and all output columns.}
+\item{plot}{ggplot object. Use ggsave() to save if desired.}
 }
 }
 \description{
 Assigns the most likely parent(s) to each progeny from SNP genotype data
 using Mendelian error rates or homozygous mismatch rates. Parents or progeny
 absent from the genotype file are removed with a warning.
-}
-\details{
-A homozygous-only matrix is pre-computed once and shared across
-\code{"best_male_parent"}, \code{"best_female_parent"}, and
-\code{"best_match"}, where heterozygous markers (coded 1) are set to
-\code{NA} to reduce false mismatches from phase ambiguity.
-
-For \code{"best_pair"}, full Mendelian inheritance rules are applied across
-all marker and pair combinations using vectorised \code{vapply} calls,
-producing \code{n_pairs x n_progeny} mismatch and comparison matrices.
-Ties are broken by maximum markers tested; remaining ties are appended as
-suffix columns when \code{show_ties = TRUE}.
-}
-\examples{
-\dontrun{
-results <- find_parentage(
-  genotypes_file  = "genotypes.txt",
-  parents_file    = "parents.txt",
-  progeny_file    = "progeny.txt",
-  method          = "best_pair",
-  min_markers     = 50,
-  error_threshold = 5.0,
-  show_ties       = TRUE,
-  allow_selfing   = FALSE,
-  na_string       = "NA",
-  plot_results    = TRUE
-)
-
-results <- find_parentage(
-  genotypes_file  = "genotypes.txt",
-  parents_file    = "parents.txt",
-  progeny_file    = "progeny.txt",
-  method          = "best_match",
-  min_markers     = 30,
-  error_threshold = 3.0
-)
-}
-
 }
 \author{
 Josue Chinchilla-Vargas

@@ -5,17 +5,17 @@
 #' best-matching replacements, and outputs a corrected pedigree. Founder trios
 #' (both parents coded as 0) are preserved unchanged if a founders file is
 #' supplied. Trios absent from the genotype file are retained as
-#' \code{NO_GENOTYPE_DATA}.
+#' no_genotype_data.
 #'
 #' @param pedigree_file Character. Path to the pedigree file (TSV/CSV/TXT)
-#'   with columns: ID, Male_Parent, Female_Parent.
+#'   with columns: id, male_parent, female_parent.
 #' @param genotypes_file Character. Path to the genotypes file (TSV/CSV/TXT)
-#'   with an ID column followed by marker columns coded as 0, 1, 2.
+#'   with an id column followed by marker columns coded as 0, 1, 2.
 #' @param founders_file Character, optional. Path to a one-column file listing
 #'   founder IDs. Founders with both parents coded as 0 are left unchanged.
 #'   Defaults to NULL.
 #' @param trio_error_threshold Numeric. Maximum Mendelian error percentage to
-#'   classify a trio as PASS (default: 5.0). Must be between 0 and 100.
+#'   classify a trio as pass (default: 5.0). Must be between 0 and 100.
 #' @param min_markers Integer. Minimum non-missing markers required to evaluate
 #'   a trio (default: 10).
 #' @param single_parent_error_threshold Numeric. Maximum homozygous-marker
@@ -23,57 +23,39 @@
 #'   (default: 2.0). Must be between 0 and 100.
 #' @param verbose Logical. If TRUE, prints progress, summary, and results to
 #'   the console (default: TRUE).
-#' @param write_results Logical. If TRUE, writes results to
-#'   \code{output_filename} and saves the plot as a .jpg (default: TRUE).
-#' @param output_filename Character. Path/name of the output results file
-#'   (default: \code{"__validation_report.txt"}). The plot uses the same base
-#'   name with a .jpg extension.
 #' @param plot_results Logical. If TRUE, prints a histogram of trio Mendelian
-#'   error percentages with a threshold line. Saved as .jpg when
-#'   \code{write_results = TRUE} (default: TRUE).
-#' @param na_string Character. Missing value string in the output file.
-#'   Use \code{"NA"} or \code{""} (default: \code{"NA"}).
-#' @param corrected_pedigree_filename Character. Path/name for the corrected
-#'   pedigree output (default: \code{"corrected_pedigree.txt"}). Set to NULL
-#'   to suppress writing.
+#'   error percentages with a threshold line (default: TRUE).
 #'
-#' @return A named list (returned invisibly) with the following elements:
-#'   \describe{
-#'     \item{pass}{Trios that passed the Mendelian error threshold.}
-#'     \item{fail}{Trios that failed the Mendelian error threshold.}
-#'     \item{low_markers}{Trios with insufficient markers for evaluation.}
-#'     \item{no_data}{Trios with no overlapping genotype data.}
-#'     \item{no_genotype_data}{Trios absent from the genotype file.}
-#'     \item{founders}{Trios identified as founders.}
-#'     \item{missing_parents}{Trios with one or both parents coded as 0 (non-founders).}
-#'     \item{full_results}{Complete data.table with all trios and all output columns.}
-#'     \item{corrected_pedigree}{Pedigree table after applying recommended corrections.}
-#'   }
+#' @return An invisible named list with the following elements:
+#' \describe{
+#'   \item{pass}{Trios that passed the Mendelian error threshold.}
+#'   \item{fail}{Trios that failed the Mendelian error threshold.}
+#'   \item{low_markers}{Trios with insufficient markers for evaluation.}
+#'   \item{no_genotype_data}{Trios absent from the genotype file.}
+#'   \item{founders}{Trios identified as founders.}
+#'   \item{missing_parents}{Trios with one or both parents coded as 0 (non-founders).}
+#'   \item{full_results}{Complete data.table with all trios and all output columns.}
+#'   \item{corrected_pedigree}{Pedigree table after applying recommended corrections.}
+#'   \item{plot}{ggplot object. Use ggsave() to save if desired.}
+#' }
 #'
 #' @author Josue Chinchilla-Vargas
 #'
-#' @importFrom data.table fread fwrite copy data.table set rbindlist
-#' @importFrom tools file_path_sans_ext
+#' @importFrom data.table fread copy data.table set rbindlist
 #' @export
 validate_pedigree <- function(pedigree_file, genotypes_file,
-                              founders_file = NULL,
-                              trio_error_threshold = 5.0,
-                              min_markers = 10,
+                              founders_file                 = NULL,
+                              trio_error_threshold          = 5.0,
+                              min_markers                   = 10,
                               single_parent_error_threshold = 2.0,
-                              verbose = TRUE,
-                              write_results = TRUE,
-                              plot_results = TRUE,
-                              na_string = "NA",
-                              output_filename = "__validation_report.txt",
-                              corrected_pedigree_filename = "corrected_pedigree.txt") {
+                              verbose                       = TRUE,
+                              plot_results                  = TRUE) {
 
   #### Input validation ####
   if (trio_error_threshold < 0 || trio_error_threshold > 100)
     stop("trio_error_threshold must be between 0 and 100")
   if (single_parent_error_threshold < 0 || single_parent_error_threshold > 100)
     stop("single_parent_error_threshold must be between 0 and 100")
-  if (!na_string %in% c("NA", ""))
-    stop("na_string must be either 'NA' or ''.")
 
   tryCatch({
     pedigree <- data.table::fread(pedigree_file, sep = "auto", colClasses = "character")
@@ -83,16 +65,16 @@ validate_pedigree <- function(pedigree_file, genotypes_file,
   })
 
   #### Check required columns ####
-  required_ped_cols <- c("ID", "Male_Parent", "Female_Parent")
+  required_ped_cols <- c("id", "male_parent", "female_parent")
   missing_cols <- base::setdiff(required_ped_cols, base::names(pedigree))
   if (base::length(missing_cols) > 0)
     stop("Pedigree file missing required columns: ",
          base::paste(missing_cols, collapse = ", "))
-  if (!"ID" %in% base::names(genos))
-    stop("Genotypes file must have an 'ID' column")
+  if (!"id" %in% base::names(genos))
+    stop("Genotypes file must have an 'id' column")
 
-  pedigree[, Male_Parent   := as.character(Male_Parent)]
-  pedigree[, Female_Parent := as.character(Female_Parent)]
+  pedigree[, male_parent   := as.character(male_parent)]
+  pedigree[, female_parent := as.character(female_parent)]
   original_pedigree <- data.table::copy(pedigree)
 
   #### Read founders list ####
@@ -108,24 +90,24 @@ validate_pedigree <- function(pedigree_file, genotypes_file,
   }
 
   #### Build genotype matrices ####
-  genos_mat <- base::as.matrix(genos, rownames = "ID")
+  genos_mat   <- base::as.matrix(genos, rownames = "id")
   genos_hom   <- data.table::copy(genos)
-  marker_cols <- base::setdiff(base::names(genos_hom), "ID")
+  marker_cols <- base::setdiff(base::names(genos_hom), "id")
   for (col in marker_cols)
     genos_hom[base::get(col) == 1, (col) := NA_integer_]
-  genos_hom_mat <- base::as.matrix(genos_hom, rownames = "ID")
+  genos_hom_mat <- base::as.matrix(genos_hom, rownames = "id")
 
   #### Identify trios missing from the genotype file ####
-  valid_ids <- as.character(genos$ID)
-  has_geno <- pedigree[ID %in% valid_ids &
-                         (Male_Parent %in% valid_ids   | Male_Parent == "0") &
-                         (Female_Parent %in% valid_ids | Female_Parent == "0")]
-  no_geno_rows <- pedigree[!(ID %in% valid_ids) |
-                             (!(Male_Parent %in% valid_ids)   & Male_Parent != "0") |
-                             (!(Female_Parent %in% valid_ids) & Female_Parent != "0")]
+  valid_ids <- as.character(genos$id)
+  has_geno <- pedigree[id %in% valid_ids &
+                         (male_parent %in% valid_ids   | male_parent == "0") &
+                         (female_parent %in% valid_ids | female_parent == "0")]
+  no_geno_rows <- pedigree[!(id %in% valid_ids) |
+                             (!(male_parent %in% valid_ids)   & male_parent != "0") |
+                             (!(female_parent %in% valid_ids) & female_parent != "0")]
   if (base::nrow(no_geno_rows) > 0 && verbose)
     base::cat("Found", base::nrow(no_geno_rows),
-              "trios with missing genotype data; flagged as NO_GENOTYPE_DATA.\n")
+              "trios with missing genotype data; flagged as no_genotype_data.\n")
   pedigree <- has_geno
   if (base::nrow(pedigree) == 0)
     stop("No valid trios remain after filtering for genotype availability.")
@@ -143,8 +125,7 @@ validate_pedigree <- function(pedigree_file, genotypes_file,
       if (comparisons == 0) return(NA_real_)
       (base::sum(cand_hom != prog_hom, na.rm = TRUE) / comparisons) * 100
     })
-
-        if (base::all(base::is.na(errors)))
+    if (base::all(base::is.na(errors)))
       return(base::list(id = NA_character_, error_pct = NA_real_))
     best_idx <- base::which.min(errors)
     base::list(id = candidates[best_idx],
@@ -153,12 +134,12 @@ validate_pedigree <- function(pedigree_file, genotypes_file,
 
   #### Main trio evaluation loop ####
   results_list <- base::lapply(base::seq_len(base::nrow(pedigree)), function(i) {
-    prog_id          <- pedigree$ID[i]
-    male_parent_id   <- pedigree$Male_Parent[i]
-    female_parent_id <- pedigree$Female_Parent[i]
-    correction_decision     <- "NONE"
+    prog_id          <- pedigree$id[i]
+    male_parent_id   <- pedigree$male_parent[i]
+    female_parent_id <- pedigree$female_parent[i]
+    correction_decision     <- "none"
     error_pct               <- NA_real_
-    status                  <- "NO_DATA"
+    status                  <- "no_data"
     markers_tested          <- 0L
     male_parent_error_pct   <- NA_real_
     female_parent_error_pct <- NA_real_
@@ -169,12 +150,12 @@ validate_pedigree <- function(pedigree_file, genotypes_file,
 
     if (male_parent_id == "0" && female_parent_id == "0" &&
         prog_id %in% founder_ids) {
-      status              <- "FOUNDERS"
-      correction_decision <- "NONE"
+      status              <- "founders"
+      correction_decision <- "none"
     } else {
       if (male_parent_id == "0" && female_parent_id == "0") {
-        status              <- "MISSING_BOTH_PARENTS"
-        correction_decision <- "NONE"
+        status              <- "missing_both_parents"
+        correction_decision <- "none"
         best_m                 <- find_best_parent(prog_id, exclude_ids = character(0))
         best_male_parent       <- best_m$id
         best_male_parent_pct   <- best_m$error_pct
@@ -182,14 +163,14 @@ validate_pedigree <- function(pedigree_file, genotypes_file,
         best_female_parent     <- best_f$id
         best_female_parent_pct <- best_f$error_pct
       } else if (male_parent_id == "0" && female_parent_id != "0") {
-        status              <- "MISSING_MALE_PARENT"
-        correction_decision <- "NONE"
+        status              <- "missing_male_parent"
+        correction_decision <- "none"
         best_m               <- find_best_parent(prog_id, exclude_ids = c(female_parent_id))
         best_male_parent     <- best_m$id
         best_male_parent_pct <- best_m$error_pct
       } else if (male_parent_id != "0" && female_parent_id == "0") {
-        status              <- "MISSING_FEMALE_PARENT"
-        correction_decision <- "NONE"
+        status              <- "missing_female_parent"
+        correction_decision <- "none"
         best_f                 <- find_best_parent(prog_id, exclude_ids = c(male_parent_id))
         best_female_parent     <- best_f$id
         best_female_parent_pct <- best_f$error_pct
@@ -212,19 +193,19 @@ validate_pedigree <- function(pedigree_file, genotypes_file,
                                       !base::is.na(female_parent_vec) &
                                       !base::is.na(progeny_vec))
         if (markers_tested == 0) {
-          status              <- "NO_DATA"
-          correction_decision <- "NONE"
+          status              <- "no_data"
+          correction_decision <- "none"
         } else {
           error_pct <- (mismatches / markers_tested) * 100
           if (markers_tested < min_markers) {
-            status <- "LOW_MARKERS"
+            status <- "low_markers"
           } else if (error_pct <= trio_error_threshold) {
-            status              <- "PASS"
-            correction_decision <- "NONE"
+            status              <- "pass"
+            correction_decision <- "none"
           } else {
-            status <- "FAIL"
+            status <- "fail"
           }
-          if (status %in% c("FAIL", "LOW_MARKERS")) {
+          if (status %in% c("fail", "low_markers")) {
             progeny_hom       <- genos_hom_mat[prog_id, ]
             male_parent_hom   <- genos_hom_mat[male_parent_id, ]
             female_parent_hom <- genos_hom_mat[female_parent_id, ]
@@ -238,24 +219,24 @@ validate_pedigree <- function(pedigree_file, genotypes_file,
             female_parent_error_pct <- if (female_comparisons == 0) NA_real_ else
               base::round((base::sum(female_parent_hom != progeny_hom, na.rm = TRUE) /
                              female_comparisons) * 100, 2)
-            male_acceptable <- !is.na(male_parent_error_pct) &&
+            male_acceptable   <- !is.na(male_parent_error_pct) &&
               male_parent_error_pct <= single_parent_error_threshold
             female_acceptable <- !is.na(female_parent_error_pct) &&
               female_parent_error_pct <= single_parent_error_threshold
             if (male_acceptable && female_acceptable) {
-              correction_decision <- "KEEP_BOTH"
+              correction_decision <- "keep_both"
             } else if (male_acceptable && !female_acceptable) {
-              correction_decision    <- "REMOVE_FEMALE_PARENT"
+              correction_decision    <- "remove_female_parent"
               best_f                 <- find_best_parent(prog_id, exclude_ids = c(male_parent_id))
               best_female_parent     <- best_f$id
               best_female_parent_pct <- best_f$error_pct
             } else if (!male_acceptable && female_acceptable) {
-              correction_decision  <- "REMOVE_MALE_PARENT"
+              correction_decision  <- "remove_male_parent"
               best_m               <- find_best_parent(prog_id, exclude_ids = c(female_parent_id))
               best_male_parent     <- best_m$id
               best_male_parent_pct <- best_m$error_pct
             } else {
-              correction_decision    <- "REMOVE_BOTH"
+              correction_decision    <- "remove_both"
               best_m                 <- find_best_parent(prog_id, exclude_ids = character(0))
               best_male_parent       <- best_m$id
               best_male_parent_pct   <- best_m$error_pct
@@ -263,157 +244,144 @@ validate_pedigree <- function(pedigree_file, genotypes_file,
               best_female_parent     <- best_f$id
               best_female_parent_pct <- best_f$error_pct
             }
-            if (status == "LOW_MARKERS")
-              correction_decision <- paste0("LOW_MARKERS_", correction_decision)
+            if (status == "low_markers")
+              correction_decision <- paste0("low_markers_", correction_decision)
           }
         }
       }
     }
 
     data.table::data.table(
-      ID                              = prog_id,
-      Orig_Male_Parent                = male_parent_id,
-      Orig_Female_Parent              = female_parent_id,
-      Trio_Mendelian_Error_Pct        = base::round(error_pct, 2),
-      Trio_Markers_Tested             = markers_tested,
-      Status                          = status,
-      Recommended_Correction          = correction_decision,
-      Male_Parent_Hom_Error_Pct       = male_parent_error_pct,
-      Female_Parent_Hom_Error_Pct     = female_parent_error_pct,
-      Best_Male_Candidate             = best_male_parent,
-      Best_Male_Candidate_Error_Pct   = best_male_parent_pct,
-      Best_Female_Candidate           = best_female_parent,
-      Best_Female_Candidate_Error_Pct = best_female_parent_pct
+      id                              = prog_id,
+      orig_male_parent                = male_parent_id,
+      orig_female_parent              = female_parent_id,
+      trio_mendelian_error_pct        = base::round(error_pct, 2),
+      trio_markers_tested             = markers_tested,
+      status                          = status,
+      recommended_correction          = correction_decision,
+      male_parent_hom_error_pct       = male_parent_error_pct,
+      female_parent_hom_error_pct     = female_parent_error_pct,
+      best_male_candidate             = best_male_parent,
+      best_male_candidate_error_pct   = best_male_parent_pct,
+      best_female_candidate           = best_female_parent,
+      best_female_candidate_error_pct = best_female_parent_pct
     )
   })
 
   final_df <- data.table::rbindlist(results_list)
 
-  #### Append NO_GENOTYPE_DATA rows ####
+  #### Append no_genotype_data rows ####
   if (base::nrow(no_geno_rows) > 0) {
     no_geno_df <- data.table::data.table(
-      ID                              = no_geno_rows$ID,
-      Orig_Male_Parent                = no_geno_rows$Male_Parent,
-      Orig_Female_Parent              = no_geno_rows$Female_Parent,
-      Trio_Mendelian_Error_Pct        = NA_real_,
-      Trio_Markers_Tested             = 0L,
-      Status                          = "NO_GENOTYPE_DATA",
-      Recommended_Correction          = "NONE",
-      Male_Parent_Hom_Error_Pct       = NA_real_,
-      Female_Parent_Hom_Error_Pct     = NA_real_,
-      Best_Male_Candidate             = NA_character_,
-      Best_Male_Candidate_Error_Pct   = NA_real_,
-      Best_Female_Candidate           = NA_character_,
-      Best_Female_Candidate_Error_Pct = NA_real_
+      id                              = no_geno_rows$id,
+      orig_male_parent                = no_geno_rows$male_parent,
+      orig_female_parent              = no_geno_rows$female_parent,
+      trio_mendelian_error_pct        = NA_real_,
+      trio_markers_tested             = 0L,
+      status                          = "no_genotype_data",
+      recommended_correction          = "none",
+      male_parent_hom_error_pct       = NA_real_,
+      female_parent_hom_error_pct     = NA_real_,
+      best_male_candidate             = NA_character_,
+      best_male_candidate_error_pct   = NA_real_,
+      best_female_candidate           = NA_character_,
+      best_female_candidate_error_pct = NA_real_
     )
     final_df <- data.table::rbindlist(list(final_df, no_geno_df))
   }
 
-  #### Write corrected pedigree ####
-
-    # pass NULL to suppress writing.
-  if (!is.null(corrected_pedigree_filename)) {
-    corrected_pedigree <- data.table::copy(original_pedigree)
-    for (i in base::seq_len(base::nrow(final_df))) {
-      prog_id  <- final_df$ID[i]
-      decision <- final_df$Recommended_Correction[i]
-      row_idx  <- base::which(corrected_pedigree$ID == prog_id)
-      if (decision == "REMOVE_MALE_PARENT") {
-        data.table::set(corrected_pedigree, row_idx, "Male_Parent", "0")
-      } else if (decision == "REMOVE_FEMALE_PARENT") {
-        data.table::set(corrected_pedigree, row_idx, "Female_Parent", "0")
-      } else if (decision == "REMOVE_BOTH") {
-        data.table::set(corrected_pedigree, row_idx, "Male_Parent", "0")
-        data.table::set(corrected_pedigree, row_idx, "Female_Parent", "0")
+  #### Build corrected pedigree ####
+  corrected_pedigree <- data.table::copy(original_pedigree)
+  for (i in base::seq_len(base::nrow(final_df))) {
+    prog_id  <- final_df$id[i]
+    decision <- final_df$recommended_correction[i]
+    row_idx  <- base::which(corrected_pedigree$id == prog_id)
+    if (decision == "remove_male_parent") {
+      data.table::set(corrected_pedigree, row_idx, "male_parent", "0")
+    } else if (decision == "remove_female_parent") {
+      data.table::set(corrected_pedigree, row_idx, "female_parent", "0")
+    } else if (decision %in% c("remove_both",
+                               "low_markers_remove_both",
+                               "low_markers_remove_male_parent",
+                               "low_markers_remove_female_parent")) {
+      if (grepl("male", decision)) {
+        data.table::set(corrected_pedigree, row_idx, "male_parent", "0")
+      }
+      if (grepl("female", decision)) {
+        data.table::set(corrected_pedigree, row_idx, "female_parent", "0")
+      }
+      if (decision == "low_markers_remove_both" || decision == "remove_both") {
+        data.table::set(corrected_pedigree, row_idx, "male_parent",   "0")
+        data.table::set(corrected_pedigree, row_idx, "female_parent", "0")
       }
     }
-    tryCatch({
-      data.table::fwrite(corrected_pedigree, file = corrected_pedigree_filename,
-                         sep = "\t", quote = FALSE)
-      if (verbose) base::cat("Corrected pedigree written to:", corrected_pedigree_filename, "\n")
-    }, error = function(e) {
-      warning("Could not write corrected pedigree. Error: ", e$message, call. = FALSE)
-    })
   }
 
   #### Summary output ####
   if (verbose) {
     total_trios   <- base::nrow(final_df)
-    status_counts <- base::table(final_df$Status)
+    status_counts <- base::table(final_df$status)
     base::cat("\n--- Trio Validation Summary ---\n")
     base::cat("Total trios in pedigree:", total_trios, "\n")
     for (s in base::names(status_counts))
-      base::cat(base::sprintf("%-24s: %d (%.1f%%)\n", s,
+      base::cat(base::sprintf("%-28s: %d (%.1f%%)\n", s,
                               status_counts[s],
                               (status_counts[s] / total_trios) * 100))
     base::cat("Error threshold:", trio_error_threshold, "%\n")
     base::cat("Homozygous threshold:", single_parent_error_threshold, "%\n")
     base::cat("Minimum markers required:", min_markers, "\n\n")
-    corrections <- base::table(final_df$Recommended_Correction)
+    corrections <- base::table(final_df$recommended_correction)
     base::cat("Correction summary:\n")
     for (decision in base::names(corrections))
-      if (decision != "NONE")
+      if (decision != "none")
         base::cat("  ", decision, ":", corrections[decision], "\n")
     base::cat("\n")
     base::print(final_df)
   }
 
-  #### Write results ####
-  if (write_results) {
-    tryCatch({
-      data.table::fwrite(final_df, file = output_filename,
-                         sep = "\t", quote = FALSE, na = na_string)
-      if (verbose) base::cat("Results written to:", output_filename, "\n")
-    }, error = function(e) {
-      warning("Could not write results. Error: ", e$message, call. = FALSE)
-    })
-  }
-
   #### Plot results ####
+  p <- NULL
   if (plot_results) {
     if (!requireNamespace("ggplot2", quietly = TRUE)) {
       warning("ggplot2 is required for plot_results = TRUE. Please install it.", call. = FALSE)
     } else {
-      plot_df <- final_df[!is.na(final_df$Trio_Mendelian_Error_Pct)]
-      plot_df$Plot_Status <- dplyr::case_when(
-        plot_df$Recommended_Correction %in% c("NONE",
-                                              "KEEP_BOTH",
-                                              "LOW_MARKERS_KEEP_BOTH")              ~ "PASS",
-        plot_df$Recommended_Correction %in% c("REMOVE_MALE_PARENT",
-                                              "REMOVE_FEMALE_PARENT",
-                                              "LOW_MARKERS_REMOVE_MALE_PARENT",
-                                              "LOW_MARKERS_REMOVE_FEMALE_PARENT")   ~ "FAIL_ONE_PARENT",
-        plot_df$Recommended_Correction %in% c("REMOVE_BOTH",
-                                              "LOW_MARKERS_REMOVE_BOTH")            ~ "FAIL_BOTH_PARENTS",
-        TRUE                                                                         ~ "OTHER"
+      plot_df <- final_df[!is.na(final_df$trio_mendelian_error_pct)]
+      plot_df$plot_status <- dplyr::case_when(
+        plot_df$recommended_correction %in% c("none",
+                                              "keep_both",
+                                              "low_markers_keep_both")                    ~ "pass",
+        plot_df$recommended_correction %in% c("remove_male_parent",
+                                              "remove_female_parent",
+                                              "low_markers_remove_male_parent",
+                                              "low_markers_remove_female_parent")         ~ "fail_one_parent",
+        plot_df$recommended_correction %in% c("remove_both",
+                                              "low_markers_remove_both")                  ~ "fail_both_parents",
+        TRUE                                                                               ~ "other"
       )
-      n_total  <- nrow(plot_df)
-      n_fail   <- sum(plot_df$Trio_Mendelian_Error_Pct > trio_error_threshold)
-      n_pass   <- sum(plot_df$Trio_Mendelian_Error_Pct <= trio_error_threshold)
-      pct_lost <- round((n_fail / n_total) * 100, 1)
-      threshold_label <- paste0("Mendelian Error Threshold: ", trio_error_threshold, "%  |  ",
-                                "Lost: ", n_fail, " trios  |  ",
-                                "Kept: ", n_pass, " trios")
+      n_total <- nrow(plot_df)
+      n_fail  <- sum(plot_df$trio_mendelian_error_pct > trio_error_threshold)
+      n_pass  <- sum(plot_df$trio_mendelian_error_pct <= trio_error_threshold)
+      threshold_label <- paste0(
+        "Mendelian Error Threshold: ", trio_error_threshold, "%  |  ",
+        "Lost: ", n_fail, " trios  |  ",
+        "Kept: ", n_pass, " trios"
+      )
       p <- ggplot2::ggplot(plot_df,
-                           ggplot2::aes(x = Trio_Mendelian_Error_Pct, fill = Plot_Status)) +
+                           ggplot2::aes(x = trio_mendelian_error_pct, fill = plot_status)) +
         ggplot2::geom_histogram(binwidth = 1, color = "white", alpha = 0.9) +
         ggplot2::geom_vline(xintercept = trio_error_threshold,
                             linetype = "dashed", color = "black", linewidth = 1) +
         ggplot2::scale_x_continuous(breaks = seq(0, 100, by = 5)) +
         ggplot2::scale_y_continuous(breaks = seq(0, 100, by = 5)) +
         ggplot2::scale_fill_manual(
-          values = c(
-            "PASS"              = "#339900",
-            "FAIL_ONE_PARENT"   = "#F1C40F",
-            "FAIL_BOTH_PARENTS" = "#cc3333",
-            "OTHER"             = "#BDC3C7"
-          ),
-          labels = c(
-            "PASS"              = "Pass",
-            "FAIL_ONE_PARENT"   = "Fail - One Parent",
-            "FAIL_BOTH_PARENTS" = "Fail - Both Parents",
-            "OTHER"             = "Other"
-          )
+          values = c("pass"             = "#339900",
+                     "fail_one_parent"  = "#F1C40F",
+                     "fail_both_parents"= "#cc3333",
+                     "other"            = "#BDC3C7"),
+          labels = c("pass"             = "Pass",
+                     "fail_one_parent"  = "Fail - One Parent",
+                     "fail_both_parents"= "Fail - Both Parents",
+                     "other"            = "Other")
         ) +
         ggplot2::labs(
           title    = "Trio Mendelian Error Distribution",
@@ -425,20 +393,22 @@ validate_pedigree <- function(pedigree_file, genotypes_file,
         ggplot2::theme_classic(base_size = 13) +
         ggplot2::theme(legend.position = "top")
       print(p)
-      if (write_results) {
-        # Fix #3: use tools::file_path_sans_ext() to reliably build the .jpg
-        # filename regardless of whether output_filename has an extension or not.
-        plot_filename <- paste0(tools::file_path_sans_ext(output_filename), ".jpg")
-        tryCatch({
-          ggplot2::ggsave(plot_filename, plot = p,
-                          device = "jpeg", width = 10, height = 6, dpi = 300)
-          if (verbose) base::cat("Plot saved to:", plot_filename, "\n")
-        }, error = function(e) {
-          warning("Could not save plot. Error: ", e$message, call. = FALSE)
-        })
-      }
     }
   }
 
-  return(base::invisible(final_df))
+  #### Compile and return named list ####
+  output_list <- base::list(
+    pass               = final_df[status == "pass"],
+    fail               = final_df[status == "fail"],
+    low_markers        = final_df[status == "low_markers"],
+    no_genotype_data   = final_df[status == "no_genotype_data"],
+    founders           = final_df[status == "founders"],
+    missing_parents    = final_df[status %in% c("missing_both_parents",
+                                                "missing_male_parent",
+                                                "missing_female_parent")],
+    full_results       = final_df,
+    corrected_pedigree = corrected_pedigree,
+    plot               = p
+  )
+  return(base::invisible(output_list))
 }

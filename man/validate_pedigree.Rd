@@ -12,26 +12,22 @@ validate_pedigree(
   min_markers = 10,
   single_parent_error_threshold = 2,
   verbose = TRUE,
-  write_results = TRUE,
-  plot_results = TRUE,
-  na_string = "NA",
-  output_filename = "__validation_report.txt",
-  corrected_pedigree_filename = "corrected_pedigree.txt"
+  plot_results = TRUE
 )
 }
 \arguments{
 \item{pedigree_file}{Character. Path to the pedigree file (TSV/CSV/TXT)
-with columns: ID, Male_Parent, Female_Parent.}
+with columns: id, male_parent, female_parent.}
 
 \item{genotypes_file}{Character. Path to the genotypes file (TSV/CSV/TXT)
-with an ID column followed by marker columns coded as 0, 1, 2.}
+with an id column followed by marker columns coded as 0, 1, 2.}
 
 \item{founders_file}{Character, optional. Path to a one-column file listing
 founder IDs. Founders with both parents coded as 0 are left unchanged.
 Defaults to NULL.}
 
 \item{trio_error_threshold}{Numeric. Maximum Mendelian error percentage to
-classify a trio as PASS (default: 5.0). Must be between 0 and 100.}
+classify a trio as pass (default: 5.0). Must be between 0 and 100.}
 
 \item{min_markers}{Integer. Minimum non-missing markers required to evaluate
 a trio (default: 10).}
@@ -43,36 +39,21 @@ mismatch percentage for a parent to be considered acceptable
 \item{verbose}{Logical. If TRUE, prints progress, summary, and results to
 the console (default: TRUE).}
 
-\item{write_results}{Logical. If TRUE, writes results to
-\code{output_filename} and saves the plot as a .jpg (default: TRUE).}
-
 \item{plot_results}{Logical. If TRUE, prints a histogram of trio Mendelian
-error percentages with a threshold line. Saved as .jpg when
-\code{write_results = TRUE} (default: TRUE).}
-
-\item{na_string}{Character. Missing value string in the output file.
-Use \code{"NA"} or \code{""} (default: \code{"NA"}).}
-
-\item{output_filename}{Character. Path/name of the output results file
-(default: \code{"__validation_report.txt"}). The plot uses the same base
-name with a .jpg extension.}
-
-\item{corrected_pedigree_filename}{Character. Path/name for the corrected
-pedigree output (default: \code{"corrected_pedigree.txt"}). Set to NULL
-to suppress writing.}
+error percentages with a threshold line (default: TRUE).}
 }
 \value{
-A named list (returned invisibly) with the following elements:
+An invisible named list with the following elements:
 \describe{
 \item{pass}{Trios that passed the Mendelian error threshold.}
 \item{fail}{Trios that failed the Mendelian error threshold.}
 \item{low_markers}{Trios with insufficient markers for evaluation.}
-\item{no_data}{Trios with no overlapping genotype data.}
 \item{no_genotype_data}{Trios absent from the genotype file.}
 \item{founders}{Trios identified as founders.}
 \item{missing_parents}{Trios with one or both parents coded as 0 (non-founders).}
 \item{full_results}{Complete data.table with all trios and all output columns.}
 \item{corrected_pedigree}{Pedigree table after applying recommended corrections.}
+\item{plot}{ggplot object. Use ggsave() to save if desired.}
 }
 }
 \description{
@@ -81,7 +62,7 @@ error rates. Identifies incorrect parentage assignments, suggests
 best-matching replacements, and outputs a corrected pedigree. Founder trios
 (both parents coded as 0) are preserved unchanged if a founders file is
 supplied. Trios absent from the genotype file are retained as
-\code{NO_GENOTYPE_DATA}.
+no_genotype_data.
 }
 \author{
 Josue Chinchilla-Vargas

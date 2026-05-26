@@ -7,10 +7,11 @@
 #' supplied. Trios absent from the genotype file are retained as
 #' no_genotype_data.
 #'
-#' @param pedigree_file Character. Path to the pedigree file (TSV/CSV/TXT)
-#'   with columns: id, male_parent, female_parent.
-#' @param genotypes_file Character. Path to the genotypes file (TSV/CSV/TXT)
-#'   with an id column followed by marker columns coded as 0, 1, 2.
+#' @param pedigree_file Path to the pedigree file (TSV/CSV/TXT), OR a
+#'   data.frame / data.table with columns: id, male_parent, female_parent.
+#' @param genotypes_file Path to the genotypes file (TSV/CSV/TXT), OR a
+#'   data.frame / data.table with an id column followed by marker columns
+#'   coded as 0, 1, 2.
 #' @param founders_file Character, optional. Path to a one-column file listing
 #'   founder IDs. Founders with both parents coded as 0 are left unchanged.
 #'   Defaults to NULL.
@@ -36,12 +37,12 @@
 #'   \item{missing_parents}{Trios with one or both parents coded as 0 (non-founders).}
 #'   \item{full_results}{Complete data.table with all trios and all output columns.}
 #'   \item{corrected_pedigree}{Pedigree table after applying recommended corrections.}
-#'   \item{plot}{ggplot object. Use ggsave() to save if desired.}
+#'   \item{plot}{ggplot object if plot_results = TRUE, otherwise NULL.}
 #' }
 #'
 #' @author Josue Chinchilla-Vargas
 #'
-#' @importFrom data.table fread copy data.table set rbindlist
+#' @importFrom data.table fread copy data.table set rbindlist as.data.table is.data.table
 #' @export
 validate_pedigree <- function(pedigree_file, genotypes_file,
                               founders_file                 = NULL,
@@ -51,15 +52,32 @@ validate_pedigree <- function(pedigree_file, genotypes_file,
                               verbose                       = TRUE,
                               plot_results                  = TRUE) {
 
+  ## silence R CMD check NOTEs
+  id <- male_parent <- female_parent <- status <- trio_mendelian_error_pct <- NULL
+  plot_status <- recommended_correction <- NULL
+
   #### Input validation ####
   if (trio_error_threshold < 0 || trio_error_threshold > 100)
     stop("trio_error_threshold must be between 0 and 100")
   if (single_parent_error_threshold < 0 || single_parent_error_threshold > 100)
     stop("single_parent_error_threshold must be between 0 and 100")
 
+  # Accept file path OR in-memory data.frame / data.table
+  read_flex <- function(x, label, ...) {
+    if (is.character(x) && length(x) == 1) {
+      if (!file.exists(x))
+        stop("Error reading input files. Ensure paths are correct and files are TXT/TSV/CSV.")
+      data.table::fread(x, sep = "auto", ...)
+    } else if (is.data.frame(x) || data.table::is.data.table(x)) {
+      data.table::as.data.table(x)
+    } else {
+      stop(label, " must be a file path (character) or a data.frame / data.table.")
+    }
+  }
+
   tryCatch({
-    pedigree <- data.table::fread(pedigree_file, sep = "auto", colClasses = "character")
-    genos    <- data.table::fread(genotypes_file, sep = "auto")
+    pedigree <- read_flex(pedigree_file, "pedigree_file", colClasses = "character")
+    genos    <- read_flex(genotypes_file, "genotypes_file")
   }, error = function(e) {
     stop("Error reading input files. Ensure paths are correct and files are TXT/TSV/CSV.")
   })
@@ -304,13 +322,11 @@ validate_pedigree <- function(pedigree_file, genotypes_file,
                                "low_markers_remove_both",
                                "low_markers_remove_male_parent",
                                "low_markers_remove_female_parent")) {
-      if (grepl("male", decision)) {
-        data.table::set(corrected_pedigree, row_idx, "male_parent", "0")
-      }
-      if (grepl("female", decision)) {
+      if (grepl("male",   decision))
+        data.table::set(corrected_pedigree, row_idx, "male_parent",   "0")
+      if (grepl("female", decision))
         data.table::set(corrected_pedigree, row_idx, "female_parent", "0")
-      }
-      if (decision == "low_markers_remove_both" || decision == "remove_both") {
+      if (decision %in% c("low_markers_remove_both", "remove_both")) {
         data.table::set(corrected_pedigree, row_idx, "male_parent",   "0")
         data.table::set(corrected_pedigree, row_idx, "female_parent", "0")
       }
@@ -347,16 +363,15 @@ validate_pedigree <- function(pedigree_file, genotypes_file,
     } else {
       plot_df <- final_df[!is.na(final_df$trio_mendelian_error_pct)]
       plot_df$plot_status <- dplyr::case_when(
-        plot_df$recommended_correction %in% c("none",
-                                              "keep_both",
-                                              "low_markers_keep_both")                    ~ "pass",
+        plot_df$recommended_correction %in% c("none", "keep_both",
+                                              "low_markers_keep_both")               ~ "pass",
         plot_df$recommended_correction %in% c("remove_male_parent",
                                               "remove_female_parent",
                                               "low_markers_remove_male_parent",
-                                              "low_markers_remove_female_parent")         ~ "fail_one_parent",
+                                              "low_markers_remove_female_parent")    ~ "fail_one_parent",
         plot_df$recommended_correction %in% c("remove_both",
-                                              "low_markers_remove_both")                  ~ "fail_both_parents",
-        TRUE                                                                               ~ "other"
+                                              "low_markers_remove_both")             ~ "fail_both_parents",
+        TRUE                                                                           ~ "other"
       )
       n_total <- nrow(plot_df)
       n_fail  <- sum(plot_df$trio_mendelian_error_pct > trio_error_threshold)
@@ -367,25 +382,27 @@ validate_pedigree <- function(pedigree_file, genotypes_file,
         "Kept: ", n_pass, " trios"
       )
       p <- ggplot2::ggplot(plot_df,
-                           ggplot2::aes(x = trio_mendelian_error_pct, fill = plot_status)) +
+                           ggplot2::aes(x = trio_mendelian_error_pct,
+                                        fill = plot_status)) +
         ggplot2::geom_histogram(binwidth = 1, color = "white", alpha = 0.9) +
         ggplot2::geom_vline(xintercept = trio_error_threshold,
                             linetype = "dashed", color = "black", linewidth = 1) +
         ggplot2::scale_x_continuous(breaks = seq(0, 100, by = 5)) +
         ggplot2::scale_y_continuous(breaks = seq(0, 100, by = 5)) +
         ggplot2::scale_fill_manual(
-          values = c("pass"             = "#339900",
-                     "fail_one_parent"  = "#F1C40F",
-                     "fail_both_parents"= "#cc3333",
-                     "other"            = "#BDC3C7"),
-          labels = c("pass"             = "Pass",
-                     "fail_one_parent"  = "Fail - One Parent",
-                     "fail_both_parents"= "Fail - Both Parents",
-                     "other"            = "Other")
+          values = c("pass"              = "#339900",
+                     "fail_one_parent"   = "#F1C40F",
+                     "fail_both_parents" = "#cc3333",
+                     "other"             = "#BDC3C7"),
+          labels = c("pass"              = "Pass",
+                     "fail_one_parent"   = "Fail - One Parent",
+                     "fail_both_parents" = "Fail - Both Parents",
+                     "other"             = "Other")
         ) +
         ggplot2::labs(
           title    = "Trio Mendelian Error Distribution",
-          subtitle = paste0("Trios with Genotype Data Tested: ", n_total, "\n \n", threshold_label),
+          subtitle = paste0("Trios with Genotype Data Tested: ", n_total,
+                            "\n \n", threshold_label),
           x        = "Mendelian Error (%)",
           y        = "Number of Trios",
           fill     = "Status"

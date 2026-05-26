@@ -13,7 +13,8 @@ check_ped(
 )
 }
 \arguments{
-\item{ped.file}{Path to the pedigree text file.}
+\item{ped.file}{Path to the pedigree text file (TSV/CSV/TXT), OR a
+data.frame / data.table with columns: id, male_parent, female_parent.}
 
 \item{seed}{Optional integer seed for reproducibility.}
 
@@ -48,15 +49,12 @@ reported only and must be resolved manually.
 ped_file <- system.file("check_ped_test.txt", package = "BIGr")
 ped_errors <- check_ped(ped.file = ped_file, seed = 101919, verbose = FALSE)
 
-ped_errors$inconsistent_sex_roles
-ped_errors$corrected_pedigree
-
-# Identify the conflicting IDs from the parent columns
-conflicting_sex_ids <- unique(c(
-  ped_errors$inconsistent_sex_roles$male_parent,
-  ped_errors$inconsistent_sex_roles$female_parent
-))
-print(conflicting_sex_ids)
+# Also accepts a data.table directly
+library(data.table)
+ped_dt <- data.table(id = c("A","B","C"),
+                     male_parent   = c("0","0","A"),
+                     female_parent = c("0","0","B"))
+ped_errors <- check_ped(ped.file = ped_dt, verbose = FALSE)
 
 }
 \author{

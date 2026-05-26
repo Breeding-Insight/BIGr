@@ -4,41 +4,41 @@
 #' using Mendelian error rates or homozygous mismatch rates. Parents or progeny
 #' absent from the genotype file are removed with a warning.
 #'
-#' @param genotypes_file Path to a TSV/CSV/TXT file with an 'id' column
-#'   followed by marker columns coded as 0, 1, 2 (allele dosage).
-#' @param parents_file Path to a TSV/CSV/TXT file with an 'id' column and an
-#'   optional 'sex' column ('M', 'F', or 'A'). If absent, all parents are
-#'   treated as ambiguous.
-#' @param progeny_file Path to a TSV/CSV/TXT file with an 'id' column.
+#' @param genotypes_file Path to a TSV/CSV/TXT file, OR a data.frame /
+#'   data.table with an 'id' column followed by marker columns coded as 0, 1, 2.
+#' @param parents_file Path to a TSV/CSV/TXT file, OR a data.frame /
+#'   data.table with an 'id' column and an optional 'sex' column
+#'   ('M', 'F', or 'A'). If absent, all parents are treated as ambiguous.
+#' @param progeny_file Path to a TSV/CSV/TXT file, OR a data.frame /
+#'   data.table with an 'id' column.
 #' @param method Character. One of \code{"best_male_parent"},
 #'   \code{"best_female_parent"}, \code{"best_match"}, or
-#'   \code{"best_pair"} (default). See Details.
+#'   \code{"best_pair"} (default).
 #' @param min_markers Integer. Minimum markers required; fewer flags
 #'   \code{low_markers} (default: \code{10}).
 #' @param error_threshold Numeric. Maximum mismatch percentage; exceeded values
 #'   flag \code{high_error} (default: \code{5.0}). Must be between 0 and 100.
 #' @param show_ties Logical. If \code{TRUE}, tied best pairs are appended as
-#'   suffix columns (e.g. \code{male_parent_2}) for \code{"best_pair"}.
-#'   Default is \code{TRUE}.
+#'   suffix columns. Default is \code{TRUE}.
 #' @param allow_selfing Logical. If \code{FALSE}, pairs with identical male and
 #'   female parent IDs are excluded. Default is \code{TRUE}.
-#' @param verbose Logical. If \code{TRUE}, prints progress and summary to the
-#'   console. Default is \code{TRUE}.
+#' @param verbose Logical. If \code{TRUE}, prints progress and summary.
+#'   Default is \code{TRUE}.
 #' @param plot_results Logical. If \code{TRUE}, plots the Mendelian error
-#'   distribution colored by status. Requires \code{ggplot2}. Default is \code{TRUE}.
+#'   distribution. Requires \code{ggplot2}. Default is \code{TRUE}.
 #'
-#' @return A named list (returned invisibly) with the following elements:
+#' @return A named list (returned invisibly) with elements:
 #' \describe{
 #'   \item{pass}{Progeny with a confident parentage assignment.}
 #'   \item{high_error}{Progeny whose best assignment exceeds the error threshold.}
 #'   \item{low_markers}{Progeny with insufficient markers for a valid assignment.}
 #'   \item{full_results}{Complete data.table with all progeny and all output columns.}
-#'   \item{plot}{ggplot object. Use ggsave() to save if desired.}
+#'   \item{plot}{ggplot object if plot_results = TRUE, otherwise NULL.}
 #' }
 #'
 #' @author Josue Chinchilla-Vargas
 #'
-#' @importFrom data.table fread copy CJ rbindlist set data.table as.data.table
+#' @importFrom data.table fread copy CJ rbindlist set data.table as.data.table is.data.table
 #' @export
 find_parentage <- function(genotypes_file, parents_file, progeny_file,
                            method          = "best_pair",
@@ -53,8 +53,9 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
   id <- sex <- male_parent <- female_parent <- NULL
   mendelian_error_pct <- plot_status <- status <- NULL
 
-  #### Input Validation and Data Loading ####
-  allowed_methods <- c("best_male_parent", "best_female_parent", "best_match", "best_pair")
+  #### Input Validation ####
+  allowed_methods <- c("best_male_parent", "best_female_parent",
+                       "best_match", "best_pair")
   if (!method %in% allowed_methods)
     stop("Method must be one of: ", paste(allowed_methods, collapse = ", "))
   if (min_markers < 1)
@@ -62,10 +63,23 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
   if (error_threshold < 0 || error_threshold > 100)
     stop("error_threshold must be between 0 and 100.")
 
+  # Accept file path OR in-memory data.frame / data.table
+  read_flex <- function(x, label, ...) {
+    if (is.character(x) && length(x) == 1) {
+      if (!file.exists(x))
+        stop("Error reading input files. Ensure paths are correct and files are TXT/TSV/CSV.")
+      data.table::fread(x, sep = "auto", ...)
+    } else if (is.data.frame(x) || data.table::is.data.table(x)) {
+      data.table::as.data.table(x)
+    } else {
+      stop(label, " must be a file path (character) or a data.frame / data.table.")
+    }
+  }
+
   tryCatch({
-    genos              <- data.table::fread(genotypes_file, sep = "auto")
-    all_parents        <- data.table::fread(parents_file,   sep = "auto")
-    progeny_candidates <- data.table::fread(progeny_file,   sep = "auto")
+    genos              <- read_flex(genotypes_file, "genotypes_file")
+    all_parents        <- read_flex(parents_file,   "parents_file")
+    progeny_candidates <- read_flex(progeny_file,   "progeny_file")
   }, error = function(e) {
     stop("Error reading input files. Ensure paths are correct and files are TXT/TSV/CSV.")
   })
@@ -94,9 +108,11 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
   male_parent_candidates   <- all_parents[sex %in% c("M", "A", "NA"), .SD]
   female_parent_candidates <- all_parents[sex %in% c("F", "A", "NA")]
 
-  if (base::nrow(male_parent_candidates) == 0 && method %in% c("best_male_parent", "best_pair"))
+  if (base::nrow(male_parent_candidates) == 0 &&
+      method %in% c("best_male_parent", "best_pair"))
     warning("No valid male parent candidates remain after filtering.", call. = FALSE)
-  if (base::nrow(female_parent_candidates) == 0 && method %in% c("best_female_parent", "best_pair"))
+  if (base::nrow(female_parent_candidates) == 0 &&
+      method %in% c("best_female_parent", "best_pair"))
     warning("No valid female parent candidates remain after filtering.", call. = FALSE)
   if (base::nrow(progeny_candidates) == 0)
     stop("No valid progeny candidates remain after filtering.")
@@ -124,6 +140,7 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
                                                                   female_parent_candidates$id))
     parent_genos  <- genos_hom_mat[base::rownames(genos_hom_mat) %in% parent_ids,            , drop = FALSE]
     progeny_genos <- genos_hom_mat[base::rownames(genos_hom_mat) %in% progeny_candidates$id, , drop = FALSE]
+
     n_progeny  <- base::nrow(progeny_genos)
     results_dt <- data.table::data.table(
       id                  = base::rownames(progeny_genos),
@@ -132,18 +149,21 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
       markers_tested      = NA_integer_,
       status              = NA_character_
     )
+
     for (i in base::seq_len(n_progeny)) {
       progeny_vec      <- progeny_genos[i, ]
       mismatches       <- base::rowSums(parent_genos != progeny_vec, na.rm = TRUE)
       comparisons      <- base::rowSums(!base::is.na(parent_genos) & !base::is.na(progeny_vec))
       percent_mismatch <- (mismatches / comparisons) * 100
       percent_mismatch[base::is.nan(percent_mismatch)] <- NA
+
       best_idx <- base::which.min(percent_mismatch)
       if (base::length(best_idx) == 0) {
         data.table::set(results_dt, i, "markers_tested", 0L)
         data.table::set(results_dt, i, "status",         "low_markers")
         next
       }
+
       best_markers <- comparisons[best_idx]
       best_error   <- base::round(percent_mismatch[best_idx], 2)
       data.table::set(results_dt, i, "best_match",          base::rownames(parent_genos)[best_idx])
@@ -238,7 +258,8 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
 
       if (!show_ties && base::nrow(best_pairs) > 1) {
         warning("Progeny '", prog_id, "' has ", base::nrow(best_pairs),
-                " tied best pairs. Only one is reported as show_ties=FALSE.", call. = FALSE)
+                " tied best pairs. Only one is reported as show_ties=FALSE.",
+                call. = FALSE)
       }
 
       num_to_report <- base::min(base::nrow(best_pairs),
@@ -281,7 +302,8 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
     pass         = final_df[status == "pass"],
     high_error   = final_df[status == "high_error"],
     low_markers  = final_df[status == "low_markers"],
-    full_results = final_df
+    full_results = final_df,
+    plot         = NULL
   )
 
   #### Verbose output ####
@@ -323,10 +345,10 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
   }
 
   #### Plot Results ####
-  p <- NULL
   if (plot_results) {
     if (!requireNamespace("ggplot2", quietly = TRUE)) {
-      warning("ggplot2 is required for plot_results = TRUE. Please install it.", call. = FALSE)
+      warning("ggplot2 is required for plot_results = TRUE. Please install it.",
+              call. = FALSE)
     } else {
       plot_df <- final_df[!is.na(final_df$mendelian_error_pct)]
       plot_df$mendelian_error_pct <- base::as.numeric(plot_df$mendelian_error_pct)
@@ -335,11 +357,7 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
         base::ifelse(
           plot_df$status == "high_error",  "high_error",
           base::ifelse(
-            plot_df$status == "low_markers", "low_markers",
-            "other"
-          )
-        )
-      )
+            plot_df$status == "low_markers", "low_markers", "other")))
 
       n_total <- base::nrow(plot_df)
       n_pass  <- base::sum(plot_df$status == "pass",        na.rm = TRUE)
@@ -348,8 +366,8 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
 
       threshold_label <- base::paste0(
         "Error Threshold: ", error_threshold, "%  |  ",
-        "Pass: ",        n_pass, "  |  ",
-        "High Error: ",  n_high, "  |  ",
+        "Pass: ", n_pass, "  |  ",
+        "High Error: ", n_high, "  |  ",
         "Low Markers: ", n_low
       )
 
@@ -374,7 +392,8 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
         ) +
         ggplot2::labs(
           title    = "Parentage Mendelian Error Distribution",
-          subtitle = base::paste0("Progeny Tested: ", n_total, "\n \n", threshold_label),
+          subtitle = base::paste0("Progeny Tested: ", n_total,
+                                  "\n \n", threshold_label),
           x        = "Mendelian Error (%)",
           y        = "Number of Progeny",
           fill     = "Status"
@@ -383,9 +402,9 @@ find_parentage <- function(genotypes_file, parents_file, progeny_file,
         ggplot2::theme(legend.position = "top")
 
       base::print(p)
+      output_list$plot <- p
     }
   }
 
-  output_list$plot <- p
   return(base::invisible(output_list))
 }

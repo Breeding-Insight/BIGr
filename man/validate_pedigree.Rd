@@ -16,11 +16,12 @@ validate_pedigree(
 )
 }
 \arguments{
-\item{pedigree_file}{Character. Path to the pedigree file (TSV/CSV/TXT)
-with columns: id, male_parent, female_parent.}
+\item{pedigree_file}{Path to the pedigree file (TSV/CSV/TXT), OR a
+data.frame / data.table with columns: id, male_parent, female_parent.}
 
-\item{genotypes_file}{Character. Path to the genotypes file (TSV/CSV/TXT)
-with an id column followed by marker columns coded as 0, 1, 2.}
+\item{genotypes_file}{Path to the genotypes file (TSV/CSV/TXT), OR a
+data.frame / data.table with an id column followed by marker columns
+coded as 0, 1, 2.}
 
 \item{founders_file}{Character, optional. Path to a one-column file listing
 founder IDs. Founders with both parents coded as 0 are left unchanged.
@@ -53,7 +54,7 @@ An invisible named list with the following elements:
 \item{missing_parents}{Trios with one or both parents coded as 0 (non-founders).}
 \item{full_results}{Complete data.table with all trios and all output columns.}
 \item{corrected_pedigree}{Pedigree table after applying recommended corrections.}
-\item{plot}{ggplot object. Use ggsave() to save if desired.}
+\item{plot}{ggplot object if plot_results = TRUE, otherwise NULL.}
 }
 }
 \description{

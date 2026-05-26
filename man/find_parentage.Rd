@@ -18,18 +18,19 @@ find_parentage(
 )
 }
 \arguments{
-\item{genotypes_file}{Path to a TSV/CSV/TXT file with an 'id' column
-followed by marker columns coded as 0, 1, 2 (allele dosage).}
+\item{genotypes_file}{Path to a TSV/CSV/TXT file, OR a data.frame /
+data.table with an 'id' column followed by marker columns coded as 0, 1, 2.}
 
-\item{parents_file}{Path to a TSV/CSV/TXT file with an 'id' column and an
-optional 'sex' column ('M', 'F', or 'A'). If absent, all parents are
-treated as ambiguous.}
+\item{parents_file}{Path to a TSV/CSV/TXT file, OR a data.frame /
+data.table with an 'id' column and an optional 'sex' column
+('M', 'F', or 'A'). If absent, all parents are treated as ambiguous.}
 
-\item{progeny_file}{Path to a TSV/CSV/TXT file with an 'id' column.}
+\item{progeny_file}{Path to a TSV/CSV/TXT file, OR a data.frame /
+data.table with an 'id' column.}
 
 \item{method}{Character. One of \code{"best_male_parent"},
 \code{"best_female_parent"}, \code{"best_match"}, or
-\code{"best_pair"} (default). See Details.}
+\code{"best_pair"} (default).}
 
 \item{min_markers}{Integer. Minimum markers required; fewer flags
 \code{low_markers} (default: \code{10}).}
@@ -38,26 +39,25 @@ treated as ambiguous.}
 flag \code{high_error} (default: \code{5.0}). Must be between 0 and 100.}
 
 \item{show_ties}{Logical. If \code{TRUE}, tied best pairs are appended as
-suffix columns (e.g. \code{male_parent_2}) for \code{"best_pair"}.
-Default is \code{TRUE}.}
+suffix columns. Default is \code{TRUE}.}
 
 \item{allow_selfing}{Logical. If \code{FALSE}, pairs with identical male and
 female parent IDs are excluded. Default is \code{TRUE}.}
 
-\item{verbose}{Logical. If \code{TRUE}, prints progress and summary to the
-console. Default is \code{TRUE}.}
+\item{verbose}{Logical. If \code{TRUE}, prints progress and summary.
+Default is \code{TRUE}.}
 
 \item{plot_results}{Logical. If \code{TRUE}, plots the Mendelian error
-distribution colored by status. Requires \code{ggplot2}. Default is \code{TRUE}.}
+distribution. Requires \code{ggplot2}. Default is \code{TRUE}.}
 }
 \value{
-A named list (returned invisibly) with the following elements:
+A named list (returned invisibly) with elements:
 \describe{
 \item{pass}{Progeny with a confident parentage assignment.}
 \item{high_error}{Progeny whose best assignment exceeds the error threshold.}
 \item{low_markers}{Progeny with insufficient markers for a valid assignment.}
 \item{full_results}{Complete data.table with all progeny and all output columns.}
-\item{plot}{ggplot object. Use ggsave() to save if desired.}
+\item{plot}{ggplot object if plot_results = TRUE, otherwise NULL.}
 }
 }
 \description{

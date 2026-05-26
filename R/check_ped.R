@@ -6,7 +6,8 @@
 #' roles are corrected when their respective arguments are TRUE. Cycles are
 #' reported only and must be resolved manually.
 #'
-#' @param ped.file Path to the pedigree text file.
+#' @param ped.file Path to the pedigree text file (TSV/CSV/TXT), OR a
+#'   data.frame / data.table with columns: id, male_parent, female_parent.
 #' @param seed Optional integer seed for reproducibility.
 #' @param verbose Logical. If TRUE (default), prints the report to the console.
 #' @param correct_conflicting_trios Logical. If TRUE (default), sets conflicting
@@ -29,21 +30,19 @@
 #' ped_file <- system.file("check_ped_test.txt", package = "BIGr")
 #' ped_errors <- check_ped(ped.file = ped_file, seed = 101919, verbose = FALSE)
 #'
-#' ped_errors$inconsistent_sex_roles
-#' ped_errors$corrected_pedigree
-#'
-#' # Identify the conflicting IDs from the parent columns
-#' conflicting_sex_ids <- unique(c(
-#'   ped_errors$inconsistent_sex_roles$male_parent,
-#'   ped_errors$inconsistent_sex_roles$female_parent
-#' ))
-#' print(conflicting_sex_ids)
+#' # Also accepts a data.table directly
+#' library(data.table)
+#' ped_dt <- data.table(id = c("A","B","C"),
+#'                      male_parent   = c("0","0","A"),
+#'                      female_parent = c("0","0","B"))
+#' ped_errors <- check_ped(ped.file = ped_dt, verbose = FALSE)
 #'
 #' @author Josue Chinchilla-Vargas
 #'
 #' @importFrom dplyr %>% mutate filter group_by ungroup summarize distinct bind_rows select first n n_distinct if_else row_number
 #' @importFrom stats setNames
 #' @importFrom utils read.table
+#' @importFrom janitor clean_names
 #' @export
 check_ped <- function(ped.file,
                       seed                           = NULL,
@@ -54,22 +53,26 @@ check_ped <- function(ped.file,
   #### setup ####
   if (!is.null(seed)) set.seed(seed)
 
-  # read inputs first, then normalize column names to lowercase
-  data <- utils::read.table(ped.file, header = TRUE)
-  names(data) <- tolower(names(data))
+  # Accept file path OR in-memory data.frame / data.table
+  if (is.character(ped.file) && length(ped.file) == 1 && file.exists(ped.file)) {
+    data <- utils::read.table(ped.file, header = TRUE)
+    data <- janitor::clean_names(data)
+  } else if (is.data.frame(ped.file) || data.table::is.data.table(ped.file)) {
+    data <- as.data.frame(ped.file)
+    data <- janitor::clean_names(data)
+  } else {
+    stop("ped.file must be a valid file path (character) or a data.frame / data.table.")
+  }
 
-  # validate required columns after normalization
   required_cols <- c("id", "male_parent", "female_parent")
   missing_cols  <- setdiff(required_cols, colnames(data))
   if (length(missing_cols) > 0) {
     stop(
-      "Input file is missing required column(s): ",
+      "Input is missing required column(s): ",
       paste(missing_cols, collapse = ", "),
       ".\nExpected columns: id, male_parent, female_parent."
     )
   }
-
-  # reorder so required columns always come first regardless of column order in the input file
   extra_cols <- setdiff(names(data), required_cols)
   data       <- data[, c(required_cols, extra_cols)]
 
@@ -111,7 +114,8 @@ check_ped <- function(ped.file,
 
   conflicting_trios_ids <- repeated_ids %>%
     dplyr::group_by(id) %>%
-    dplyr::filter(dplyr::n_distinct(male_parent) > 1 | dplyr::n_distinct(female_parent) > 1) %>%
+    dplyr::filter(dplyr::n_distinct(male_parent) > 1 |
+                    dplyr::n_distinct(female_parent) > 1) %>%
     dplyr::ungroup()
 
   if (correct_conflicting_trios && nrow(conflicting_trios_ids) > 0) {
@@ -152,7 +156,8 @@ check_ped <- function(ped.file,
     }
 
     if (male_parent == id || female_parent == id) {
-      errors <- append(errors, paste("Dependency: Individual", id, "cannot be its own parent"))
+      errors <- append(errors, paste("Dependency: Individual", id,
+                                     "cannot be its own parent"))
     }
   }
 
@@ -166,8 +171,6 @@ check_ped <- function(ped.file,
   female_ids          <- unique(data$female_parent[data$female_parent != "0"])
   conflicting_sex_ids <- intersect(male_ids, female_ids)
 
-  # FIX 4: return the rows where the conflicting ID appears AS A PARENT
-  # (not the row where it is the subject) — this shows the actual contradiction
   inconsistent_sex_roles <- data %>%
     dplyr::filter(male_parent %in% conflicting_sex_ids |
                     female_parent %in% conflicting_sex_ids)
@@ -181,7 +184,7 @@ check_ped <- function(ped.file,
       dplyr::distinct(id, male_parent, female_parent, .keep_all = TRUE)
   }
 
-  #### check 5: dependencies (cycles) -- reported only, never modified ####
+  #### check 5: dependencies (cycles) -- reported only ####
   detect_all_cycles <- function(data) {
     adj_list <- lapply(data$id, function(x) {
       row <- data[data$id == x, ]
@@ -216,9 +219,8 @@ check_ped <- function(ped.file,
     for (node in names(adj_list)) {
       if (!visited[node]) {
         node_cycles <- dfs(node, visited, rec_stack, character())
-        if (length(node_cycles) > 0) {
+        if (length(node_cycles) > 0)
           all_cycles <- append(all_cycles, node_cycles)
-        }
       }
     }
     return(all_cycles)
@@ -265,17 +267,17 @@ check_ped <- function(ped.file,
     } else cat("\nNo conflicting trios found.\n")
 
     if (nrow(missing_parents) > 0) {
-      cat("\nParents missing as IDs found in the pedigree (added as founders in corrected pedigree):\n")
+      cat("\nParents missing as IDs (added as founders in corrected pedigree):\n")
       print(missing_parents)
     } else cat("\nNo missing parents found.\n")
 
     if (nrow(inconsistent_sex_roles) > 0) {
-      cat("\nIDs found as both male_parent and female_parent (is selfing or hermaphrodytism possible?):\n")
+      cat("\nIDs found as both male_parent and female_parent:\n")
       print(inconsistent_sex_roles)
       if (correct_inconsistent_sex_roles) {
-        cat("  -> parent fields set to 0 for conflicting IDs; exact duplicates removed in corrected pedigree.\n")
+        cat("  -> parent fields set to 0 for conflicting IDs in corrected pedigree.\n")
       } else {
-        cat("  -> correct_inconsistent_sex_roles = FALSE: left as-is in corrected pedigree.\n")
+        cat("  -> correct_inconsistent_sex_roles = FALSE: left as-is.\n")
       }
     } else cat("\nNo IDs found as both male_parent and female_parent.\n")
 

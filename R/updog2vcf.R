@@ -126,9 +126,16 @@ updog2vcf <- function(multidog.object, output.file, updog_version = NULL, RefAlt
 
   #CHROM and POS from SNP ID
   new_df <- mout$snpdf %>%
-    separate(snp, into = c("CHROM", "POS"), sep = "_") %>%
+    extract(
+      snp,
+      into = c("CHROM", "POS"),
+      regex = "^(.*)_([^_]*)$"
+    ) %>%
+    mutate(
+      POS = sub("^0+", "", POS),
+      POS = if_else(POS == "", "0", POS)
+    ) %>%
     select(CHROM, POS)
-  new_df$POS <- sub("^0+", "", new_df$POS)
 
   #Make the VCF df
   vcf_df <- data.frame(

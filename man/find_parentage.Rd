@@ -12,7 +12,8 @@ find_parentage(
   min_markers = 10,
   error_threshold = 5,
   show_ties = TRUE,
-  allow_selfing = TRUE,
+  allow_parent_selfing = FALSE,
+  exclude_self_match = TRUE,
   verbose = TRUE,
   plot_results = TRUE
 )
@@ -41,8 +42,13 @@ flag \code{high_error} (default: \code{5.0}). Must be between 0 and 100.}
 \item{show_ties}{Logical. If \code{TRUE}, tied best pairs are appended as
 suffix columns. Default is \code{TRUE}.}
 
-\item{allow_selfing}{Logical. If \code{FALSE}, pairs with identical male and
-female parent IDs are excluded. Default is \code{TRUE}.}
+\item{allow_parent_selfing}{Logical. If \code{FALSE}, candidate pairs with
+identical male and female parent IDs are excluded. Applies only when
+\code{method = "best_pair"}. Default is \code{FALSE}.}
+
+\item{exclude_self_match}{Logical. If \code{TRUE}, each progeny ID is
+excluded from its own candidate parent set, preventing self-matches when
+progeny are also present in the parents file. Default is \code{TRUE}.}
 
 \item{verbose}{Logical. If \code{TRUE}, prints progress and summary.
 Default is \code{TRUE}.}

@@ -2,7 +2,7 @@
 % Please edit documentation in R/breedtools_functions.R
 \name{solve_composition_poly}
 \alias{solve_composition_poly}
-\title{Compute Genome-Wide Breed Composition}
+\title{Compute genome-wide breed composition}
 \usage{
 solve_composition_poly(
   Y,
@@ -16,41 +16,40 @@ solve_composition_poly(
 )
 }
 \arguments{
-\item{Y}{numeric matrix of genotypes (columns) from all animals (rows) in population
-coded as dosage of allele B \code{{0, 1, 2, ..., ploidy}}}
+\item{Y}{Numeric matrix of genotypes with individuals as rows and SNPs as
+columns, coded as dosage of allele B \code{{0, 1, 2, ..., ploidy}}.}
 
-\item{X}{numeric matrix of allele frequencies (rows) from each reference panel (columns). Frequencies are
-relative to allele B.}
+\item{X}{Numeric matrix of allele frequencies with SNPs as rows and
+breeds/populations as columns.}
 
-\item{ped}{data.frame giving pedigree information. Must be formatted "ID", "Sire", "Dam"}
+\item{ped}{Optional data frame with pedigree information formatted with
+columns \code{ID}, \code{Sire}, and \code{Dam}. When supplied, \code{QPsolve_par} is used
+and only animals with genotyped parents are included.}
 
-\item{groups}{list of IDs categorized by breed/population. If specified, output will be a list
-of results categorized by breed/population.}
+\item{groups}{Optional named list of IDs grouped by breed/population.
+When supplied, results are returned as a named list partitioned by group.}
 
-\item{mia}{logical. Only applies if ped argument is supplied. If true, returns a data.frame
-containing the inferred maternally inherited allele for each locus for each animal instead
-of breed composition results.}
+\item{mia}{Logical. Only applies when \code{ped} is supplied. If \code{TRUE}, returns
+the inferred maternally inherited allele per locus per animal. Default \code{FALSE}.}
 
-\item{sire}{logical. Only applies if ped argument is supplied. If true, returns a data.frame
-containing sire genotypes for each locus for each animal instead of breed composition results.}
+\item{sire}{Logical. Only applies when \code{ped} is supplied. If \code{TRUE}, returns
+sire genotypes per locus per animal. Default \code{FALSE}.}
 
-\item{dam}{logical. Only applies if ped argument is supplied. If true, returns a data.frame
-containing dam genotypes for each locus for each animal instead of breed composition results.}
+\item{dam}{Logical. Only applies when \code{ped} is supplied. If \code{TRUE}, returns
+dam genotypes per locus per animal. Default \code{FALSE}.}
 
-\item{ploidy}{integer. The ploidy level of the species (e.g., 2 for diploid, 3 for triploid, etc.).}
+\item{ploidy}{Integer. Ploidy level of the species. Default is \code{2}.}
 }
 \value{
-A data.frame or list of data.frames (if groups is !NULL) with breed/ancestry composition
-results
+A data frame, or a named list of data frames when \code{groups} is
+supplied, containing breed/ancestry composition estimates.
 }
 \description{
-Computes genome-wide breed/ancestry composition using quadratic programming on a
-batch of animals.
+Estimates genome-wide breed/ancestry composition for a batch of animals
+using quadratic programming, with optional pedigree-assisted and
+grouped-output modes.
 }
 \examples{
-# Example inputs for solve_composition_poly (ploidy = 4)
-
-# (This would typically be the output from allele_freq_poly)
 allele_freqs_matrix <- matrix(
   c(0.625, 0.500,
     0.500, 0.500,
@@ -60,16 +59,12 @@ allele_freqs_matrix <- matrix(
   nrow = 5, ncol = 2, byrow = TRUE,
   dimnames = list(paste0("SNP", 1:5), c("VarA", "VarB"))
 )
-
-# Validation Genotypes (individuals x SNPs)
 val_geno_matrix <- matrix(
-  c(2, 1, 2, 3, 4,  # Test1 dosages for SNP1-5
-    3, 4, 2, 3, 0), # Test2 dosages for SNP1-5
+  c(2, 1, 2, 3, 4,
+    3, 4, 2, 3, 0),
   nrow = 2, ncol = 5, byrow = TRUE,
   dimnames = list(paste0("Test", 1:2), paste0("SNP", 1:5))
 )
-
-# Calculate Breed Composition
 composition <- solve_composition_poly(Y = val_geno_matrix,
                                       X = allele_freqs_matrix,
                                       ploidy = 4)
@@ -77,6 +72,10 @@ print(composition)
 
 }
 \references{
-Funkhouser SA, Bates RO, Ernst CW, Newcom D, Steibel JP. Estimation of genome-wide and locus-specific
-breed composition in pigs. Transl Anim Sci. 2017 Feb 1;1(1):36-44.
+Funkhouser SA, Bates RO, Ernst CW, Newcom D, Steibel JP.
+Estimation of genome-wide and locus-specific breed composition in pigs.
+\emph{Transl Anim Sci.} 2017;1(1):36–44.
+}
+\author{
+Josué Chinchilla-Vargas
 }

@@ -2,60 +2,61 @@
 % Please edit documentation in R/check_ped.R
 \name{check_ped}
 \alias{check_ped}
-\title{Check a pedigree file for accuracy and report/correct common errors}
+\title{Check and Correct Common Pedigree Errors}
 \usage{
-check_ped(ped.file, seed = NULL, verbose = TRUE)
+check_ped(
+  ped.file,
+  seed = NULL,
+  verbose = TRUE,
+  correct_conflicting_trios = TRUE,
+  correct_inconsistent_sex_roles = TRUE
+)
 }
 \arguments{
-\item{ped.file}{Path to the pedigree text file.}
+\item{ped.file}{Path to the pedigree text file (TSV/CSV/TXT), OR a
+data.frame / data.table with columns: id, male_parent, female_parent.}
 
-\item{seed}{Optional seed for reproducibility.}
+\item{seed}{Optional integer seed for reproducibility.}
 
 \item{verbose}{Logical. If TRUE (default), prints the report to the console.}
+
+\item{correct_conflicting_trios}{Logical. If TRUE (default), sets conflicting
+male_parent and female_parent to 0 and collapses to one row per ID.}
+
+\item{correct_inconsistent_sex_roles}{Logical. If TRUE (default), sets
+male_parent and female_parent to 0 for rows involving IDs found as both,
+then removes any resulting exact duplicates.}
 }
 \value{
-A list of data.frames containing detected issues:
-\itemize{
-\item \code{exact_duplicates}: rows that were exact duplicates
-\item \code{repeated_ids_diff}: IDs appearing more than once with conflicting sire/dam
-\item \code{messy_parents}: IDs appearing as both sire and dam
-\item \code{missing_parents}: parents added to the pedigree with 0 as sire/dam
-\item \code{dependencies}: detected cycles in the pedigree
-\item \code{corrected_pedigree}: corrected pedigree table
+An invisible named list of data frames:
+\describe{
+\item{exact_duplicates}{Exact duplicate rows found in the input.}
+\item{conflicting_trios}{IDs with conflicting male_parent or female_parent assignments.}
+\item{inconsistent_sex_roles}{Rows where a conflicting ID appears as male_parent or female_parent.}
+\item{missing_parents}{Parent IDs absent from id, added as founders.}
+\item{dependencies}{Cycles detected in the pedigree. Must be resolved manually.}
+\item{corrected_pedigree}{Corrected pedigree table.}
 }
 }
 \description{
-\code{check_ped} reads a 3-column pedigree file (tab-separated, columns labeled \code{id}, \code{sire}, \code{dam} in any order)
-and performs quality checks, optionally correcting or flagging errors.
-}
-\details{
-The function checks for:
-\itemize{
-\item Exact duplicate rows and removes them (keeping one copy)
-\item IDs that appear more than once with conflicting sire/dam assignments (sets sire/dam to "0")
-\item IDs that appear in both sire and dam columns
-\item Missing parents (IDs referenced as sire/dam but not in \code{id} column), adds them with sire/dam = "0"
-\item Direct and indirect pedigree dependencies (cycles), such as a parent being its own descendant
-}
-
-After an initial run to clean exact duplicates and repeated IDs, you can run the function again to detect cycles more accurately.
-
-The function does \strong{not} overwrite the input file or create objects in the
-global environment. Instead, it returns the report and corrected pedigree in
-a list.
+Reads a 3-column pedigree file (id, male_parent, female_parent) and performs
+quality checks, optionally correcting detected errors. Exact duplicates and
+missing parents are always corrected. Conflicting trios and inconsistent sex
+roles are corrected when their respective arguments are TRUE. Cycles are
+reported only and must be resolved manually.
 }
 \examples{
 ped_file <- system.file("check_ped_test.txt", package = "BIGr")
 ped_errors <- check_ped(ped.file = ped_file, seed = 101919, verbose = FALSE)
 
-# Access messy parents
-ped_errors$messy_parents
+# Also accepts a data.table directly
+library(data.table)
+ped_dt <- data.table(id = c("A","B","C"),
+                     male_parent   = c("0","0","A"),
+                     female_parent = c("0","0","B"))
+ped_errors <- check_ped(ped.file = ped_dt, verbose = FALSE)
 
-# Access corrected pedigree
-ped_errors$corrected_pedigree
-
-# IDs with messy parents
-messy_ids <- ped_errors$messy_parents$id
-print(messy_ids)
-
+}
+\author{
+Josue Chinchilla-Vargas
 }

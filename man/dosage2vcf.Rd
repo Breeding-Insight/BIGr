@@ -2,12 +2,12 @@
 % Please edit documentation in R/dosage2vcf.R
 \name{dosage2vcf}
 \alias{dosage2vcf}
-\title{Convert DArTag Dosage and Counts to VCF}
+\title{Convert DArTag genotype reports and counts to VCF}
 \usage{
 dosage2vcf(dart.report, dart.counts, ploidy, output.file)
 }
 \arguments{
-\item{dart.report}{Path to the DArT dosage report .csv file. Typically contains "Dosage Report" in the file name.}
+\item{dart.report}{Path to the DArT Allele Dose Report or SNP/INDEL report .csv file.}
 
 \item{dart.counts}{Path to the DArT counts .csv file. Typically contains "Counts" in the file name.}
 
@@ -19,11 +19,15 @@ dosage2vcf(dart.report, dart.counts, ploidy, output.file)
 A vcf file
 }
 \description{
-This function will convert the DArT Dosage Report and Counts files to VCF format
+This function will convert DArT genotype report and Counts files to VCF format
 }
 \details{
-This function will convert the Dosage Report and Counts files from DArT into a VCF file.
+This function will convert Allele Dose Report or SNP/INDEL report files and Counts files from DArT into a VCF file.
 These two files are received directly from DArT for a given sequencing project.
+SNP/INDEL one-row and two-row reports are treated as diploid genotype reports
+with 0 = reference homozygote, 1 = alternate homozygote, 2 = heterozygote,
+and - = missing. Allele Dose reports are interpreted as reference allele
+dosages using the supplied ploidy.
 The output file will be saved to the location and with the name that is specified.
 The VCF format is v4.3
 }

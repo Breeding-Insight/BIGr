@@ -44,8 +44,8 @@ Either \code{madc_file} or \code{madc_object} must be provided (not both \code{N
 When \code{madc_object} is supplied it is passed directly to \code{get_counts()},
 skipping file I/O. The function constructs:
 \itemize{
-\item \code{ref_matrix} — per-sample reference allele counts.
-\item \code{size_matrix} — per-sample total counts (ref + alt).
+\item \code{ref_matrix} - per-sample reference allele counts.
+\item \code{size_matrix} - per-sample total counts (ref + alt).
 }
 
 Markers whose \code{CloneID} appears only in the \code{Ref} or only in the \code{Alt} rows

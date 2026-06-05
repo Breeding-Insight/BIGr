@@ -4,7 +4,7 @@
 #'
 #' @description
 #' Parses a DArTag **MADC** report and writes a **VCF v4.3** containing per-target
-#' read counts for the panel’s target loci. This is useful because MADC is not
+#' read counts for the panel's target loci. This is useful because MADC is not
 #' widely supported by general-purpose tools, while VCF is.
 #'
 #' @details
@@ -13,7 +13,7 @@
 #'   presence, fixed allele IDs, IUPAC/ambiguous bases, lowercase bases, indels,
 #'   chromosome/position format, all-NA rows/columns, Ref/Alt sequence presence).
 #' - Extracts reference and total read counts per sample and target.
-#' - Derives `AD` (ref,alt) by subtraction (alt = total − ref).
+#' - Derives `AD` (ref,alt) by subtraction (alt = total - ref).
 #' - If `get_REF_ALT = TRUE`, recovers REF/ALT bases either from `markers_info`
 #'   (when `Ref`/`Alt` columns are present) or by comparing the Ref/Alt probe
 #'   sequences in the MADC file (with strand correction via `botloci_file`).
@@ -23,12 +23,12 @@
 #'
 #' **Output VCF layout**
 #' - `INFO` fields:
-#'   * `DP`   — total depth across all samples for the locus
-#'   * `ADS`  — total counts across samples in the order `ref,alt`
+#'   * `DP`   - total depth across all samples for the locus
+#'   * `ADS`  - total counts across samples in the order `ref,alt`
 #' - `FORMAT` fields (per sample):
-#'   * `DP`   — total reads (ref + alt)
-#'   * `RA`   — reads supporting the reference allele
-#'   * `AD`   — `"ref,alt"` counts
+#'   * `DP`   - total reads (ref + alt)
+#'   * `RA`   - reads supporting the reference allele
+#'   * `AD`   - `"ref,alt"` counts
 #'
 #' **Strand handling**
 #' If a target ID appears in `botloci_file`, its probe sequences are reverse-
@@ -46,21 +46,21 @@
 #' | Check | Status | `get_REF_ALT` | Required |
 #' |---|---|---|---|
 #' | **IUPAC codes** | detected | `TRUE` | `markers_info` with `Ref`/`Alt` |
-#' | | detected | `FALSE` | — |
+#' | | detected | `FALSE` | none |
 #' | | not detected | `TRUE` | `botloci_file` **or** `markers_info` with `Ref`/`Alt` |
-#' | | not detected | `FALSE` | — |
+#' | | not detected | `FALSE` | none |
 #' | **Indels** | detected | `TRUE` | `markers_info` with `Ref`/`Alt` |
-#' | | detected | `FALSE` | — |
+#' | | detected | `FALSE` | none |
 #' | | not detected | `TRUE` | `botloci_file` **or** `markers_info` with `Ref`/`Alt` |
-#' | | not detected | `FALSE` | — |
+#' | | not detected | `FALSE` | none |
 #' | **ChromPos** | valid | `TRUE` | `botloci_file` **or** `markers_info` with `Ref`/`Alt` |
-#' | | valid | `FALSE` | — |
+#' | | valid | `FALSE` | none |
 #' | | invalid | `TRUE` | `markers_info` with `Chr`/`Pos`/`Ref`/`Alt` **or** `markers_info` with `Chr`/`Pos` + `botloci_file` |
 #' | | invalid | `FALSE` | `markers_info` with `Chr`/`Pos` |
 #' | **FixAlleleIDs** | fixed | `TRUE` | `botloci_file` **or** `markers_info` with `Ref`/`Alt` |
-#' | | fixed | `FALSE` | — |
+#' | | fixed | `FALSE` | none |
 #' | | not fixed | `TRUE` | `markers_info` with `Ref`/`Alt` |
-#' | | not fixed | `FALSE` | — |
+#' | | not fixed | `FALSE` | none |
 #'
 #' @param madc_file character. Path to the input MADC CSV file.
 #' @param output.file character. Path to the output VCF file to write.
@@ -75,8 +75,8 @@
 #'   metadata. Matching is done by column name, not column position. Accepted columns:
 #'   - one marker identifier column named `CloneID`, `Marker_ID`, or `BI_markerID`
 #'     (required; a generic `ID` column is not accepted);
-#'   - `Chr`, `Pos` — required when `CloneID` does not follow the `Chr_Pos` format;
-#'   - `Ref`, `Alt` — required when `get_REF_ALT = TRUE` and probe-sequence
+#'   - `Chr`, `Pos` - required when `CloneID` does not follow the `Chr_Pos` format;
+#'   - `Ref`, `Alt` - required when `get_REF_ALT = TRUE` and probe-sequence
 #'     inference is not possible (IUPAC codes, indels, or unfixed allele IDs). When
 #'     `get_REF_ALT = TRUE`, `botloci_file` is still required unless `Ref` and `Alt`
 #'     are supplied here.
@@ -256,7 +256,7 @@ madc2vcf_targets <- function(madc_file,
   if(get_REF_ALT) {
 
     if(mi_has_ref_alt) {
-      # markers_info supplies REF and ALT — no botloci required
+      # markers_info supplies REF and ALT - no botloci required
       vmsg("markers_info contains Ref and Alt columns. REF and ALT will be taken from markers_info.",
            verbose = verbose, level = 1, type = ">>")
 
@@ -264,7 +264,7 @@ madc2vcf_targets <- function(madc_file,
       if(checks$checks["Indels"])
         stop("Indels detected in MADC file. Since get_REF_ALT = TRUE, a markers_info file with REF/ALT information is required.")
 
-      # REF/ALT must be extracted from probe sequences — botloci is required
+      # REF/ALT must be extracted from probe sequences - botloci is required
       if(is.null(botloci_file) || (!file.exists(botloci_file) && !url_exists(botloci_file)))
         stop("get_REF_ALT = TRUE but no markers_info file with Ref and Alt columns was provided neither a botloci_file to extrat REF/ALT from probe sequences. Please provide one of the these files or set get_REF_ALT to FALSE.")
 
@@ -454,7 +454,7 @@ madc2vcf_targets <- function(madc_file,
       }
 
     } else {
-      # ── get_REF_ALT = FALSE, no markers_info ─────────────────────────
+      # get_REF_ALT = FALSE, no markers_info
       ref_base <- "."
       alt_base <- "."
       vmsg("REF and ALT not recovered (get_REF_ALT = FALSE).", verbose = verbose, level = 1, type = ">>")

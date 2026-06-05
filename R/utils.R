@@ -7,7 +7,8 @@ utils::globalVariables(c(
   "ind", "ref", "row_name", "size", "snp",
   "CloneID", "Count", "qualifying_sites_count",
   "MarkerID", "SampleID", "Dosage",
-  "pos", "alt", "match_key"
+  "pos", "alt", "match_key",
+  ":=", ".SD", "Sex", "Male_Parent", "Female_Parent", "chr"
 ))
 
 #' Convert GT format to numeric dosage

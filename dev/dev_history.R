@@ -2,7 +2,7 @@
 
 # Update dependencies in DESCRIPTION
 # install.packages('attachment', repos = 'https://thinkr-open.r-universe.dev')
-attachment::att_amend_desc()
+#attachment::att_amend_desc()
 
 # Check package coverage
 covr::package_coverage()

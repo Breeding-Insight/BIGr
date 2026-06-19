@@ -1,3 +1,7 @@
+# BIGr (development version)
+
+- Fixed `madc2vcf_all()` error "invalid substring arguments" that occurred with `add_others = TRUE` when an off-target ("Other") allele aligned to the reference with no mismatch positions remaining after the target SNP position was removed. The reference/alternate base lookups for off-target alleles are now guarded by the existing non-empty check, matching how the off-target Match alleles are already handled.
+
 # BIGr 0.7.2
 
 - Fixed manual text errors

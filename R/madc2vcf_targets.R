@@ -128,6 +128,7 @@
 #' @import dplyr
 #' @import tidyr
 #' @import tibble
+#' @importFrom stats setNames
 #' @importFrom reshape2 melt dcast
 #' @importFrom utils write.table
 #' @importFrom Biostrings DNAString reverseComplement
@@ -521,8 +522,19 @@ madc2vcf_targets <- function(madc_file,
   # Add # to the CHROM column name
   colnames(vcf_df)[1] <- "#CHROM"
 
-  # Sort
-  vcf_df <- vcf_df[order(vcf_df[,1],as.numeric(as.character(vcf_df[,2]))),]
+  # Sort and correct any potential scientific notation
+  pos_num <- suppressWarnings(as.numeric(vcf_df$POS))
+  bad_pos <- is.na(pos_num) | !is.finite(pos_num) | pos_num < 1 | pos_num != floor(pos_num)
+
+  if (any(bad_pos)) {
+    vmsg("Removed %s VCF records with invalid POS values.", verbose = verbose, level = 1, type = ">>", sum(bad_pos))
+    vcf_df <- vcf_df[!bad_pos, , drop = FALSE]
+    pos_num <- pos_num[!bad_pos]
+  }
+
+  ord <- order(vcf_df[[1]], pos_num)
+  vcf_df <- vcf_df[ord, , drop = FALSE]
+  vcf_df$POS <- sprintf("%.0f", pos_num[ord])
 
   # Remove markers with NA CHROM/POS (unmatched in markers_info, Case 3)
   na_coord <- is.na(vcf_df[, 1]) | is.na(vcf_df$POS)

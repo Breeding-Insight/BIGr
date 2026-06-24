@@ -855,7 +855,20 @@ create_VCF_body <- function(csv,
   vcf_body_new <- vcf_body_new[,-1]
 
   colnames(vcf_body_new) <- c("#CHROM", "POS", "ID", "REF", "ALT","QUAL", "FILTER", "INFO","FORMAT", colnames(csv)[-c(1:7)])
-  vcf_body_new <- vcf_body_new[order(vcf_body_new[,1], vcf_body_new[,2]),]
+
+  #Correct scientific notation POS and remove rows with negative POS information
+  pos_num <- suppressWarnings(as.numeric(vcf_body_new$POS))
+  bad_pos <- is.na(pos_num) | !is.finite(pos_num) | pos_num < 1 | pos_num != floor(pos_num)
+
+  if (any(bad_pos)) {
+    vmsg("Removed %s VCF records with invalid POS values.", verbose = verbose, level = 1, type = ">>", sum(bad_pos))
+    vcf_body_new <- vcf_body_new[!bad_pos, , drop = FALSE]
+    pos_num <- pos_num[!bad_pos]
+  }
+
+  ord <- order(vcf_body_new[[1]], pos_num)
+  vcf_body_new <- vcf_body_new[ord, , drop = FALSE]
+  vcf_body_new$POS <- sprintf("%.0f", pos_num[ord])
 
   return(vcf_body_new)
 }

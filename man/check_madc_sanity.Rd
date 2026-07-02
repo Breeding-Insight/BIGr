@@ -14,11 +14,12 @@ If \code{FixAlleleIDs} is \code{FALSE} (raw DArT format), the first 7 rows are
 treated as header filler and skipped before further checks are run.}
 }
 \value{
-A named list with five elements:
+A named list with six elements:
 \describe{
-\item{checks}{Named logical vector with nine entries:
-\code{Columns}, \code{FixAlleleIDs}, \code{IUPACcodes}, \code{LowerCase}, \code{Indels},
-\code{ChromPos}, \code{allNAcol}, \code{allNArow}, \code{RefAltSeqs}.
+\item{checks}{Named logical vector with twelve entries:
+\code{Columns}, \code{FixAlleleIDs}, \code{IUPACcodes}, \code{IUPACcodes_IdenticalRefAlt},
+\code{LowerCase}, \code{Indels}, \code{ChromPos}, \code{allNAcol}, \code{allNArow}, \code{RefAltSeqs},
+\code{OtherAlleles}, \code{IUPACcodes_MatchAlleles}.
 \code{TRUE} means the condition was detected (or passed for \code{Columns},
 \code{FixAlleleIDs}, \code{ChromPos}, and \code{RefAltSeqs}); \code{NA} means the check
 was skipped.}
@@ -28,6 +29,11 @@ when it is \code{FALSE}. Indexed by the same names as \code{checks}.}
 \item{indel_clone_ids}{Character vector of \code{CloneID}s where ref/alt
 lengths differ. Returns \code{character(0)} if none are found, or \code{NULL}
 when required columns are missing.}
+\item{iupac_identical_clone_ids}{Character vector of \code{CloneID}s where
+Ref and Alt alleles have IUPAC codes at the same positions in their
+sequences (the sequences may differ at standard ATCG positions). Returns
+\code{character(0)} if none are found, or \code{NULL} when required columns are
+missing.}
 \item{missRef}{Character vector of \code{CloneID}s that have no \code{Ref} allele
 row. Returns \code{character(0)} if all \code{CloneID}s have a \code{Ref} row, or
 \code{NULL} when required columns are missing.}
@@ -37,12 +43,15 @@ row. Returns \code{character(0)} if all \code{CloneID}s have an \code{Alt} row, 
 }
 }
 \description{
-Performs nine quick validations on an allele report:
+Performs twelve quick validations on an allele report:
 \enumerate{
 \item \strong{Columns} - required columns are present (\code{CloneID}, \code{AlleleID}, \code{AlleleSequence});
 \item \strong{FixAlleleIDs} - first column's first up-to-6 rows are not all blank or \code{"*"}
 \emph{and} both \verb{_0001} and \verb{_0002} appear in \code{AlleleID};
-\item \strong{IUPACcodes} - presence of non-ATCG characters in \code{AlleleSequence};
+\item \strong{IUPACcodes} - presence of non-ATCG characters in Ref_/Alt_ \code{AlleleSequence}
+that differ in position between Ref and Alt, or are present in only one;
+\item \strong{IUPACcodes_IdenticalRefAlt} - presence of Ref_/Alt_ pairs that share IUPAC codes
+at the same positions in their sequences;
 \item \strong{LowerCase} - presence of lowercase a/t/c/g in \code{AlleleSequence};
 \item \strong{Indels} - reference/alternate allele lengths differ for the same \code{CloneID},
 or a \code{"-"} character is present in \code{AlleleSequence};
@@ -51,7 +60,8 @@ or a \code{"-"} character is present in \code{AlleleSequence};
 \item \strong{allNAcol} - at least one column contains only \code{NA} or empty values;
 \item \strong{allNArow} - at least one row contains only \code{NA} or empty values;
 \item \strong{RefAltSeqs} - every \code{CloneID} has at least one \code{Ref} and one \code{Alt} allele row;
-\item \strong{OtherAlleles} - presence of alleles where the target locus differs from both the Ref and Alt in \code{AlleleSequence}.
+\item \strong{OtherAlleles} - presence of alleles where the target locus differs from both the Ref and Alt in \code{AlleleSequence};
+\item \strong{IUPACcodes_MatchAlleles} - presence of non-ATCG characters in \code{AlleleSequence} for RefMatch_/AltMatch_ alleles.
 }
 }
 \details{
@@ -63,6 +73,13 @@ first 7 rows are dropped before subsequent checks are run. The check is
 \verb{_0001}/\verb{_0002} suffixes).
 \item \strong{IUPAC check:} Flags any character outside \code{A}, \code{T}, \code{C}, \code{G} and \code{"-"}
 (case-insensitive), which includes ambiguity codes (\code{N}, \code{R}, \code{Y}, etc.).
+For Ref_/Alt_ alleles, two checks are performed: \code{IUPACcodes} is \code{TRUE} when
+any CloneID has IUPAC codes at different positions between Ref and Alt, or
+IUPAC is present in only one of them. \code{IUPACcodes_IdenticalRefAlt} is \code{TRUE}
+when any CloneID has Ref and Alt with IUPAC codes at exactly the same positions
+(non-IUPAC bases may still differ). Those CloneIDs are stored in
+\code{iupac_identical_clone_ids}. RefMatch_/AltMatch_ alleles are checked
+separately via \code{IUPACcodes_MatchAlleles}.
 \item \strong{Indels:} Rows are split by \code{AlleleID} containing \code{"Ref_0001"} vs
 \code{"Alt_0002"}, merged by \code{CloneID}, and flagged as indels if either (a) the
 lengths of \code{AlleleSequence} differ, (b) the sequences have the same length

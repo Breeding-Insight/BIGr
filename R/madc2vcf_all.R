@@ -652,10 +652,11 @@ compare <- function(one_tag, botloci, alignment_score_thr = 40, mi_df = NULL, ad
               pos_alt_idx <- pos_alt_idx[-rm_target_other]
             }
           }
-          other_ref_base <- substring(ref_seq, pos_ref_idx, pos_ref_idx)
-          other_alt_base <- substring(others_seq[j,]$AlleleSequence, pos_alt_idx, pos_alt_idx)
           # Cases found where the AltMatch is another alternative for the target SNP - they are discarted
           if(length(pos_ref_idx) >0){
+            # Compute bases only when mismatch positions remain; substring() errors on integer(0) indices
+            other_ref_base <- substring(ref_seq, pos_ref_idx, pos_ref_idx)
+            other_alt_base <- substring(others_seq[j,]$AlleleSequence, pos_alt_idx, pos_alt_idx)
             # If Match sequences have N, do not consider as polymorphism
             if(any(!other_alt_base %in% c("A", "T", "C", "G"))) {
               other_ref_base <- other_ref_base[-which(!other_alt_base %in% c("A", "T", "C", "G"))]

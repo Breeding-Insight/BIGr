@@ -1,5 +1,7 @@
-# BIGr (development version)
+# BIGr 0.8.1
 
+- Updated madc2vcf_all and madc2vcf_targets. Before, it was possible for POS to be exported as scientific notation instead of integers, and for negative POS values to be present for off target SNPs. POS are corrected to be integers, and SNPs with a negative POS value are removed.
+- Remove BIGpopA functions - now it is a independent package: https://github.com/Breeding-Insight/BIGpopA 
 - Fixed `madc2vcf_all()` error "invalid substring arguments" that occurred with `add_others = TRUE` when an off-target ("Other") allele aligned to the reference with no mismatch positions remaining after the target SNP position was removed. The reference/alternate base lookups for off-target alleles are now guarded by the existing non-empty check, matching how the off-target Match alleles are already handled.
 
 # BIGr 0.7.2

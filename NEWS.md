@@ -1,3 +1,14 @@
+# BIGr 0.9.0 (in progress)
+
+* `check_madc_sanity` updates: distinguish presence of IUPAC codes on REF/ALT (return logical variable IUPACcodes) from RefMatch/AltMatch/Others (returned logical variable IUPACcodes_MatchAlleles) and from Identical IUPAC code in identical positions in REF/ALT (returned logical variable IUPACcodes_IdenticalRefAlt)
+* Two new arguments to the `madc2vcf_all` function:
+    * `others_min_dist` (default 5bp)
+    * `others_max_close_snps` (default 3 SNPs)
+
+By default, “Other“ tags will be discarded if they have more than 3 SNPs with less than 5bp distance between them   
+* Adapt `madc2vcf_all` code to let pass identical IUPAC code in identical position in REF/ALT but ignore polymorphims in Match or Other alleles at the same position
+
+
 # BIGr 0.8.1
 
 - Updated madc2vcf_all and madc2vcf_targets. Before, it was possible for POS to be exported as scientific notation instead of integers, and for negative POS values to be present for off target SNPs. POS are corrected to be integers, and SNPs with a negative POS value are removed.

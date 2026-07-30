@@ -18,6 +18,8 @@ madc2vcf_all(
   add_others = TRUE,
   others_max_snps = 5,
   others_rm_with_indels = TRUE,
+  others_min_dist = 5,
+  others_max_close_snps = 3,
   verbose = TRUE
 )
 }
@@ -44,9 +46,13 @@ madc2vcf_all(
 
 \item{add_others}{A logical value. If TRUE, alleles labeled "Other" in the MADC file are included in off-target SNP extraction. Default is TRUE.}
 
-\item{others_max_snps}{An integer or NULL. If not NULL, Other alleles with more than this many SNP differences versus the Ref sequence (as detected by pairwise alignment) are discarded. Default is NULL (no limit).}
+\item{others_max_snps}{An integer or NULL. If not NULL, Other alleles with more than this many SNP differences versus the Ref sequence (as detected by pairwise alignment) are discarded. Default is 5.}
 
 \item{others_rm_with_indels}{A logical value. If TRUE, Other alleles that contain insertions or deletions relative to the Ref sequence (as detected by pairwise alignment) are discarded. Default is TRUE.}
+
+\item{others_min_dist}{An integer specifying the minimum distance (in base pairs) between SNPs in Other alleles. Default is 5.}
+
+\item{others_max_close_snps}{An integer or NULL. If not NULL, Other alleles with more than this many SNPs that are closer than \code{others_min_dist} base pairs to each other are discarded. Default is 3.}
 
 \item{verbose}{A logical value indicating whether to print metrics and progress to the console. Default is TRUE.}
 }

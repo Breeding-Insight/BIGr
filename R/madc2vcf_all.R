@@ -13,8 +13,10 @@
 #' @param out_vcf A string specifying the name of the output VCF file. If the file extension is not `.vcf`, it will be appended automatically.
 #' @param markers_info A string specifying the path to a CSV file with marker information (CloneID/BI_markerID, Chr, Pos, Ref, Alt, Type, Indel_pos columns as needed).
 #' @param add_others A logical value. If TRUE, alleles labeled "Other" in the MADC file are included in off-target SNP extraction. Default is TRUE.
-#' @param others_max_snps An integer or NULL. If not NULL, Other alleles with more than this many SNP differences versus the Ref sequence (as detected by pairwise alignment) are discarded. Default is NULL (no limit).
+#' @param others_max_snps An integer or NULL. If not NULL, Other alleles with more than this many SNP differences versus the Ref sequence (as detected by pairwise alignment) are discarded. Default is 5.
 #' @param others_rm_with_indels A logical value. If TRUE, Other alleles that contain insertions or deletions relative to the Ref sequence (as detected by pairwise alignment) are discarded. Default is TRUE.
+#' @param others_min_dist An integer specifying the minimum distance (in base pairs) between SNPs in Other alleles. Default is 5.
+#' @param others_max_close_snps An integer or NULL. If not NULL, Other alleles with more than this many SNPs that are closer than `others_min_dist` base pairs to each other are discarded. Default is 3.
 #' @param verbose A logical value indicating whether to print metrics and progress to the console. Default is TRUE.
 #'
 #' @return This function does not return an R object. It writes the processed VCF file v4.3 to the specified `out_vcf` path.
@@ -80,7 +82,15 @@ madc2vcf_all <- function(madc,
                          add_others = TRUE,
                          others_max_snps = 5,
                          others_rm_with_indels = TRUE,
+                         others_min_dist = 5,
+                         others_max_close_snps = 3,
                          verbose = TRUE){
+
+
+  # Check that file path arguments are strings before any processing
+  if(!is.character(madc) || length(madc) != 1L) stop("madc should be a single string specifying the path or URL to the MADC file.")
+  if(!is.character(botloci_file) || length(botloci_file) != 1L) stop("botloci_file should be a single string specifying the path or URL to the botloci file.")
+  if(!is.null(hap_seq_file) && (!is.character(hap_seq_file) || length(hap_seq_file) != 1L)) stop("hap_seq_file should be a single string specifying the path to the haplotype database fasta file.")
 
   vmsg("Running BIGr madc2vcf_all", verbose = verbose, level = 0, type = ">>")
   vmsg("madc              : %s", verbose = verbose, level = 1, type = ">>", madc)
@@ -158,7 +168,7 @@ madc2vcf_all <- function(madc,
   # Check whether markers_info is present and contains Ref + Alt columns
   if(!is.null(markers_info)) {
     mi_df <- read.csv(markers_info)
-    id_cols <- intersect(c("CloneID", "BI_markerID"), colnames(mi_df))
+    id_cols <- intersect(c("CloneID", "BI_markerID","Marker_ID"), colnames(mi_df))
     if(!length(id_cols)) {
       stop("markers_info must contain a marker ID column named either 'CloneID' or 'BI_markerID'.")
     }
@@ -171,8 +181,8 @@ madc2vcf_all <- function(madc,
     id_col <- id_cols[which.max(match_n)]
     if(id_col != "CloneID" || !"CloneID" %in% colnames(mi_df)) {
       mi_df$CloneID <- mi_df[[id_col]]
-      if(id_col == "BI_markerID") {
-        vmsg("markers_info: 'BI_markerID' column copied to 'CloneID' for internal use", verbose = verbose, level = 1)
+      if(id_col == "BI_markerID" | id_col == "Marker_ID") {
+        vmsg("markers_info: 'BI_markerID' or 'Marker_ID' column copied to 'CloneID' for internal use", verbose = verbose, level = 1)
       }
     }
     # Validate CloneID values
@@ -257,6 +267,8 @@ madc2vcf_all <- function(madc,
                                               add_others = add_others,
                                               others_max_snps = others_max_snps,
                                               others_rm_with_indels = others_rm_with_indels,
+                                              others_min_dist = others_min_dist,
+                                              others_max_close_snps = others_max_close_snps,
                                               verbose = verbose)
 
   vmsg("All information gathered!", verbose = verbose, level = 0, type = ">>")
@@ -305,9 +317,19 @@ madc2vcf_all <- function(madc,
 #' @import parallel
 #'
 #' @noRd
-loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, alignment_score_thr=40,
-                                      checks = NULL, mi_df = NULL, pad_width = NULL,
-                                      add_others = TRUE, others_max_snps = NULL, others_rm_with_indels = TRUE,
+loop_though_dartag_report <- function(report,
+                                      botloci,
+                                      hap_seq,
+                                      n.cores=1,
+                                      alignment_score_thr=40,
+                                      checks = NULL,
+                                      mi_df = NULL,
+                                      pad_width = NULL,
+                                      add_others = TRUE,
+                                      others_max_snps = 5,
+                                      others_rm_with_indels = TRUE,
+                                      others_min_dist = 5,
+                                      others_max_close_snps = 3,
                                       verbose = TRUE){
 
   if(!is.null(hap_seq) & (is.null(checks) | !isTRUE(checks$checks["RefAltSeqs"]))){
@@ -351,10 +373,17 @@ loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, align
   vmsg("Pairwise alignments of sequences to recover SNP position, reference and alternative bases...", verbose = verbose, level = 0)
   clust <- makeCluster(n.cores)
   #clusterExport(clust, c("botloci", "compare", "nucleotideSubstitutionMatrix", "pairwiseAlignment", "DNAString", "reverseComplement"))
-  #clusterExport(clust, c("botloci", "alignment_score_thr", "mi_df", "add_others", "others_max_snps", "others_rm_with_indels"))
-  compare_results <- parLapply(clust, updated_by_cloneID, function(x) compare(x, botloci, alignment_score_thr, mi_df,
-                                                                              add_others = add_others, others_max_snps = others_max_snps,
-                                                                              others_rm_with_indels = others_rm_with_indels, verbose = FALSE))
+  #clusterExport(clust, c("botloci", "alignment_score_thr", "mi_df", "add_others", "others_max_snps", "others_rm_with_indels", "others_min_dist", "others_max_close_snps"))
+  compare_results <- parLapply(clust, updated_by_cloneID, function(x) compare(x,
+                                                                              botloci,
+                                                                              alignment_score_thr,
+                                                                              mi_df,
+                                                                              add_others = add_others,
+                                                                              others_max_snps = others_max_snps,
+                                                                              others_rm_with_indels = others_rm_with_indels,
+                                                                              others_min_dist = others_min_dist,
+                                                                              others_max_close_snps = others_max_close_snps,
+                                                                              verbose = FALSE))
   stopCluster(clust)
 
   my_results_csv <- lapply(compare_results, "[[", 1)
@@ -368,6 +397,7 @@ loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, align
   rm_indels <- unlist(rm_indels)
   n_rm_others_indels  <- sum(sapply(compare_results, "[[", 5))
   n_rm_others_maxsnps <- sum(sapply(compare_results, "[[", 6))
+  n_rm_others_close_snps <- sum(sapply(compare_results, "[[", 7))
 
   vmsg("Number of tags removed because of low alignment score (threshold = %s): %s tags", verbose = verbose, level = 2, type = ">>", alignment_score_thr, length(rm_score))
   vmsg("Number of tags removed because of N in the alternative sequence: %s tags", verbose = verbose, level = 2, type = ">>", length(rm_N))
@@ -380,15 +410,18 @@ loop_though_dartag_report <- function(report, botloci, hap_seq, n.cores=1, align
   } else {
     vmsg("Number of tags removed because of indels as targets: 0 tags", verbose = verbose, level = 2, type = ">>")
   }
-  n_others_total  <- sum(sapply(compare_results, "[[", 7))
-  n_others_kept   <- n_others_total - n_rm_others_indels - n_rm_others_maxsnps
-  others_added_info <- unlist(lapply(compare_results, "[[", 8))
+  n_others_total  <- sum(sapply(compare_results, "[[", 8))
+  n_others_kept   <- n_others_total - n_rm_others_indels - n_rm_others_maxsnps - n_rm_others_close_snps
+  others_added_info <- unlist(lapply(compare_results, "[[", 9))
   if(add_others) {
     vmsg("Number of Other alleles found: %s (%s kept after filters, %s discarded)", verbose = verbose, level = 2, type = ">>", n_others_total, n_others_kept, n_others_total - n_others_kept)
     if(others_rm_with_indels)
       vmsg("Number of Other alleles discarded due to indels vs Ref: %s", verbose = verbose, level = 2, type = ">>", n_rm_others_indels)
     if(!is.null(others_max_snps))
       vmsg("Number of Other alleles discarded due to exceeding max SNPs (%s): %s", verbose = verbose, level = 2, type = ">>", others_max_snps, n_rm_others_maxsnps)
+    if(!is.null(others_max_close_snps))
+      vmsg("Number of Other alleles discarded due to more than %s SNPs with less than %s bp distant to each other: %s", verbose = verbose, level = 2, type = ">>", others_max_close_snps, others_min_dist, n_rm_others_close_snps)
+
     # if(length(others_added_info) > 0) {
     #   vmsg("Others tags added:", verbose = verbose, level = 3, type = ">>")
     #   for(msg in others_added_info) vmsg("  %s", verbose = verbose, level = 3, type = ">>", msg)
@@ -492,10 +525,20 @@ add_ref_alt <- function(one_tag, hap_seq, nsamples, verbose = TRUE) {
 #' @importFrom pwalign pairwiseAlignment nucleotideSubstitutionMatrix
 #'
 #' @noRd
-compare <- function(one_tag, botloci, alignment_score_thr = 40, mi_df = NULL, add_others = TRUE, others_max_snps = NULL, others_rm_with_indels = TRUE, verbose = FALSE){
+compare <- function(one_tag,
+                    botloci,
+                    alignment_score_thr = 40,
+                    mi_df = NULL,
+                    add_others = TRUE,
+                    others_max_snps = 5,
+                    others_rm_with_indels = TRUE,
+                    others_min_dist = 5,
+                    others_max_close_snps = 3,
+                    verbose = FALSE){
 
-  #idx <- which(names(updated_by_cloneID) == "Ra01_020534029")
+  #idx <- which(names(updated_by_cloneID) == "TA_1_7807815_1002_VariantMasked_000000166")
   #one_tag <- updated_by_cloneID[[idx]]
+
   cloneID <- one_tag$CloneID[1]
 
   isBotLoci <- cloneID %in% botloci[,1]
@@ -529,6 +572,7 @@ compare <- function(one_tag, botloci, alignment_score_thr = 40, mi_df = NULL, ad
                 rm_indels = NULL,
                 n_rm_others_indels = 0L,
                 n_rm_others_maxsnps = 0L,
+                n_rm_others_close_snps = 0L,
                 n_others_total = 0L,
                 others_added_info = character(0)))
   }
@@ -563,6 +607,7 @@ compare <- function(one_tag, botloci, alignment_score_thr = 40, mi_df = NULL, ad
                   rm_indels = cloneID,
                   n_rm_others_indels = 0L,
                   n_rm_others_maxsnps = 0L,
+                  n_rm_others_close_snps = 0L,
                   n_others_total = 0L,
                   others_added_info = character(0)))
     }
@@ -588,14 +633,14 @@ compare <- function(one_tag, botloci, alignment_score_thr = 40, mi_df = NULL, ad
           pos_ref_idx <- align@pattern@mismatch@unlistData
           rm_target <- which(pos_ref_idx == pos_target_idx)                 # remove target position when is AltMatch
           if(length(rm_target) >0) pos_ref_idx <- pos_ref_idx[-rm_target]
-          # Cases found where the AltMatch is another alternative for the target SNP - they are discarted
+          # Cases found where the AltMatch is another alternative for the target SNP - they are discarted, they should have be named Other
           if(length(pos_ref_idx) >0){
             ref_base_match <- substring(ref_seq, pos_ref_idx, pos_ref_idx)
             pos_alt_idx <- align@subject@mismatch@unlistData                 # If there are indels, the position in the alternative is not the same as the reference
             if(length(rm_target) >0) pos_alt_idx <- pos_alt_idx[-rm_target]   # remove target position when is AltMatch - but the order in the sequence is the same
             alt_base_match <- substring(Match_seq[j,]$AlleleSequence, pos_alt_idx, pos_alt_idx)
 
-            # If Match sequences have N, do not consider as polymorphism
+            # If Match sequences have N or IUPAC codes, do not consider the polymorphism
             if(any(!alt_base_match %in% c("A", "T", "C", "G"))) {
               ref_base_match <- ref_base_match[-which(!alt_base_match %in% c("A", "T", "C", "G"))]
               pos_ref_idx <- pos_ref_idx[-which(!alt_base_match %in% c("A", "T", "C", "G"))]
@@ -623,6 +668,7 @@ compare <- function(one_tag, botloci, alignment_score_thr = 40, mi_df = NULL, ad
       n_others_total <- nrow(others_seq)
       n_rm_others_indels <- 0L
       n_rm_others_maxsnps <- 0L
+      n_rm_others_close_snps <- 0L
       others_added_info <- character(0)
 
       if(add_others && nrow(others_seq) > 0){
@@ -644,6 +690,19 @@ compare <- function(one_tag, botloci, alignment_score_thr = 40, mi_df = NULL, ad
             n_rm_others_maxsnps <- n_rm_others_maxsnps + 1L
             next
           }
+
+          # Discard Others with SNPs too close to each other
+          ## Defined others_min_dist (default 5)
+          ## Defined others_max_close_snps (default 3)
+          if(!is.null(others_min_dist) &&
+             !is.null(others_max_close_snps) &&
+             any(diff(pos_ref_idx) < others_min_dist)) {
+            if(sum(diff(pos_ref_idx) < others_min_dist) > others_max_close_snps) {
+              n_rm_others_close_snps <- n_rm_others_close_snps + 1L
+              next
+            }
+          }
+
           rm_target_other <- which(pos_ref_idx == pos_target_idx)  # remove target position if base is the same as Ref or Alt
           if(length(rm_target_other) > 0) {
             other_tag_base <- substring(others_seq[j,]$AlleleSequence, pos_target_idx, pos_target_idx)
@@ -657,14 +716,22 @@ compare <- function(one_tag, botloci, alignment_score_thr = 40, mi_df = NULL, ad
             # Compute bases only when mismatch positions remain; substring() errors on integer(0) indices
             other_ref_base <- substring(ref_seq, pos_ref_idx, pos_ref_idx)
             other_alt_base <- substring(others_seq[j,]$AlleleSequence, pos_alt_idx, pos_alt_idx)
-            # If Match sequences have N, do not consider as polymorphism
+            # If Match sequences have IUPAC codes or N, do not consider as polymorphism
             if(any(!other_alt_base %in% c("A", "T", "C", "G"))) {
-              other_ref_base <- other_ref_base[-which(!other_alt_base %in% c("A", "T", "C", "G"))]
-              pos_ref_idx <- pos_ref_idx[-which(!other_alt_base %in% c("A", "T", "C", "G"))]
-              other_alt_base <- other_alt_base[-which(!other_alt_base %in% c("A", "T", "C", "G"))]
+              rm_pos <- which(!other_alt_base %in% c("A", "T", "C", "G"))
+              other_ref_base <- other_ref_base[-rm_pos]
+              pos_ref_idx <- pos_ref_idx[-rm_pos]
+              other_alt_base <- other_alt_base[-rm_pos]
+              # Check if the reference sequence doesn't have N or IUPAC codes
+              # all previous checks will let pass identical IUPAC codes between REF and ALT
+            } else if(any(!other_ref_base %in% c("A", "T", "C", "G"))){
+              rm_pos <- which(!other_ref_base %in% c("A", "T", "C", "G"))
+              other_ref_base <- other_ref_base[-rm_pos]
+              pos_ref_idx <- pos_ref_idx[-rm_pos]
+              other_alt_base <- other_alt_base[-rm_pos]
             }
 
-            if(length(other_alt_base) >0){ # If the N is the only polymorphis found, the Match tag will be discarted
+            if(length(other_alt_base) >0){ # If the N or IUPAC code is the only polymorphis found, the Match tag will be discarted
               # The reported position is always on reference
               pos <- pos_target - (pos_target_idx - pos_ref_idx)
 
@@ -690,6 +757,7 @@ compare <- function(one_tag, botloci, alignment_score_thr = 40, mi_df = NULL, ad
                   rm_indels = NULL,
                   n_rm_others_indels = n_rm_others_indels,
                   n_rm_others_maxsnps = n_rm_others_maxsnps,
+                  n_rm_others_close_snps = n_rm_others_close_snps,
                   n_others_total = n_others_total,
                   others_added_info = others_added_info))
     } else {
@@ -699,6 +767,7 @@ compare <- function(one_tag, botloci, alignment_score_thr = 40, mi_df = NULL, ad
                   rm_indels = NULL,
                   n_rm_others_indels = 0L,
                   n_rm_others_maxsnps = 0L,
+                  n_rm_others_close_snps = 0L,
                   n_others_total = 0L,
                   others_added_info = character(0)))
     }
@@ -709,6 +778,7 @@ compare <- function(one_tag, botloci, alignment_score_thr = 40, mi_df = NULL, ad
                 rm_indels = NULL,
                 n_rm_others_indels = 0L,
                 n_rm_others_maxsnps = 0L,
+                n_rm_others_close_snps = 0L,
                 n_others_total = 0L,
                 others_added_info = character(0)))
   }

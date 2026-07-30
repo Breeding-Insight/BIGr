@@ -1,4 +1,4 @@
-# BIGr 0.9.0 (in progress)
+# BIGr 0.9.0
 
 * `check_madc_sanity` updates: distinguish presence of IUPAC codes on REF/ALT (return logical variable IUPACcodes) from RefMatch/AltMatch/Others (returned logical variable IUPACcodes_MatchAlleles) and from Identical IUPAC code in identical positions in REF/ALT (returned logical variable IUPACcodes_IdenticalRefAlt)
 * Two new arguments to the `madc2vcf_all` function:
@@ -7,6 +7,7 @@
 
 By default, “Other“ tags will be discarded if they have more than 3 SNPs with less than 5bp distance between them   
 * Adapt `madc2vcf_all` code to let pass identical IUPAC code in identical position in REF/ALT but ignore polymorphims in Match or Other alleles at the same position
+* `madc2vcf_targets` and `madc2vcf_multi` will only throw an error if different IUPAC are present in REF/ALT sequences (IUPACcodes = TRUE)
 
 
 # BIGr 0.8.1

@@ -61,7 +61,7 @@ or a \code{"-"} character is present in \code{AlleleSequence};
 \item \strong{allNArow} - at least one row contains only \code{NA} or empty values;
 \item \strong{RefAltSeqs} - every \code{CloneID} has at least one \code{Ref} and one \code{Alt} allele row;
 \item \strong{OtherAlleles} - presence of alleles where the target locus differs from both the Ref and Alt in \code{AlleleSequence};
-\item \strong{IUPACcodes_MatchAlleles} - presence of non-ATCG characters in \code{AlleleSequence} for RefMatch_/AltMatch_ alleles.
+\item \strong{IUPACcodes_MatchAlleles} - presence of non-ATCG characters in \code{AlleleSequence} for RefMatch_/AltMatch_/Other alleles.
 }
 }
 \details{
@@ -78,7 +78,7 @@ any CloneID has IUPAC codes at different positions between Ref and Alt, or
 IUPAC is present in only one of them. \code{IUPACcodes_IdenticalRefAlt} is \code{TRUE}
 when any CloneID has Ref and Alt with IUPAC codes at exactly the same positions
 (non-IUPAC bases may still differ). Those CloneIDs are stored in
-\code{iupac_identical_clone_ids}. RefMatch_/AltMatch_ alleles are checked
+\code{iupac_identical_clone_ids}. RefMatch_/AltMatch_/Other alleles are checked
 separately via \code{IUPACcodes_MatchAlleles}.
 \item \strong{Indels:} Rows are split by \code{AlleleID} containing \code{"Ref_0001"} vs
 \code{"Alt_0002"}, merged by \code{CloneID}, and flagged as indels if either (a) the

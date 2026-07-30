@@ -18,7 +18,7 @@
 #' 9) **allNArow** - at least one row contains only `NA` or empty values;
 #' 10) **RefAltSeqs** - every `CloneID` has at least one `Ref` and one `Alt` allele row;
 #' 11) **OtherAlleles** - presence of alleles where the target locus differs from both the Ref and Alt in `AlleleSequence`;
-#' 12) **IUPACcodes_MatchAlleles** - presence of non-ATCG characters in `AlleleSequence` for RefMatch_/AltMatch_ alleles.
+#' 12) **IUPACcodes_MatchAlleles** - presence of non-ATCG characters in `AlleleSequence` for RefMatch_/AltMatch_/Other alleles.
 #'
 #' @param report A `data.frame` with at least the columns
 #'   `CloneID`, `AlleleID`, and `AlleleSequence`. The first column is also
@@ -39,7 +39,7 @@
 #'   IUPAC is present in only one of them. `IUPACcodes_IdenticalRefAlt` is `TRUE`
 #'   when any CloneID has Ref and Alt with IUPAC codes at exactly the same positions
 #'   (non-IUPAC bases may still differ). Those CloneIDs are stored in
-#'   `iupac_identical_clone_ids`. RefMatch_/AltMatch_ alleles are checked
+#'   `iupac_identical_clone_ids`. RefMatch_/AltMatch_/Other alleles are checked
 #'   separately via `IUPACcodes_MatchAlleles`.
 #' - **Indels:** Rows are split by `AlleleID` containing `"Ref_0001"` vs
 #'   `"Alt_0002"`, merged by `CloneID`, and flagged as indels if either (a) the
@@ -155,11 +155,12 @@ check_madc_sanity <- function(report) {
         ref_is_iupac <- !ref_chars %in% c("A", "T", "C", "G", "-")
         alt_is_iupac <- !alt_chars %in% c("A", "T", "C", "G", "-")
 
-        # IUPAC codes must be at exactly the same positions
-        all(ref_is_iupac == alt_is_iupac)
+        # IUPAC codes must be at exactly the same positions AND be the same codes
+        all(ref_is_iupac == alt_is_iupac) &&
+          all(ref_chars[ref_is_iupac] == alt_chars[alt_is_iupac])
       }, logical(1))
 
-      iupac_identical_clone_ids <- merged_iupac$CloneID[identical_iupac_positions]
+      iupac_identical_clone_ids <- unique(merged_iupac$CloneID[identical_iupac_positions])
     } else {
       iupac_identical_clone_ids <- character(0)
     }
@@ -173,8 +174,8 @@ check_madc_sanity <- function(report) {
     checks["IUPACcodes"] <- length(differing_iupac_clones) > 0
     checks["IUPACcodes_IdenticalRefAlt"] <- length(iupac_identical_clone_ids) > 0
 
-    # Check for IUPAC codes in RefMatch_ and AltMatch_ alleles
-    ref_alt_match_rows <- grepl("RefMatch_|AltMatch_", report$AlleleID)
+    # Check for IUPAC codes in RefMatch_, AltMatch_, and Other alleles
+    ref_alt_match_rows <- grepl("RefMatch_|AltMatch_|[|]Other", report$AlleleID)
     iu_match <- grepl("[^ATCG-]", report$AlleleSequence[ref_alt_match_rows], ignore.case = TRUE)
     checks["IUPACcodes_MatchAlleles"] <- any(iu_match, na.rm = TRUE)
 
@@ -281,8 +282,8 @@ check_madc_sanity <- function(report) {
                                        "Missing Alt: ", paste(missAlt, collapse = " "), "."))
   messages[["OtherAlleles"]] <- c("Alleles other than Ref and Alt were found in AlleleID",
                                   "No alleles other than Ref and Alt found in AlleleID")
-  messages[["IUPACcodes_MatchAlleles"]] <- c("IUPAC (non-ATCG) codes found in RefMatch/AltMatch AlleleSequence. This codes are not currently supported by BIGr/BIGapp they will be ignored in the conversion to VCF",
-                                              "No IUPAC (non-ATCG) codes found in RefMatch/AltMatch AlleleSequence")
+  messages[["IUPACcodes_MatchAlleles"]] <- c("IUPAC (non-ATCG) codes found in RefMatch/AltMatch/Other AlleleSequence. This codes are not currently supported by BIGr/BIGapp they will be ignored in the conversion to VCF",
+                                              "No IUPAC (non-ATCG) codes found in RefMatch/AltMatch/Other AlleleSequence")
 
   list(checks = checks, messages = messages, indel_clone_ids = indels,
        iupac_identical_clone_ids = iupac_identical_clone_ids,

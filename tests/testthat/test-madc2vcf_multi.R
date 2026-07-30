@@ -114,7 +114,7 @@ test_that("madc2vcf_multi — alfalfa (BIGapp-PanelHub)", {
       outfile      = out,
       ploidy       = 4L,
       verbose      = TRUE
-    ), regexp = "MADC Allele Sequences contain IUPAC \\(non-ATCG\\) codes. Please run HapApp to clean MADC file before using this function."
+    ), regexp = "MADC Allele Sequences contain different IUPAC \\(non-ATCG\\) codes in REF and ALT sequences. Please run HapApp to clean MADC file before using this function."
   )
 
   out <- tempfile(fileext = ".vcf")

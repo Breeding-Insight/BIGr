@@ -129,50 +129,50 @@ check_madc_sanity <- function(report) {
     # Get Ref and Alt sequences
     refs <- subset(report, grepl("Ref_", AlleleID), select = c(CloneID, AlleleID, AlleleSequence))
     alts <- subset(report, grepl("Alt_", AlleleID), select = c(CloneID, AlleleID, AlleleSequence))
-    
+
     # Identify sequences with IUPAC codes
     refs_with_iupac <- refs[grepl("[^ATCG-]", refs$AlleleSequence, ignore.case = TRUE), ]
     alts_with_iupac <- alts[grepl("[^ATCG-]", alts$AlleleSequence, ignore.case = TRUE), ]
-    
+
     # Merge Ref and Alt by CloneID to compare sequences
-    merged_iupac <- merge(refs_with_iupac, alts_with_iupac, by = "CloneID", 
+    merged_iupac <- merge(refs_with_iupac, alts_with_iupac, by = "CloneID",
                           suffixes = c("_ref", "_alt"), all = FALSE)
-    
+
     # Check if IUPAC codes are at the same positions in both sequences
     if (nrow(merged_iupac) > 0) {
       identical_iupac_positions <- vapply(seq_len(nrow(merged_iupac)), function(i) {
         ref_seq <- toupper(merged_iupac$AlleleSequence_ref[i])
         alt_seq <- toupper(merged_iupac$AlleleSequence_alt[i])
-        
+
         # Split sequences into characters
         ref_chars <- strsplit(ref_seq, "")[[1]]
         alt_chars <- strsplit(alt_seq, "")[[1]]
-        
+
         # Check if same length
         if (length(ref_chars) != length(alt_chars)) return(FALSE)
-        
+
         # Check if IUPAC codes are at the same positions
         ref_is_iupac <- !ref_chars %in% c("A", "T", "C", "G", "-")
         alt_is_iupac <- !alt_chars %in% c("A", "T", "C", "G", "-")
-        
+
         # IUPAC codes must be at exactly the same positions
         all(ref_is_iupac == alt_is_iupac)
       }, logical(1))
-      
+
       iupac_identical_clone_ids <- merged_iupac$CloneID[identical_iupac_positions]
     } else {
       iupac_identical_clone_ids <- character(0)
     }
-    
+
     # Get all CloneIDs with IUPAC in either Ref or Alt
     all_iupac_clones <- unique(c(refs_with_iupac$CloneID, alts_with_iupac$CloneID))
     # IUPAC codes that differ between Ref and Alt (or present in only one)
     differing_iupac_clones <- setdiff(all_iupac_clones, iupac_identical_clone_ids)
-    
+
     # Only flag as TRUE if there are IUPAC codes that differ
     checks["IUPACcodes"] <- length(differing_iupac_clones) > 0
     checks["IUPACcodes_IdenticalRefAlt"] <- length(iupac_identical_clone_ids) > 0
-    
+
     # Check for IUPAC codes in RefMatch_ and AltMatch_ alleles
     ref_alt_match_rows <- grepl("RefMatch_|AltMatch_", report$AlleleID)
     iu_match <- grepl("[^ATCG-]", report$AlleleSequence[ref_alt_match_rows], ignore.case = TRUE)
@@ -263,7 +263,7 @@ check_madc_sanity <- function(report) {
                                   "MADC not processed by HapApp")
   messages[["IUPACcodes"]] <- c("IUPAC (non-ATCG) codes found in Ref_/Alt_ AlleleSequence that differ between alleles or are present in only one. These codes are not currently supported by BIGr/BIGapp",
                                 "No differing IUPAC (non-ATCG) codes found in Ref_/Alt_ AlleleSequence")
-  messages[["IUPACcodes_IdenticalRefAlt"]] <- c("IUPAC (non-ATCG) codes found at identical positions in Ref and Alt AlleleSequence. These codes will be handled during VCF conversion",
+  messages[["IUPACcodes_IdenticalRefAlt"]] <- c("Identical IUPAC (non-ATCG) codes found at identical positions in Ref and Alt AlleleSequence. These codes will be handled during VCF conversion",
                                                  "No IUPAC (non-ATCG) codes found at identical positions in Ref and Alt AlleleSequence")
   messages[["LowerCase"]] <- c("Lowercase bases found in AlleleSequence",
                                "No lowercase bases found in AlleleSequence")

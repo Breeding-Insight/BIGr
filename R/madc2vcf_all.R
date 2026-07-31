@@ -181,7 +181,7 @@ madc2vcf_all <- function(madc,
     id_col <- id_cols[which.max(match_n)]
     if(id_col != "CloneID" || !"CloneID" %in% colnames(mi_df)) {
       mi_df$CloneID <- mi_df[[id_col]]
-      if(id_col == "BI_markerID" | id_col == "Marker_ID") {
+      if(id_col == "BI_markerID" || id_col == "Marker_ID") {
         vmsg("markers_info: 'BI_markerID' or 'Marker_ID' column copied to 'CloneID' for internal use", verbose = verbose, level = 1)
       }
     }
@@ -640,15 +640,16 @@ compare <- function(one_tag,
             if(length(rm_target) >0) pos_alt_idx <- pos_alt_idx[-rm_target]   # remove target position when is AltMatch - but the order in the sequence is the same
             alt_base_match <- substring(Match_seq[j,]$AlleleSequence, pos_alt_idx, pos_alt_idx)
 
-            # If Match sequences have N or IUPAC codes, do not consider the polymorphism
-            if(any(!alt_base_match %in% c("A", "T", "C", "G"))) {
-              ref_base_match <- ref_base_match[-which(!alt_base_match %in% c("A", "T", "C", "G"))]
-              pos_ref_idx <- pos_ref_idx[-which(!alt_base_match %in% c("A", "T", "C", "G"))]
-              alt_base_match <- alt_base_match[-which(!alt_base_match %in% c("A", "T", "C", "G"))]
-            } else if(any(!ref_base_match %in% c("A", "T", "C", "G"))){
-              alt_base_match <- alt_base_match[-which(!ref_base_match %in% c("A", "T", "C", "G"))]
-              pos_ref_idx <- pos_ref_idx[-which(!ref_base_match %in% c("A", "T", "C", "G"))]
-              ref_base_match <- ref_base_match[-which(!ref_base_match %in% c("A", "T", "C", "G"))]
+            # If either base at a mismatch position is non-ATCG (IUPAC/N), do not
+            # consider it as a polymorphism. Filter positions where either the
+            # reference or the Match allele base is non-ATCG so that identical
+            # IUPAC codes allowed between REF/ALT don't surface as false SNPs.
+            rm_pos <- which(!alt_base_match %in% c("A", "T", "C", "G") |
+                              !ref_base_match %in% c("A", "T", "C", "G"))
+            if(length(rm_pos) > 0) {
+              ref_base_match <- ref_base_match[-rm_pos]
+              pos_ref_idx <- pos_ref_idx[-rm_pos]
+              alt_base_match <- alt_base_match[-rm_pos]
             }
 
             if(length(alt_base_match) >0){ # If the N is the only polymorphis found, the Match tag will be discarted
@@ -722,16 +723,13 @@ compare <- function(one_tag,
             # Compute bases only when mismatch positions remain; substring() errors on integer(0) indices
             other_ref_base <- substring(ref_seq, pos_ref_idx, pos_ref_idx)
             other_alt_base <- substring(others_seq[j,]$AlleleSequence, pos_alt_idx, pos_alt_idx)
-            # If Match sequences have IUPAC codes or N, do not consider as polymorphism
-            if(any(!other_alt_base %in% c("A", "T", "C", "G"))) {
-              rm_pos <- which(!other_alt_base %in% c("A", "T", "C", "G"))
-              other_ref_base <- other_ref_base[-rm_pos]
-              pos_ref_idx <- pos_ref_idx[-rm_pos]
-              other_alt_base <- other_alt_base[-rm_pos]
-              # Check if the reference sequence doesn't have N or IUPAC codes
-              # all previous checks will let pass identical IUPAC codes between REF and ALT
-            } else if(any(!other_ref_base %in% c("A", "T", "C", "G"))){
-              rm_pos <- which(!other_ref_base %in% c("A", "T", "C", "G"))
+            # If either base at a mismatch position is non-ATCG (IUPAC/N), do not
+            # consider it as a polymorphism. Filter positions where either the
+            # reference or the Other allele base is non-ATCG so that identical
+            # IUPAC codes allowed between REF/ALT don't surface as false SNPs.
+            rm_pos <- which(!other_alt_base %in% c("A", "T", "C", "G") |
+                              !other_ref_base %in% c("A", "T", "C", "G"))
+            if(length(rm_pos) > 0) {
               other_ref_base <- other_ref_base[-rm_pos]
               pos_ref_idx <- pos_ref_idx[-rm_pos]
               other_alt_base <- other_alt_base[-rm_pos]

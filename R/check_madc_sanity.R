@@ -282,7 +282,7 @@ check_madc_sanity <- function(report) {
                                        "Missing Alt: ", paste(missAlt, collapse = " "), "."))
   messages[["OtherAlleles"]] <- c("Alleles other than Ref and Alt were found in AlleleID",
                                   "No alleles other than Ref and Alt found in AlleleID")
-  messages[["IUPACcodes_MatchAlleles"]] <- c("IUPAC (non-ATCG) codes found in RefMatch/AltMatch/Other AlleleSequence. This codes are not currently supported by BIGr/BIGapp they will be ignored in the conversion to VCF",
+  messages[["IUPACcodes_MatchAlleles"]] <- c("IUPAC (non-ATCG) codes found in RefMatch/AltMatch/Other AlleleSequence. These codes are not currently supported by BIGr/BIGapp they will be ignored in the conversion to VCF",
                                               "No IUPAC (non-ATCG) codes found in RefMatch/AltMatch/Other AlleleSequence")
 
   list(checks = checks, messages = messages, indel_clone_ids = indels,

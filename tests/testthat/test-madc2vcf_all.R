@@ -285,7 +285,7 @@ test_that("simu alfalfa",{
                    markers_info = alfalfa_markers_info,
                    out_vcf = out,
                    verbose = FALSE),
-      regexp = "None of the markers_info CloneID( or BI_markerID)? values match the MADC CloneID column. Please make sure they use the same marker IDs."
+      regexp = "None of the markers_info CloneID, Marker_ID, or BI_markerID values match the MADC CloneID column. Please make sure they use the same marker IDs."
     )
 
     # Test error when markers_info_ChromPos is provided but IDs still don't match botloci

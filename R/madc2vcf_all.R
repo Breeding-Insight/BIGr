@@ -11,7 +11,7 @@
 #' @param alignment_score_thr A numeric value specifying the minimum alignment score threshold. Default is 40.
 #' @param n.cores An integer specifying the number of cores to use for parallel processing. Default is 1.
 #' @param out_vcf A string specifying the name of the output VCF file. If the file extension is not `.vcf`, it will be appended automatically.
-#' @param markers_info A string specifying the path to a CSV file with marker information (CloneID/BI_markerID, Chr, Pos, Ref, Alt, Type, Indel_pos columns as needed).
+#' @param markers_info A string specifying the path to a CSV file with marker information (CloneID/Marker_ID/BI_markerID, Chr, Pos, Ref, Alt, Type, Indel_pos columns as needed).
 #' @param add_others A logical value. If TRUE, alleles labeled "Other" in the MADC file are included in off-target SNP extraction. Default is TRUE.
 #' @param others_max_snps An integer or NULL. If not NULL, Other alleles with more than this many SNP differences versus the Ref sequence (as detected by pairwise alignment) are discarded. Default is 5.
 #' @param others_rm_with_indels A logical value. If TRUE, Other alleles that contain insertions or deletions relative to the Ref sequence (as detected by pairwise alignment) are discarded. Default is TRUE.
@@ -170,13 +170,13 @@ madc2vcf_all <- function(madc,
     mi_df <- read.csv(markers_info)
     id_cols <- intersect(c("CloneID", "BI_markerID","Marker_ID"), colnames(mi_df))
     if(!length(id_cols)) {
-      stop("markers_info must contain a marker ID column named either 'CloneID' or 'BI_markerID'.")
+      stop("markers_info must contain a marker ID column named either 'CloneID', 'Marker_ID', or 'BI_markerID'.")
     }
     match_n <- vapply(id_cols, function(col) {
       sum(unique(report$CloneID) %in% unique(stats::na.omit(mi_df[[col]])))
     }, integer(1))
     if(!any(match_n)) {
-      stop("None of the markers_info CloneID or BI_markerID values match the MADC CloneID column. Please make sure they use the same marker IDs.")
+      stop("None of the markers_info CloneID, Marker_ID, or BI_markerID values match the MADC CloneID column. Please make sure they use the same marker IDs.")
     }
     id_col <- id_cols[which.max(match_n)]
     if(id_col != "CloneID" || !"CloneID" %in% colnames(mi_df)) {
@@ -645,6 +645,10 @@ compare <- function(one_tag,
               ref_base_match <- ref_base_match[-which(!alt_base_match %in% c("A", "T", "C", "G"))]
               pos_ref_idx <- pos_ref_idx[-which(!alt_base_match %in% c("A", "T", "C", "G"))]
               alt_base_match <- alt_base_match[-which(!alt_base_match %in% c("A", "T", "C", "G"))]
+            } else if(any(!ref_base_match %in% c("A", "T", "C", "G"))){
+              alt_base_match <- alt_base_match[-which(!ref_base_match %in% c("A", "T", "C", "G"))]
+              pos_ref_idx <- pos_ref_idx[-which(!ref_base_match %in% c("A", "T", "C", "G"))]
+              ref_base_match <- ref_base_match[-which(!ref_base_match %in% c("A", "T", "C", "G"))]
             }
 
             if(length(alt_base_match) >0){ # If the N is the only polymorphis found, the Match tag will be discarted
@@ -697,7 +701,9 @@ compare <- function(one_tag,
           if(!is.null(others_min_dist) &&
              !is.null(others_max_close_snps) &&
              any(diff(pos_ref_idx) < others_min_dist)) {
-            if(sum(diff(pos_ref_idx) < others_min_dist) > others_max_close_snps) {
+            gaps_close <- diff(pos_ref_idx) < others_min_dist
+            snp_is_close <- c(gaps_close, FALSE) | c(FALSE, gaps_close)
+            if(sum(snp_is_close) > others_max_close_snps) {
               n_rm_others_close_snps <- n_rm_others_close_snps + 1L
               next
             }

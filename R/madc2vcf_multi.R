@@ -100,7 +100,7 @@ madc2vcf_multi <- function(madc_file,
   if (!isTRUE(checks$checks["ChromPos"])) {
     if (is.null(markers_info))
       stop("CloneID column does not follow the 'Chr_Pos' format. ",
-           "Please provide a markers_info file with at least 'CloneID'/'BI_markerID', ",
+           "Please provide a markers_info file with at least 'CloneID'/'Marker_ID'/'BI_markerID', ",
            "'Chr', and 'Pos' columns.")
     if (!all(c("Chr", "Pos") %in% colnames(mi_df)))
       stop("CloneID column does not follow the 'Chr_Pos' format. ",

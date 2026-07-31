@@ -42,7 +42,7 @@ madc2vcf_all(
 
 \item{out_vcf}{A string specifying the name of the output VCF file. If the file extension is not \code{.vcf}, it will be appended automatically.}
 
-\item{markers_info}{A string specifying the path to a CSV file with marker information (CloneID/BI_markerID, Chr, Pos, Ref, Alt, Type, Indel_pos columns as needed).}
+\item{markers_info}{A string specifying the path to a CSV file with marker information (CloneID/Marker_ID/BI_markerID, Chr, Pos, Ref, Alt, Type, Indel_pos columns as needed).}
 
 \item{add_others}{A logical value. If TRUE, alleles labeled "Other" in the MADC file are included in off-target SNP extraction. Default is TRUE.}
 

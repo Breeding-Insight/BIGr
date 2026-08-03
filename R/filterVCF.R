@@ -135,9 +135,21 @@ filterVCF <- function(vcf.file,
   info <- vcf@fix[, "INFO"] #Need to get after each filter..
 
   # Function to extract a specific INFO field value
+  # The field is located by splitting on ';' so that the name is matched against a
+  # whole INFO entry, and the value is passed to as.numeric() unaltered so that any
+  # valid numeric representation is accepted. This includes scientific notation
+  # (e.g. PMC=4.78e-07), which updog2vcf() writes whenever a value is small enough
+  # for R's default formatting to use it.
   extract_info_value <- function(info, field) {
-    pattern <- paste0(".*", field, "=([0-9.]+).*")
-    values <- as.numeric(sub(pattern, "\\1", info))
+    prefix <- paste0(field, "=")
+    values <- vapply(strsplit(info, ";", fixed = TRUE), function(parts) {
+      hit <- parts[startsWith(parts, prefix)]
+      if (length(hit) == 0L) {
+        NA_real_
+      } else {
+        suppressWarnings(as.numeric(substring(hit[1L], nchar(prefix) + 1L)))
+      }
+    }, numeric(1))
     return(values)
   }
 

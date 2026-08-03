@@ -153,57 +153,61 @@ filterVCF <- function(vcf.file,
     return(values)
   }
 
-  # Function to extract INFO IDs from a single INFO string
-  extract_info_ids <- function(info_string) {
-    # Split the INFO string by ';'
-    info_parts <- strsplit(info_string, ";")[[1]]
-    # Extract the part before the '=' in each segment
-    info_ids <- gsub("=.*", "", info_parts)
-    return(info_ids)
+  # Build a row selection from a filter comparison. An NA in a logical index does
+  # not drop a variant, it inserts an all-NA row into the VCF, so variants whose
+  # value could not be read are removed explicitly here. The count is reported so
+  # that they are never discarded silently.
+  select_variants <- function(keep, values, label, hint) {
+    unusable <- is.na(values)
+    if (length(values) > 0 && all(unusable)) {
+      # Losing every variant is usually a problem with the input rather than a
+      # genuine result, so this case says what to look at instead of only
+      # reporting the count.
+      warning("No readable ", label, " values were found, so all ", length(values),
+              " variants were removed. ", hint, call. = FALSE)
+    } else if (any(unusable)) {
+      warning(sum(unusable), " of ", length(values), " variants had a missing or ",
+              "unreadable ", label, " value and were removed.", call. = FALSE)
+    }
+    return(keep & !unusable)
   }
 
-  # Apply the function to the first INFO string
-  info_ids <- extract_info_ids(info[1])
+  # A requested filter is applied to every record. Which INFO fields are present
+  # is not decided from the first record, because a field may legally be absent
+  # from any individual record; records without a usable value are removed by
+  # select_variants() and reported there.
 
   # Filtering by OD
-  if ("OD" %in% info_ids && !is.null(filter.OD)) {
+  if (!is.null(filter.OD)) {
     info <- vcf@fix[, "INFO"] #Need to get after each filter..
     message("Filtering by OD\n")
     od_values <- extract_info_value(info, "OD")
-    # Ensure no NA values before filtering
-    if (!all(is.na(od_values))) {
-      vcf <- vcf[od_values < as.numeric(filter.OD), ]
-    } else {
-      warning("No valid OD values found.\n")
-    }
+    vcf <- vcf[select_variants(od_values < as.numeric(filter.OD),
+                               od_values, "OD",
+                               "Check that the INFO column of the VCF records OD values."), ]
   }
 
   info <- vcf@fix[, "INFO"] #Need to get after each filter..
 
   # Filtering by BIAS
-  if ("BIAS" %in% info_ids && !is.null(filter.BIAS.min) && !is.null(filter.BIAS.max)) {
+  if (!is.null(filter.BIAS.min) && !is.null(filter.BIAS.max)) {
     info <- vcf@fix[, "INFO"] #Need to get after each filter..
     message("Filtering by BIAS\n")
     bias_values <- extract_info_value(info, "BIAS")
-    # Ensure no NA values before filtering
-    if (!all(is.na(bias_values))) {
-      vcf <- vcf[bias_values > as.numeric(filter.BIAS.min) & bias_values < as.numeric(filter.BIAS.max), ]
-    } else {
-      warning("No valid BIAS values found.\n")
-    }
+    vcf <- vcf[select_variants(bias_values > as.numeric(filter.BIAS.min) &
+                                 bias_values < as.numeric(filter.BIAS.max),
+                               bias_values, "BIAS",
+                               "Check that the INFO column of the VCF records BIAS values."), ]
   }
 
   # Filtering by PMC
-  if ("PMC" %in% info_ids && !is.null(filter.PMC)) {
+  if (!is.null(filter.PMC)) {
     info <- vcf@fix[, "INFO"] #Need to get after each filter..
     message("Filtering by PMC\n")
     pmc_values <- extract_info_value(info, "PMC")
-    # Ensure no NA values before filtering
-    if (!all(is.na(pmc_values))) {
-      vcf <- vcf[pmc_values < as.numeric(filter.PMC), ]
-    } else {
-      warning("No valid PMC values found.\n")
-    }
+    vcf <- vcf[select_variants(pmc_values < as.numeric(filter.PMC),
+                               pmc_values, "PMC",
+                               "Check that the INFO column of the VCF records PMC values."), ]
   }
 
   # Example: Filter based on missing data for samples and SNPs
@@ -238,7 +242,11 @@ filterVCF <- function(vcf.file,
   if (!is.null(filter.MAF)) {
     message("Filtering by MAF\n")
     maf_df <- data.frame(vcfR::maf(vcf, element = 2))
-    vcf <- vcf[maf_df$Frequency > as.numeric(filter.MAF), ]
+    # maf() returns NA for a variant with no called genotypes, which the DP and
+    # MPP masking above can produce.
+    vcf <- vcf[select_variants(maf_df$Frequency > as.numeric(filter.MAF),
+                               maf_df$Frequency, "MAF",
+                               "This happens when no variant has any called genotypes, which the filter.DP and filter.MPP masking can cause."), ]
   }
   ### Export the modified VCF file (this exports as a .vcf.gz, so make sure to have the name end in .vcf.gz)
   message("Exporting VCF\n")

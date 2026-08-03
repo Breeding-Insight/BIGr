@@ -105,8 +105,96 @@ test_that("INFO filters read scientific notation",{
   expect_equal(nrow(filterVCF(vcf, filter.OD = 0.05, ploidy = 2)), 3)
 
   #The field name is matched against a whole INFO entry, not as a substring, so
-  #a longer field ending in the same name is not picked up by mistake.
-  vcf@fix[,"INFO"] <- paste0("XOD=99;", vcf@fix[,"INFO"])
+  #a longer field ending in the same name is not picked up by mistake. The
+  #look-alike is placed after the real OD on purpose: the pattern this replaced
+  #searched greedily and so took the rightmost match, meaning a look-alike placed
+  #before the real field would be read correctly by accident.
+  vcf@fix[,"INFO"] <- sub("(OD=[^;]*)", "\\1;MOD=77", vcf@fix[,"INFO"])
   expect_equal(nrow(filterVCF(vcf, filter.OD = 0.05, ploidy = 2)), 3)
+
+})
+
+test_that("Variants with unreadable filter values are removed, not inserted as NA",{
+
+  #An NA in a logical index does not drop a row, it inserts an all-NA row, so a
+  #variant whose filter value cannot be read must be removed explicitly.
+  vcf <- read.vcfR(system.file("iris_DArT_VCF.vcf.gz", package = "BIGr"), verbose = FALSE)
+  vcf <- vcf[1:4, ]
+  starting_snps <- nrow(vcf)
+
+  #Record 3 carries no PMC at all.
+  vcf@fix[,"INFO"] <- "DP=100;ADS=60,40;BIAS=1.0;OD=0.001;PMC=0.001"
+  vcf@fix[3,"INFO"] <- "DP=100;ADS=60,40;BIAS=1.0;OD=0.001"
+
+  expect_warning(filtered <- filterVCF(vcf, filter.PMC = 0.05, ploidy = 2),
+                 "1 of 4 variants had a missing or unreadable PMC value")
+  expect_equal(nrow(filtered), starting_snps - 1)
+  expect_false(any(is.na(filtered@fix[,"CHROM"])))
+  expect_false(any(is.na(filtered@fix[,"POS"])))
+
+  #The same applies to MAF, which vcfR::maf() reports as NA for a variant left
+  #with no called genotypes - something the DP and MPP masking can produce. Only
+  #the variants without calls should go, not the whole file.
+  vcf@fix[,"INFO"] <- "DP=100;ADS=60,40;BIAS=1.0;OD=0.001;PMC=0.001"
+  vcf@gt[2:3, -1] <- "./.:.:.:.:.:."
+  expect_warning(masked <- filterVCF(vcf, filter.MAF = 0.05, ploidy = 2),
+                 "2 of 4 variants had a missing or unreadable MAF value")
+  expect_lte(nrow(masked), 2)
+  expect_false(any(is.na(masked@fix[,"CHROM"])))
+
+  #A file with nothing unreadable must not warn (progress messages are expected).
+  expect_no_warning(suppressMessages(filterVCF(vcf, filter.PMC = 0.05, ploidy = 2)))
+
+})
+
+test_that("A requested INFO filter runs whatever the first record contains",{
+
+  #Which INFO fields exist used to be read from the first record alone, so a
+  #field missing from that one record disabled its filter for the whole file,
+  #silently. A field may legally be absent from any individual record.
+  vcf <- read.vcfR(system.file("iris_DArT_VCF.vcf.gz", package = "BIGr"), verbose = FALSE)
+  vcf <- vcf[1:4, ]
+  vcf@fix[,"INFO"] <- "DP=100;ADS=60,40;BIAS=1.0;OD=0.99;PMC=0.001"
+  vcf@fix[1,"INFO"] <- "DP=100;ADS=60,40;BIAS=1.0;PMC=0.001"
+
+  #Every record either fails OD < 0.05 or has no OD at all, so none survive.
+  expect_warning(filtered <- filterVCF(vcf, filter.OD = 0.05, ploidy = 2),
+                 "1 of 4 variants had a missing or unreadable OD value")
+  expect_equal(nrow(filtered), 0)
+
+  #Reordering the records must not change the result.
+  reordered <- vcf
+  reordered@fix[,"INFO"] <- reordered@fix[c(2,3,4,1),"INFO"]
+  expect_warning(also <- filterVCF(reordered, filter.OD = 0.05, ploidy = 2),
+                 "1 of 4 variants had a missing or unreadable OD value")
+  expect_equal(nrow(also), nrow(filtered))
+
+  #A filter that was never requested stays inactive.
+  expect_no_warning(suppressMessages(filterVCF(vcf, filter.MAF = 0.05, ploidy = 2)))
+
+})
+
+test_that("A filter whose values are all unreadable removes every variant",{
+
+  #Every filter behaves the same way here. Previously OD, BIAS and PMC returned
+  #the data unfiltered in this situation, which reported success while applying
+  #no filter at all.
+  vcf <- read.vcfR(system.file("iris_DArT_VCF.vcf.gz", package = "BIGr"), verbose = FALSE)
+  vcf <- vcf[1:4, ]
+
+  vcf@fix[,"INFO"] <- "DP=100;ADS=60,40;BIAS=1.0;OD=.;PMC=0.001"
+  expect_warning(dropped <- filterVCF(vcf, filter.OD = 0.05, ploidy = 2),
+                 "No readable OD values were found")
+  expect_equal(nrow(dropped), 0)
+
+  #The warning names the INFO column, so the cause is identifiable.
+  expect_warning(filterVCF(vcf, filter.OD = 0.05, ploidy = 2),
+                 "INFO column")
+
+  #MAF reports the cause that actually applies to it, rather than an INFO field.
+  vcf@fix[,"INFO"] <- "DP=100;ADS=60,40;BIAS=1.0;OD=0.001;PMC=0.001"
+  expect_warning(masked <- filterVCF(vcf, filter.DP = 1e6, filter.MAF = 0.05, ploidy = 2),
+                 "no variant has any called genotypes")
+  expect_equal(nrow(masked), 0)
 
 })

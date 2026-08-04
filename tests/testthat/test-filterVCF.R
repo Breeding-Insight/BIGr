@@ -198,3 +198,15 @@ test_that("A filter whose values are all unreadable removes every variant",{
   expect_equal(nrow(masked), 0)
 
 })
+
+test_that("Filter thresholds must be a single finite number or NULL",{
+
+  vcf <- read.vcfR(system.file("iris_DArT_VCF.vcf.gz", package = "BIGr"), verbose = FALSE)
+
+  expect_error(filterVCF(vcf, filter.OD = NA, ploidy = 2), "single numeric value")
+  expect_error(filterVCF(vcf, filter.OD = c(0.5, 0.6), ploidy = 2), "single numeric value")
+  expect_error(filterVCF(vcf, filter.SNP.miss = numeric(0), ploidy = 2), "single numeric value")
+  expect_error(filterVCF(vcf, filter.MAF = "abc", ploidy = 2), "single finite numeric value")
+  expect_error(filterVCF(vcf, filter.SAMPLE.miss = NA_real_, ploidy = 2), "single finite numeric value")
+
+})

@@ -94,6 +94,32 @@ filterVCF <- function(vcf.file,
 
   #Should allow for any INFO field to be entered to be filtered
 
+  # A threshold that is not a single readable number turns the comparison it
+  # feeds into an NA index, which silently corrupts or skips the filter rather
+  # than erroring, so all thresholds are validated before anything else happens.
+  validate_filter_number <- function(x, name) {
+    if (is.null(x)) return(NULL)
+    if (!(is.numeric(x) || is.character(x)) || length(x) != 1L) {
+      stop(name, " must be a single numeric value or NULL.", call. = FALSE)
+    }
+    value <- suppressWarnings(as.numeric(x))
+    if (!is.finite(value)) {
+      stop(name, " must be a single finite numeric value or NULL, not ",
+           deparse(x), ".", call. = FALSE)
+    }
+    value
+  }
+
+  filter.OD          <- validate_filter_number(filter.OD, "filter.OD")
+  filter.BIAS.min    <- validate_filter_number(filter.BIAS.min, "filter.BIAS.min")
+  filter.BIAS.max    <- validate_filter_number(filter.BIAS.max, "filter.BIAS.max")
+  filter.DP          <- validate_filter_number(filter.DP, "filter.DP")
+  filter.MPP         <- validate_filter_number(filter.MPP, "filter.MPP")
+  filter.PMC         <- validate_filter_number(filter.PMC, "filter.PMC")
+  filter.MAF         <- validate_filter_number(filter.MAF, "filter.MAF")
+  filter.SAMPLE.miss <- validate_filter_number(filter.SAMPLE.miss, "filter.SAMPLE.miss")
+  filter.SNP.miss    <- validate_filter_number(filter.SNP.miss, "filter.SNP.miss")
+
   # Import VCF (can be .vcf or .vcf.gz)
   if (!inherits(vcf.file, "vcfR")) {
     vcf <- read.vcfR(vcf.file, verbose = FALSE)
@@ -207,7 +233,7 @@ filterVCF <- function(vcf.file,
       warning(sum(unusable), " of ", length(values), " variants had a missing or ",
               "unreadable ", label, " value and were removed.", call. = FALSE)
     }
-    return(keep & !unusable)
+    return(!is.na(keep) & keep & !unusable)
   }
 
   # A requested filter is applied to every record. Which INFO fields are present

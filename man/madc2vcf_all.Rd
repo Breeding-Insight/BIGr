@@ -50,7 +50,7 @@ madc2vcf_all(
 
 \item{others_rm_with_indels}{A logical value. If TRUE, Other alleles that contain insertions or deletions relative to the Ref sequence (as detected by pairwise alignment) are discarded. Default is TRUE.}
 
-\item{others_min_dist}{An integer specifying the minimum distance (in base pairs) between SNPs in Other alleles. Default is 5.}
+\item{others_min_dist}{An integer or NULL. If not NULL, Other alleles with SNPs that are closer than this many base pairs to each other are discarded. Default is 5.}
 
 \item{others_max_close_snps}{An integer or NULL. If not NULL, Other alleles with more than this many SNPs that are closer than \code{others_min_dist} base pairs to each other are discarded. Default is 3.}
 

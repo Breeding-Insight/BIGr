@@ -5,7 +5,7 @@
     * `others_min_dist` (default 5bp)
     * `others_max_close_snps` (default 3 SNPs)
 
-By default, “Other“ tags will be discarded if they have more than 3 SNPs with less than 5bp distance between them   
+* By default, `Other` tags will be discarded if they have more than 3 SNPs with less than 5bp distance between them   
 * Adapt `madc2vcf_all` code to let pass identical IUPAC code in identical position in REF/ALT but ignore polymorphims in Match or Other alleles at the same position
 * `madc2vcf_targets` and `madc2vcf_multi` will only throw an error if different IUPAC are present in REF/ALT sequences (IUPACcodes = TRUE)
 

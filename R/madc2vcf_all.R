@@ -15,7 +15,7 @@
 #' @param add_others A logical value. If TRUE, alleles labeled "Other" in the MADC file are included in off-target SNP extraction. Default is TRUE.
 #' @param others_max_snps An integer or NULL. If not NULL, Other alleles with more than this many SNP differences versus the Ref sequence (as detected by pairwise alignment) are discarded. Default is 5.
 #' @param others_rm_with_indels A logical value. If TRUE, Other alleles that contain insertions or deletions relative to the Ref sequence (as detected by pairwise alignment) are discarded. Default is TRUE.
-#' @param others_min_dist An integer specifying the minimum distance (in base pairs) between SNPs in Other alleles. Default is 5.
+#' @param others_min_dist An integer or NULL. If not NULL, Other alleles with SNPs that are closer than this many base pairs to each other are discarded. Default is 5.
 #' @param others_max_close_snps An integer or NULL. If not NULL, Other alleles with more than this many SNPs that are closer than `others_min_dist` base pairs to each other are discarded. Default is 3.
 #' @param verbose A logical value indicating whether to print metrics and progress to the console. Default is TRUE.
 #'
@@ -105,6 +105,8 @@ madc2vcf_all <- function(madc,
   vmsg("add_others        : %s", verbose = verbose, level = 1, type = ">>", add_others)
   vmsg("others_max_snps   : %s", verbose = verbose, level = 1, type = ">>", if (is.null(others_max_snps)) "NULL" else others_max_snps)
   vmsg("others_rm_with_indels     : %s", verbose = verbose, level = 1, type = ">>", others_rm_with_indels)
+  vmsg("others_min_dist   : %s", verbose = verbose, level = 1, type = ">>", if (is.null(others_min_dist)) "NULL" else others_min_dist)
+  vmsg("others_max_close_snps      : %s", verbose = verbose, level = 1, type = ">>", if (is.null(others_max_close_snps)) "NULL" else others_max_close_snps)
   vmsg("out_vcf           : %s", verbose = verbose, level = 1, type = ">>", if (is.null(out_vcf)) "NULL" else out_vcf)
   vmsg("Checking inputs", verbose = verbose, level = 0, type = ">>")
 
@@ -129,6 +131,8 @@ madc2vcf_all <- function(madc,
   if(!is.logical(add_others)) stop("add_others should be logical.")
   if(!is.null(others_max_snps) && (!is.numeric(others_max_snps) || others_max_snps < 1)) stop("others_max_snps should be a positive integer or NULL.")
   if(!is.logical(others_rm_with_indels)) stop("others_rm_with_indels should be logical.")
+  if(!is.null(others_min_dist) && (!is.numeric(others_min_dist) || others_min_dist < 1)) stop("others_min_dist should be a positive integer or NULL.")
+  if(!is.null(others_max_close_snps) && (!is.numeric(others_max_close_snps) || others_max_close_snps < 1)) stop("others_max_close_snps should be a positive integer or NULL.")
   if(!is.logical(verbose)) stop("verbose should be logical.")
 
   bigr_meta <- paste0('##BIGrCommandLine.madc2vcf_all=<ID=madc2vcf_all,Version="',
@@ -633,7 +637,7 @@ compare <- function(one_tag,
           pos_ref_idx <- align@pattern@mismatch@unlistData
           rm_target <- which(pos_ref_idx == pos_target_idx)                 # remove target position when is AltMatch
           if(length(rm_target) >0) pos_ref_idx <- pos_ref_idx[-rm_target]
-          # Cases found where the AltMatch is another alternative for the target SNP - they are discarted, they should have be named Other
+          # Cases found where the AltMatch is another alternative for the target SNP - they are discarded, they should have been listed as Other
           if(length(pos_ref_idx) >0){
             ref_base_match <- substring(ref_seq, pos_ref_idx, pos_ref_idx)
             pos_alt_idx <- align@subject@mismatch@unlistData                 # If there are indels, the position in the alternative is not the same as the reference

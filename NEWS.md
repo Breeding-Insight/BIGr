@@ -1,3 +1,8 @@
+# BIGr 0.10.0
+
+* Add function `rhampseq2madc`  and associated testthat
+
+
 # BIGr 0.9.0
 
 * `check_madc_sanity` updates: distinguish presence of IUPAC codes on REF/ALT (return logical variable IUPACcodes) from RefMatch/AltMatch/Others (returned logical variable IUPACcodes_MatchAlleles) and from Identical IUPAC code in identical positions in REF/ALT (returned logical variable IUPACcodes_IdenticalRefAlt)

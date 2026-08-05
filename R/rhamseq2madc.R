@@ -61,7 +61,6 @@
 #' @export
 rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1,
                           prefix = NULL, verbose = TRUE) {
-
   vmsg("Running BIGr rhampseq2madc", verbose = verbose, level = 0, type = ">>")
   vmsg("hap_genotype_file      : %s", verbose = verbose, level = 1, type = ">>", hap_genotype_file)
   vmsg("haplotype_allele_fasta : %s", verbose = verbose, level = 1, type = ">>", haplotype_allele_fasta)
@@ -71,21 +70,25 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
   vmsg("Reading input files", verbose = verbose, level = 0, type = ">>")
   hapgeno <- read.table(hap_genotype_file, sep = "\t", header = TRUE)
   sequences <- readDNAStringSet(haplotype_allele_fasta)
-  vmsg("%s loci and %s sequences read", verbose = verbose, level = 1, type = ">>",
-       nrow(hapgeno), length(sequences))
+  vmsg("%s loci and %s sequences read",
+    verbose = verbose, level = 1, type = ">>",
+    nrow(hapgeno), length(sequences)
+  )
 
   vmsg("Checking inputs", verbose = verbose, level = 0, type = ">>")
   # --- Input validation ---
-  if (ncol(hapgeno) < 3)
+  if (ncol(hapgeno) < 3) {
     stop("'hap_genotype_file' must have at least 3 columns: Locus, Haplotypes, and at least one sample column.")
+  }
 
-  if (!is.character(hapgeno[[1]]))
+  if (!is.character(hapgeno[[1]])) {
     stop("Column 1 of 'hap_genotype_file' (Locus) must contain character locus names.")
+  }
 
   # Sample columns: each cell must be a genotype like "12/6:101,72", "1:58", "./.:0", or NA
   geno_pattern <- "^(\\./\\.|[0-9]+(/[0-9]+)*):[0-9]+(,[0-9]+)*$"
-  sample_data  <- hapgeno[, 3:ncol(hapgeno), drop = FALSE]
-  bad_cells    <- !apply(sample_data, 1:2, function(x) is.na(x) | grepl(geno_pattern, x))
+  sample_data <- hapgeno[, 3:ncol(hapgeno), drop = FALSE]
+  bad_cells <- !apply(sample_data, 1:2, function(x) is.na(x) | grepl(geno_pattern, x))
   if (any(bad_cells)) {
     bad_coords <- which(bad_cells, arr.ind = TRUE)
     stop(paste0(
@@ -98,24 +101,29 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
 
   # FASTA sequence names must follow "LocusID#N" convention
   invalid_seq_names <- !grepl("#[0-9]+$", names(sequences))
-  if (any(invalid_seq_names))
+  if (any(invalid_seq_names)) {
     stop(paste0(
       "'haplotype_allele_fasta' sequence names must end with '#N' (e.g. 'LocusID#1'). ",
       "First offending name: '", names(sequences)[which(invalid_seq_names)[1]], "'."
     ))
+  }
 
   # Cross-platform parallel backend
   # Pre-build locus-prefix → sequence-indices map once, avoiding O(n_loci × n_seqs) grep per worker
   seq_prefix_index <- split(seq_along(sequences), sub("#[0-9]+$", "", names(sequences)))
 
-  vmsg("Processing %s loci with %s core(s)", verbose = verbose, level = 0, type = ">>",
-       nrow(hapgeno), n_cores)
+  vmsg("Processing %s loci with %s core(s)",
+    verbose = verbose, level = 0, type = ">>",
+    nrow(hapgeno), n_cores
+  )
   # mclapply (fork) is unavailable on Windows; use a PSOCK cluster there instead
   if (.Platform$OS.type == "windows" && n_cores > 1) {
     cl <- makeCluster(n_cores)
     on.exit(stopCluster(cl), add = TRUE)
-    clusterExport(cl, varlist = c("hapgeno", "sequences", "verbose", "seq_prefix_index"),
-                  envir = environment())
+    clusterExport(cl,
+      varlist = c("hapgeno", "sequences", "verbose", "seq_prefix_index"),
+      envir = environment()
+    )
     clusterEvalQ(cl, {
       library(Biostrings)
       library(pwalign)
@@ -126,43 +134,40 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
   }
 
   madc_list <- par_fun(seq_len(nrow(hapgeno)), function(t) {
-
-    for(t in 1:nrow(hapgeno)){
-      print(t)
     onetag <- hapgeno[t, ]
 
     # Extract read depths from sample columns (col 3 to last)
-    sample_cols  <- as.data.frame(onetag[, 3:ncol(onetag), drop = FALSE])
+    sample_cols <- as.data.frame(onetag[, 3:ncol(onetag), drop = FALSE])
     sample_names <- colnames(sample_cols)
 
     # Vectorised: bulk-split all sample cells, build one data.frame at the end
-    vals      <- unname(vapply(sample_cols[1, ], as.character, character(1)))
+    vals <- unname(vapply(sample_cols[1, ], as.character, character(1)))
     has_colon <- grepl(":", vals, fixed = TRUE) & !is.na(vals)
-    vals_v    <- vals[has_colon]
-    samps_v   <- sample_names[has_colon]
+    vals_v <- vals[has_colon]
+    samps_v <- sample_names[has_colon]
 
     if (length(vals_v) == 0L) {
       long_df <- NULL
     } else {
-      parts        <- strsplit(vals_v, ":", fixed = TRUE)
+      parts <- strsplit(vals_v, ":", fixed = TRUE)
       allele_parts <- vapply(parts, "[[", character(1), 1L)
-      depth_parts  <- vapply(parts, "[[", character(1), 2L)
+      depth_parts <- vapply(parts, "[[", character(1), 2L)
 
-      ok           <- !grepl(".", allele_parts, fixed = TRUE)
+      ok <- !grepl(".", allele_parts, fixed = TRUE)
       allele_parts <- allele_parts[ok]
-      depth_parts  <- depth_parts[ok]
-      samps_v      <- samps_v[ok]
+      depth_parts <- depth_parts[ok]
+      samps_v <- samps_v[ok]
 
       if (length(allele_parts) == 0L) {
         long_df <- NULL
       } else {
         alleles_list <- strsplit(allele_parts, "/", fixed = TRUE)
-        depths_list  <- strsplit(depth_parts,  ",", fixed = TRUE)
-        lens    <- lengths(alleles_list)
+        depths_list <- strsplit(depth_parts, ",", fixed = TRUE)
+        lens <- lengths(alleles_list)
         long_df <- data.frame(
           allele_id = as.integer(unlist(alleles_list, use.names = FALSE)),
-          depth     = as.integer(unlist(depths_list,  use.names = FALSE)),
-          sample    = rep(samps_v, lens),
+          depth = as.integer(unlist(depths_list, use.names = FALSE)),
+          sample = rep(samps_v, lens),
           stringsAsFactors = FALSE
         )
       }
@@ -174,10 +179,14 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
       for (s in sample_names) depth_wide[[s]] <- integer(0)
     } else {
       all_allele_ids <- sort(unique(long_df$allele_id))
-      depth_mat <- matrix(0L, nrow = length(all_allele_ids), ncol = length(sample_names),
-                          dimnames = list(NULL, sample_names))
-      depth_mat[cbind(match(long_df$allele_id, all_allele_ids),
-                      match(long_df$sample,    sample_names))] <- long_df$depth
+      depth_mat <- matrix(0L,
+        nrow = length(all_allele_ids), ncol = length(sample_names),
+        dimnames = list(NULL, sample_names)
+      )
+      depth_mat[cbind(
+        match(long_df$allele_id, all_allele_ids),
+        match(long_df$sample, sample_names)
+      )] <- long_df$depth
       depth_wide <- data.frame(allele_id = all_allele_ids, depth_mat, check.names = FALSE)
 
       # Samples absent from depth_wide (all calls missing) get an all-zero column
@@ -192,20 +201,21 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
 
     if (length(AlleleIDs_idx) == 0) {
       vmsg("Locus '%s': no sequences found in FASTA — locus will be skipped.",
-           verbose = verbose, level = 1, type = ">>", cloneID)
+        verbose = verbose, level = 1, type = ">>", cloneID
+      )
       next()
-      #return(NULL)
+      # return(NULL)
     }
 
-    reftag_n   <- paste0(cloneID, "#1")
+    reftag_n <- paste0(cloneID, "#1")
     reftag_idx <- which(names(sequences) == reftag_n)
 
     if (length(reftag_idx) == 0) {
       # #1 absent — fall back to the allele with the smallest available ID
       all_allele_nums <- as.integer(sapply(strsplit(names(sequences)[AlleleIDs_idx], "#"), "[[", 2))
-      fallback_num    <- min(all_allele_nums)
-      reftag_n        <- paste0(cloneID, "#", fallback_num)
-      reftag_idx      <- which(names(sequences) == reftag_n)
+      fallback_num <- min(all_allele_nums)
+      reftag_n <- paste0(cloneID, "#", fallback_num)
+      reftag_idx <- which(names(sequences) == reftag_n)
       vmsg(
         "Locus '%s': reference sequence '#1' not found in FASTA; using '#%s' as reference instead.",
         verbose = verbose, level = 1, type = ">>",
@@ -246,8 +256,8 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
 
     if (length(refs_tag_idx) > 1) {
       dup_ref_seqnames <- rownames(results_df)[refs_tag_idx]
-      extra_ref_names  <- dup_ref_seqnames[dup_ref_seqnames != reftag_n]
-      extra_ids        <- as.integer(sapply(strsplit(extra_ref_names, "#"), "[[", 2))
+      extra_ref_names <- dup_ref_seqnames[dup_ref_seqnames != reftag_n]
+      extra_ids <- as.integer(sapply(strsplit(extra_ref_names, "#"), "[[", 2))
 
       vmsg(
         "Locus '%s': %d sequence(s) identical to reference (#1) detected: %s — their read depths will be summed into the reference.",
@@ -256,7 +266,7 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
       )
 
       # Merge extra-ref depths into the reference row of depth_wide
-      ref_row_idx   <- match(1L, depth_wide$allele_id)
+      ref_row_idx <- match(1L, depth_wide$allele_id)
       extra_row_idx <- match(extra_ids, depth_wide$allele_id)
       extra_row_idx <- extra_row_idx[!is.na(extra_row_idx)]
 
@@ -268,12 +278,13 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
         depth_wide[extra_row_idx[1], "allele_id"] <- 1L
         extra_row_idx <- extra_row_idx[-1]
       }
-      if (length(extra_row_idx) > 0)
+      if (length(extra_row_idx) > 0) {
         depth_wide <- depth_wide[-extra_row_idx, , drop = FALSE]
+      }
 
       # Exclude merged alleles from non-ref processing
       pos_mismatches <- pos_mismatches[!names(pos_mismatches) %in% extra_ref_names]
-      pos_indels     <- pos_indels[!names(pos_indels)     %in% extra_ref_names]
+      pos_indels <- pos_indels[!names(pos_indels) %in% extra_ref_names]
     }
 
     # Make a fake one target SNP in a position that polymorphis still doesn't exist
@@ -288,21 +299,23 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
     all_poly_pos <- unique(c(
       unlist(pos_mismatches[non_ref_names]),
       unlist(lapply(pos_indels[non_ref_names], function(ir) {
-        if (length(ir) == 0) return(integer(0))
+        if (length(ir) == 0) {
+          return(integer(0))
+        }
         unlist(Map(seq.int, ir$start, ir$start + ir$width - 1L))
       }))
     ))
 
     # Clip to valid reference positions (guard against alignment-coordinate overflow)
-    seq_len      <- length(reftag)
+    seq_len <- length(reftag)
     all_poly_pos <- all_poly_pos[all_poly_pos >= 1L & all_poly_pos <= seq_len]
 
     poly_sorted <- sort(all_poly_pos)
-    boundaries  <- c(0L, poly_sorted, seq_len + 1L)
-    gap_sizes   <- diff(boundaries) - 1L
+    boundaries <- c(0L, poly_sorted, seq_len + 1L)
+    gap_sizes <- diff(boundaries) - 1L
     max_gap_idx <- which.max(gap_sizes)
-    gap_start   <- boundaries[max_gap_idx] + 1L
-    gap_end     <- boundaries[max_gap_idx + 1L] - 1L
+    gap_start <- boundaries[max_gap_idx] + 1L
+    gap_end <- boundaries[max_gap_idx + 1L] - 1L
 
     if (gap_start <= gap_end) {
       # Normal case: at least one clean (polymorphism-free) position exists
@@ -330,22 +343,22 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
           poly_cov[ip] <- poly_cov[ip] + 1L
         }
       }
-      min_pos      <- which(poly_cov == min(poly_cov))
-      run_breaks   <- which(diff(min_pos) > 1L)
-      run_starts   <- c(1L, run_breaks + 1L)
-      run_ends     <- c(run_breaks, length(min_pos))
+      min_pos <- which(poly_cov == min(poly_cov))
+      run_breaks <- which(diff(min_pos) > 1L)
+      run_starts <- c(1L, run_breaks + 1L)
+      run_ends <- c(run_breaks, length(min_pos))
       best_run_idx <- which.max(run_ends - run_starts)
-      best_run     <- min_pos[run_starts[best_run_idx]:run_ends[best_run_idx]]
-      mid_pos      <- as.integer(best_run[ceiling(length(best_run) / 2)])
+      best_run <- min_pos[run_starts[best_run_idx]:run_ends[best_run_idx]]
+      mid_pos <- as.integer(best_run[ceiling(length(best_run) / 2)])
     }
     mid_base <- as.character(subseq(reftag, mid_pos, mid_pos))
 
     ## Has a specific change dynamic
     new_base <- switch(mid_base,
-                       "A" = "C",
-                       "C" = "A",
-                       "G" = "T",
-                       "T" = "G"
+      "A" = "C",
+      "C" = "A",
+      "G" = "T",
+      "T" = "G"
     )
 
     alttag <- replaceLetterAt(reftag, mid_pos, new_base)
@@ -392,7 +405,6 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
         stringsAsFactors  = FALSE
       )
     )
-    }
   })
 
   # mclapply returns try-error objects for failed workers instead of propagating;
@@ -412,9 +424,11 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
   # Drop loci that were skipped (returned NULL, e.g. not found in FASTA)
   madc_list <- Filter(Negate(is.null), madc_list)
 
-  vmsg("Assembling results from %s processed loci", verbose = verbose, level = 0, type = ">>",
-       length(madc_list))
-  madc_final       <- do.call(rbind, lapply(madc_list, "[[", "madc"))
+  vmsg("Assembling results from %s processed loci",
+    verbose = verbose, level = 0, type = ">>",
+    length(madc_list)
+  )
+  madc_final <- do.call(rbind, lapply(madc_list, "[[", "madc"))
   target_positions <- do.call(rbind, lapply(madc_list, "[[", "target_pos"))
   rownames(target_positions) <- NULL
 
@@ -423,9 +437,9 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
 
   if (!is.null(prefix)) {
     vmsg("Writing output files with prefix '%s'", verbose = verbose, level = 0, type = ">>", prefix)
-    write.csv(madc_final,       paste0(prefix, "_madc.csv"),             row.names = FALSE)
+    write.csv(madc_final, paste0(prefix, "_madc.csv"), row.names = FALSE)
     write.csv(target_positions, paste0(prefix, "_target_positions.csv"), row.names = FALSE)
-    writeXStringSet(new_fasta,  paste0(prefix, ".fasta"))
+    writeXStringSet(new_fasta, paste0(prefix, ".fasta"))
   }
 
   vmsg("Done!", verbose = verbose, level = 0, type = ">>")

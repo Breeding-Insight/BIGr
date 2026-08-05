@@ -209,11 +209,9 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
     if (is.null(AlleleIDs_idx)) AlleleIDs_idx <- integer(0)
 
     if (length(AlleleIDs_idx) == 0) {
-      vmsg("Locus '%s': no sequences found in FASTA — locus will be skipped.",
-        verbose = verbose, level = 1, type = ">>", cloneID
-      )
-
-      return(NULL)
+      # Return a skip marker — vmsg inside a worker goes to worker stdout, not the console.
+      # The main process will collect and report all skip reasons.
+      return(list(.skipped = TRUE, reason = "no sequences found in FASTA"))
     }
 
     reftag_n <- paste0(cloneID, "#1")
@@ -436,7 +434,20 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
     }
   }
 
-  # Drop loci that were skipped (returned NULL, e.g. not found in FASTA)
+  # Report loci intentionally skipped inside workers and convert to NULL
+  # (vmsg inside workers writes to worker stdout, not the console)
+  skipped_mask <- vapply(madc_list, function(x) is.list(x) && isTRUE(x$.skipped), logical(1))
+  if (any(skipped_mask)) {
+    skip_idx <- which(skipped_mask)
+    for (i in skip_idx) {
+      vmsg("Locus '%s': %s — skipped.",
+           verbose = verbose, level = 1, type = ">>",
+           hapgeno[[1]][i], madc_list[[i]]$reason)
+    }
+    madc_list[skip_idx] <- list(NULL)
+  }
+
+  # Drop all NULL entries (skipped + sequential-retry failures)
   madc_list <- Filter(Negate(is.null), madc_list)
 
   vmsg("Assembling results from %s processed loci",

@@ -48,15 +48,15 @@ test_that("test madc offtargets",{
 
   # Without hap_seq provided
   set.seed(123)
-  madc2vcf_all(madc = madc_file,
-               botloci_file = bot_file,
-               hap_seq_file = NULL,
-               n.cores = 2,
-               rm_multiallelic_SNP = FALSE,
-               multiallelic_SNP_dp_thr = 0,
-               multiallelic_SNP_sample_thr = 0,
-               out_vcf = temp,
-               verbose = FALSE)
+  expect_warning(madc2vcf_all(madc = madc_file,
+                              botloci_file = bot_file,
+                              hap_seq_file = NULL,
+                              n.cores = 2,
+                              rm_multiallelic_SNP = FALSE,
+                              multiallelic_SNP_dp_thr = 0,
+                              multiallelic_SNP_sample_thr = 0,
+                              out_vcf = temp,
+                              verbose = FALSE))
 
   vcf <- read.vcfR(temp)
 
@@ -285,7 +285,7 @@ test_that("simu alfalfa",{
                    markers_info = alfalfa_markers_info,
                    out_vcf = out,
                    verbose = FALSE),
-      regexp = "None of the markers_info CloneID( or BI_markerID)? values match the MADC CloneID column. Please make sure they use the same marker IDs."
+      regexp = "None of the markers_info CloneID, Marker_ID, or BI_markerID values match the MADC CloneID column. Please make sure they use the same marker IDs."
     )
 
     # Test error when markers_info_ChromPos is provided but IDs still don't match botloci
@@ -336,12 +336,12 @@ test_that("simu alfalfa",{
     expect_equal(sum(dp[1,]), 4534)
     expect_equal(sum(dp[,5]), 233719)
 
-    madc2vcf_all(madc = alfalfa_lowercase,
-                 botloci_file = alfalfa_botloci,
-                 hap_seq_file = NULL,
-                 n.cores = 1,
-                 out_vcf = out,
-                 verbose = FALSE)
+    expect_warning(madc2vcf_all(madc = alfalfa_lowercase,
+                                botloci_file = alfalfa_botloci,
+                                hap_seq_file = NULL,
+                                n.cores = 1,
+                                out_vcf = out,
+                                verbose = FALSE))
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(alfalfa_markers_info)
@@ -356,13 +356,13 @@ test_that("simu alfalfa",{
     expect_equal(sum(dp[1,]), 4534)
     expect_equal(sum(dp[,5]), 230415)
 
-    madc2vcf_all(madc = alfalfa_lowercase,
-                 botloci_file = alfalfa_botloci,
-                 hap_seq_file = NULL,
-                 n.cores = 1,
-                 markers_info = alfalfa_markers_info,
-                 out_vcf = out,
-                 verbose = FALSE)
+    expect_warning(madc2vcf_all(madc = alfalfa_lowercase,
+                                botloci_file = alfalfa_botloci,
+                                hap_seq_file = NULL,
+                                n.cores = 1,
+                                markers_info = alfalfa_markers_info,
+                                out_vcf = out,
+                                verbose = FALSE))
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(alfalfa_markers_info)
@@ -389,7 +389,7 @@ test_that("simu alfalfa",{
                    n.cores = 1,
                    out_vcf = out,
                    verbose = FALSE),
-      regexp = "IUPAC \\(non-ATCG\\) codes found in AlleleSequence\\. This codes are not currently supported by BIGr/BIGapp\\. Run HapApp to replace them"
+      regexp = "IUPAC \\(non-ATCG\\) codes found in Ref_/Alt_ AlleleSequence that differ between alleles or are present in only one. These codes are not currently supported by BIGr/BIGapp"
     )
   })
 
@@ -576,7 +576,7 @@ test_that("simu alfalfa",{
                    markers_info = potato_markers_info,
                    out_vcf = out,
                    verbose = FALSE),
-      regexp = "IUPAC \\(non-ATCG\\) codes found in AlleleSequence. This codes are not currently supported by BIGr/BIGapp. Run HapApp to replace them"
+      regexp = "IUPAC \\(non-ATCG\\) codes found in Ref_/Alt_ AlleleSequence that differ between alleles or are present in only one. These codes are not currently supported by BIGr/BIGapp"
     )
   })
 

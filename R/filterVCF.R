@@ -6,19 +6,57 @@
 #' The output file will be saved to the location and with the name that is specified.
 #' The VCF format is v4.3
 #'
+#' Filters are applied in a fixed order, which matters because each one acts on
+#' what the previous ones left behind. `filter.DP` and `filter.MPP` run first and
+#' set individual genotype calls to missing. `filter.OD`, `filter.BIAS.min` and
+#' `filter.BIAS.max`, and `filter.PMC` then remove variants using the INFO column.
+#' `filter.SNP.miss` removes variants and `filter.SAMPLE.miss` removes samples,
+#' both counting the calls that were set to missing above. `filter.MAF` runs last,
+#' so it is calculated from the samples that remain.
+#'
+#' A variant is removed if the value a requested filter needs cannot be read from
+#' it, for instance because the INFO field is absent from that record or because
+#' every genotype call for the variant is missing. The number of variants removed
+#' for this reason is reported in a warning.
+#'
 #' @param vcf.file vcfR object or path to VCF file. Can be unzipped (.vcf) or gzipped (.vcf.gz).
-#' @param filter.OD Updog filter
-#' @param filter.BIAS.min Updog filter (requires a value for both BIAS.min and BIAS.max)
-#' @param filter.BIAS.max Updog filter (requires a value for both BIAS.min and BIAS.max)
-#' @param filter.DP Total read depth at each SNP filter
-#' @param filter.MPP Updog filter
-#' @param filter.PMC Updog filter
-#' @param filter.MAF Minor allele frequency filter
-#' @param filter.SAMPLE.miss Sample missing data filter
-#' @param filter.SNP.miss SNP missing data filter
-#' @param ploidy The ploidy of the species being analyzed
-#' @param output.file output file name (optional). If no output.file name provided, then a vcfR object will be returned.
-#' @return A gzipped vcf file
+#' @param filter.OD Maximum overdispersion, read from the `OD` field of the INFO
+#'   column as estimated by updog. Variants with an `OD` below this value are kept.
+#' @param filter.BIAS.min Minimum allele bias, read from the `BIAS` field of the
+#'   INFO column as estimated by updog. Variants with a `BIAS` above this value are
+#'   kept. Has no effect unless `filter.BIAS.max` is also supplied.
+#' @param filter.BIAS.max Maximum allele bias, read from the `BIAS` field of the
+#'   INFO column. Variants with a `BIAS` below this value are kept. Has no effect
+#'   unless `filter.BIAS.min` is also supplied.
+#' @param filter.DP Minimum read depth for a genotype call. Calls whose FORMAT/DP
+#'   is below this value are set to missing. This does not remove variants, though
+#'   the calls it sets to missing then count towards `filter.SNP.miss`,
+#'   `filter.SAMPLE.miss` and `filter.MAF`.
+#' @param filter.MPP Minimum posterior probability for a genotype call, as
+#'   reported by updog. Calls whose FORMAT/MPP is below this value are set to
+#'   missing, on the same terms as `filter.DP`.
+#' @param filter.PMC Maximum proportion of individuals misclassified, read from
+#'   the `PMC` field of the INFO column as estimated by updog. Variants with a
+#'   `PMC` below this value are kept.
+#' @param filter.MAF Minimum minor allele frequency. Variants with a minor allele
+#'   frequency above this value are kept. Calculated after any sample removal, so
+#'   it reflects only the samples that survive `filter.SAMPLE.miss`.
+#' @param filter.SAMPLE.miss Maximum proportion of missing genotype calls a sample
+#'   may have, between 0 and 1. Samples missing a smaller proportion than this are
+#'   kept. Note that this is a proportion and not a percentage.
+#' @param filter.SNP.miss Maximum proportion of missing genotype calls a variant
+#'   may have, between 0 and 1. Variants missing a smaller proportion than this are
+#'   kept. Note that this is a proportion and not a percentage.
+#' @param ploidy The ploidy of the species being analyzed. Required. Used to write
+#'   the missing genotype, so a diploid is recorded as `./.` and a tetraploid as
+#'   `./././.` when a call is filtered out.
+#' @param output.file Output file name, without an extension (optional). When
+#'   supplied, the filtered VCF is written as a gzipped file and nothing is
+#'   returned. `.vcf.gz` is appended when `vcf.file` is a path, and
+#'   `_filtered.vcf.gz` when `vcf.file` is a vcfR object. When not supplied, a
+#'   vcfR object is returned instead and no file is written.
+#' @return A vcfR object when `output.file` is not supplied. Otherwise the
+#'   filtered VCF is written to disk and nothing is returned.
 #' @importFrom vcfR read.vcfR
 #' @importFrom vcfR write.vcf
 #' @importFrom vcfR maf
@@ -55,6 +93,32 @@ filterVCF <- function(vcf.file,
                        output.file = NULL) {
 
   #Should allow for any INFO field to be entered to be filtered
+
+  # A threshold that is not a single readable number turns the comparison it
+  # feeds into an NA index, which silently corrupts or skips the filter rather
+  # than erroring, so all thresholds are validated before anything else happens.
+  validate_filter_number <- function(x, name) {
+    if (is.null(x)) return(NULL)
+    if (!(is.numeric(x) || is.character(x)) || length(x) != 1L) {
+      stop(name, " must be a single numeric value or NULL.", call. = FALSE)
+    }
+    value <- suppressWarnings(as.numeric(x))
+    if (!is.finite(value)) {
+      stop(name, " must be a single finite numeric value or NULL, not ",
+           deparse(x), ".", call. = FALSE)
+    }
+    value
+  }
+
+  filter.OD          <- validate_filter_number(filter.OD, "filter.OD")
+  filter.BIAS.min    <- validate_filter_number(filter.BIAS.min, "filter.BIAS.min")
+  filter.BIAS.max    <- validate_filter_number(filter.BIAS.max, "filter.BIAS.max")
+  filter.DP          <- validate_filter_number(filter.DP, "filter.DP")
+  filter.MPP         <- validate_filter_number(filter.MPP, "filter.MPP")
+  filter.PMC         <- validate_filter_number(filter.PMC, "filter.PMC")
+  filter.MAF         <- validate_filter_number(filter.MAF, "filter.MAF")
+  filter.SAMPLE.miss <- validate_filter_number(filter.SAMPLE.miss, "filter.SAMPLE.miss")
+  filter.SNP.miss    <- validate_filter_number(filter.SNP.miss, "filter.SNP.miss")
 
   # Import VCF (can be .vcf or .vcf.gz)
   if (!inherits(vcf.file, "vcfR")) {
@@ -135,63 +199,79 @@ filterVCF <- function(vcf.file,
   info <- vcf@fix[, "INFO"] #Need to get after each filter..
 
   # Function to extract a specific INFO field value
+  # The field is located by splitting on ';' so that the name is matched against a
+  # whole INFO entry, and the value is passed to as.numeric() unaltered so that any
+  # valid numeric representation is accepted. This includes scientific notation
+  # (e.g. PMC=4.78e-07), which updog2vcf() writes whenever a value is small enough
+  # for R's default formatting to use it.
   extract_info_value <- function(info, field) {
-    pattern <- paste0(".*", field, "=([0-9.]+).*")
-    values <- as.numeric(sub(pattern, "\\1", info))
+    prefix <- paste0(field, "=")
+    values <- vapply(strsplit(info, ";", fixed = TRUE), function(parts) {
+      hit <- parts[startsWith(parts, prefix)]
+      if (length(hit) == 0L) {
+        NA_real_
+      } else {
+        suppressWarnings(as.numeric(substring(hit[1L], nchar(prefix) + 1L)))
+      }
+    }, numeric(1))
     return(values)
   }
 
-  # Function to extract INFO IDs from a single INFO string
-  extract_info_ids <- function(info_string) {
-    # Split the INFO string by ';'
-    info_parts <- strsplit(info_string, ";")[[1]]
-    # Extract the part before the '=' in each segment
-    info_ids <- gsub("=.*", "", info_parts)
-    return(info_ids)
+  # Build a row selection from a filter comparison. An NA in a logical index does
+  # not drop a variant, it inserts an all-NA row into the VCF, so variants whose
+  # value could not be read are removed explicitly here. The count is reported so
+  # that they are never discarded silently.
+  select_variants <- function(keep, values, label, hint) {
+    unusable <- is.na(values)
+    if (length(values) > 0 && all(unusable)) {
+      # Losing every variant is usually a problem with the input rather than a
+      # genuine result, so this case says what to look at instead of only
+      # reporting the count.
+      warning("No readable ", label, " values were found, so all ", length(values),
+              " variants were removed. ", hint, call. = FALSE)
+    } else if (any(unusable)) {
+      warning(sum(unusable), " of ", length(values), " variants had a missing or ",
+              "unreadable ", label, " value and were removed.", call. = FALSE)
+    }
+    return(!is.na(keep) & keep & !unusable)
   }
 
-  # Apply the function to the first INFO string
-  info_ids <- extract_info_ids(info[1])
+  # A requested filter is applied to every record. Which INFO fields are present
+  # is not decided from the first record, because a field may legally be absent
+  # from any individual record; records without a usable value are removed by
+  # select_variants() and reported there.
 
   # Filtering by OD
-  if ("OD" %in% info_ids && !is.null(filter.OD)) {
+  if (!is.null(filter.OD)) {
     info <- vcf@fix[, "INFO"] #Need to get after each filter..
     message("Filtering by OD\n")
     od_values <- extract_info_value(info, "OD")
-    # Ensure no NA values before filtering
-    if (!all(is.na(od_values))) {
-      vcf <- vcf[od_values < as.numeric(filter.OD), ]
-    } else {
-      warning("No valid OD values found.\n")
-    }
+    vcf <- vcf[select_variants(od_values < as.numeric(filter.OD),
+                               od_values, "OD",
+                               "Check that the INFO column of the VCF records OD values."), ]
   }
 
   info <- vcf@fix[, "INFO"] #Need to get after each filter..
 
   # Filtering by BIAS
-  if ("BIAS" %in% info_ids && !is.null(filter.BIAS.min) && !is.null(filter.BIAS.max)) {
+  if (!is.null(filter.BIAS.min) && !is.null(filter.BIAS.max)) {
     info <- vcf@fix[, "INFO"] #Need to get after each filter..
     message("Filtering by BIAS\n")
     bias_values <- extract_info_value(info, "BIAS")
-    # Ensure no NA values before filtering
-    if (!all(is.na(bias_values))) {
-      vcf <- vcf[bias_values > as.numeric(filter.BIAS.min) & bias_values < as.numeric(filter.BIAS.max), ]
-    } else {
-      warning("No valid BIAS values found.\n")
-    }
+    vcf <- vcf[select_variants(bias_values > as.numeric(filter.BIAS.min) &
+                                 bias_values < as.numeric(filter.BIAS.max),
+                               bias_values, "BIAS",
+                               "Check that the INFO column of the VCF records BIAS values."), ]
   }
 
   # Filtering by PMC
-  if ("PMC" %in% info_ids && !is.null(filter.PMC)) {
+  if (!is.null(filter.PMC)) {
     info <- vcf@fix[, "INFO"] #Need to get after each filter..
     message("Filtering by PMC\n")
     pmc_values <- extract_info_value(info, "PMC")
-    # Ensure no NA values before filtering
-    if (!all(is.na(pmc_values))) {
-      vcf <- vcf[pmc_values < as.numeric(filter.PMC), ]
-    } else {
-      warning("No valid PMC values found.\n")
-    }
+    vcf <- vcf[select_variants(pmc_values < as.numeric(filter.PMC),
+                               pmc_values, "PMC",
+                               "Check that the INFO column of the VCF records PMC values."), ]
   }
 
   # Example: Filter based on missing data for samples and SNPs
@@ -226,7 +306,11 @@ filterVCF <- function(vcf.file,
   if (!is.null(filter.MAF)) {
     message("Filtering by MAF\n")
     maf_df <- data.frame(vcfR::maf(vcf, element = 2))
-    vcf <- vcf[maf_df$Frequency > as.numeric(filter.MAF), ]
+    # maf() returns NA for a variant with no called genotypes, which the DP and
+    # MPP masking above can produce.
+    vcf <- vcf[select_variants(maf_df$Frequency > as.numeric(filter.MAF),
+                               maf_df$Frequency, "MAF",
+                               "This happens when no variant has any called genotypes, which the filter.DP and filter.MPP masking can cause."), ]
   }
   ### Export the modified VCF file (this exports as a .vcf.gz, so make sure to have the name end in .vcf.gz)
   message("Exporting VCF\n")

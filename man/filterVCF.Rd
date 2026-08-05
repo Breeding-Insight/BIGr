@@ -22,30 +22,55 @@ filterVCF(
 \arguments{
 \item{vcf.file}{vcfR object or path to VCF file. Can be unzipped (.vcf) or gzipped (.vcf.gz).}
 
-\item{filter.OD}{Updog filter}
+\item{filter.OD}{Maximum overdispersion, read from the \code{OD} field of the INFO
+column as estimated by updog. Variants with an \code{OD} below this value are kept.}
 
-\item{filter.BIAS.min}{Updog filter (requires a value for both BIAS.min and BIAS.max)}
+\item{filter.BIAS.min}{Minimum allele bias, read from the \code{BIAS} field of the
+INFO column as estimated by updog. Variants with a \code{BIAS} above this value are
+kept. Has no effect unless \code{filter.BIAS.max} is also supplied.}
 
-\item{filter.BIAS.max}{Updog filter (requires a value for both BIAS.min and BIAS.max)}
+\item{filter.BIAS.max}{Maximum allele bias, read from the \code{BIAS} field of the
+INFO column. Variants with a \code{BIAS} below this value are kept. Has no effect
+unless \code{filter.BIAS.min} is also supplied.}
 
-\item{filter.DP}{Total read depth at each SNP filter}
+\item{filter.DP}{Minimum read depth for a genotype call. Calls whose FORMAT/DP
+is below this value are set to missing. This does not remove variants, though
+the calls it sets to missing then count towards \code{filter.SNP.miss},
+\code{filter.SAMPLE.miss} and \code{filter.MAF}.}
 
-\item{filter.MPP}{Updog filter}
+\item{filter.MPP}{Minimum posterior probability for a genotype call, as
+reported by updog. Calls whose FORMAT/MPP is below this value are set to
+missing, on the same terms as \code{filter.DP}.}
 
-\item{filter.PMC}{Updog filter}
+\item{filter.PMC}{Maximum proportion of individuals misclassified, read from
+the \code{PMC} field of the INFO column as estimated by updog. Variants with a
+\code{PMC} below this value are kept.}
 
-\item{filter.MAF}{Minor allele frequency filter}
+\item{filter.MAF}{Minimum minor allele frequency. Variants with a minor allele
+frequency above this value are kept. Calculated after any sample removal, so
+it reflects only the samples that survive \code{filter.SAMPLE.miss}.}
 
-\item{filter.SAMPLE.miss}{Sample missing data filter}
+\item{filter.SAMPLE.miss}{Maximum proportion of missing genotype calls a sample
+may have, between 0 and 1. Samples missing a smaller proportion than this are
+kept. Note that this is a proportion and not a percentage.}
 
-\item{filter.SNP.miss}{SNP missing data filter}
+\item{filter.SNP.miss}{Maximum proportion of missing genotype calls a variant
+may have, between 0 and 1. Variants missing a smaller proportion than this are
+kept. Note that this is a proportion and not a percentage.}
 
-\item{ploidy}{The ploidy of the species being analyzed}
+\item{ploidy}{The ploidy of the species being analyzed. Required. Used to write
+the missing genotype, so a diploid is recorded as \code{./.} and a tetraploid as
+\code{./././.} when a call is filtered out.}
 
-\item{output.file}{output file name (optional). If no output.file name provided, then a vcfR object will be returned.}
+\item{output.file}{Output file name, without an extension (optional). When
+supplied, the filtered VCF is written as a gzipped file and nothing is
+returned. \code{.vcf.gz} is appended when \code{vcf.file} is a path, and
+\verb{_filtered.vcf.gz} when \code{vcf.file} is a vcfR object. When not supplied, a
+vcfR object is returned instead and no file is written.}
 }
 \value{
-A gzipped vcf file
+A vcfR object when \code{output.file} is not supplied. Otherwise the
+filtered VCF is written to disk and nothing is returned.
 }
 \description{
 This function will filter a VCF file or vcfR object and export the updated version
@@ -54,6 +79,19 @@ This function will filter a VCF file or vcfR object and export the updated versi
 This function will input a VCF file or vcfR object and filter based on the user defined options.
 The output file will be saved to the location and with the name that is specified.
 The VCF format is v4.3
+
+Filters are applied in a fixed order, which matters because each one acts on
+what the previous ones left behind. \code{filter.DP} and \code{filter.MPP} run first and
+set individual genotype calls to missing. \code{filter.OD}, \code{filter.BIAS.min} and
+\code{filter.BIAS.max}, and \code{filter.PMC} then remove variants using the INFO column.
+\code{filter.SNP.miss} removes variants and \code{filter.SAMPLE.miss} removes samples,
+both counting the calls that were set to missing above. \code{filter.MAF} runs last,
+so it is calculated from the samples that remain.
+
+A variant is removed if the value a requested filter needs cannot be read from
+it, for instance because the INFO field is absent from that record or because
+every genotype call for the variant is missing. The number of variants removed
+for this reason is reported in a warning.
 }
 \examples{
 ## Use file paths for each file on the local system

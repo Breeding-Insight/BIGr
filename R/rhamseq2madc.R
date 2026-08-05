@@ -203,8 +203,8 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
       vmsg("Locus '%s': no sequences found in FASTA — locus will be skipped.",
         verbose = verbose, level = 1, type = ">>", cloneID
       )
-      next()
-      # return(NULL)
+      
+      return(NULL)
     }
 
     reftag_n <- paste0(cloneID, "#1")

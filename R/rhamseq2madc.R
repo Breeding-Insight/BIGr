@@ -71,8 +71,8 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
   hapgeno <- read.table(hap_genotype_file, sep = "\t", header = TRUE)
   sequences <- readDNAStringSet(haplotype_allele_fasta)
   vmsg("%s loci and %s sequences read",
-    verbose = verbose, level = 1, type = ">>",
-    nrow(hapgeno), length(sequences)
+       verbose = verbose, level = 1, type = ">>",
+       nrow(hapgeno), length(sequences)
   )
 
   vmsg("Checking inputs", verbose = verbose, level = 0, type = ">>")
@@ -113,25 +113,26 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
   seq_prefix_index <- split(seq_along(sequences), sub("#[0-9]+$", "", names(sequences)))
 
   vmsg("Processing %s loci with %s core(s)",
-    verbose = verbose, level = 0, type = ">>",
-    nrow(hapgeno), n_cores
+       verbose = verbose, level = 0, type = ">>",
+       nrow(hapgeno), n_cores
   )
   # mclapply (fork) is unavailable on Windows; use a PSOCK cluster there instead
   if (.Platform$OS.type == "windows" && n_cores > 1) {
-    cl <- makeCluster(n_cores)
-    on.exit(stopCluster(cl), add = TRUE)
-    clusterExport(cl,
-      varlist = c("hapgeno", "sequences", "verbose", "seq_prefix_index"),
-      envir = environment()
-    )
-    clusterEvalQ(cl, {
-      library(Biostrings)
-      library(pwalign)
-    })
-    par_fun <- function(X, FUN) parLapply(cl, X, FUN)
-  } else {
-    par_fun <- function(X, FUN) mclapply(X, FUN, mc.cores = n_cores)
+    cl <- makeCluster(n_cores, type = "PSOCK")
+  } else if(.Platform$OS.type != "windows" && n_cores > 1){
+    cl <- makeCluster(n_cores, type = "FORK")
   }
+  on.exit(stopCluster(cl), add = TRUE)
+  clusterExport(cl,
+                varlist = c("hapgeno", "sequences", "verbose", "seq_prefix_index"),
+                envir = environment()
+  )
+  clusterEvalQ(cl, {
+    library(Biostrings)
+    library(pwalign)
+  })
+  par_fun <- function(X, FUN) parLapply(cl, X, FUN)
+
 
   madc_list <- par_fun(seq_len(nrow(hapgeno)), function(t) {
     onetag <- hapgeno[t, ]
@@ -180,8 +181,8 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
     } else {
       all_allele_ids <- sort(unique(long_df$allele_id))
       depth_mat <- matrix(0L,
-        nrow = length(all_allele_ids), ncol = length(sample_names),
-        dimnames = list(NULL, sample_names)
+                          nrow = length(all_allele_ids), ncol = length(sample_names),
+                          dimnames = list(NULL, sample_names)
       )
       depth_mat[cbind(
         match(long_df$allele_id, all_allele_ids),
@@ -201,9 +202,9 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
 
     if (length(AlleleIDs_idx) == 0) {
       vmsg("Locus '%s': no sequences found in FASTA — locus will be skipped.",
-        verbose = verbose, level = 1, type = ">>", cloneID
+           verbose = verbose, level = 1, type = ">>", cloneID
       )
-      
+
       return(NULL)
     }
 
@@ -355,10 +356,10 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
 
     ## Has a specific change dynamic
     new_base <- switch(mid_base,
-      "A" = "C",
-      "C" = "A",
-      "G" = "T",
-      "T" = "G"
+                       "A" = "C",
+                       "C" = "A",
+                       "G" = "T",
+                       "T" = "G"
     )
 
     alttag <- replaceLetterAt(reftag, mid_pos, new_base)
@@ -425,8 +426,8 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
   madc_list <- Filter(Negate(is.null), madc_list)
 
   vmsg("Assembling results from %s processed loci",
-    verbose = verbose, level = 0, type = ">>",
-    length(madc_list)
+       verbose = verbose, level = 0, type = ">>",
+       length(madc_list)
   )
   madc_final <- do.call(rbind, lapply(madc_list, "[[", "madc"))
   target_positions <- do.call(rbind, lapply(madc_list, "[[", "target_pos"))

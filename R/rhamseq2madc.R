@@ -135,10 +135,14 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
     library(Biostrings)
     library(pwalign)
   })
-  par_fun <- function(X, FUN) parLapply(cl, X, FUN)
+  par_fun <- function(X, FUN) {
+    safe <- function(x) tryCatch(FUN(x), error = function(e) {
+      structure(list(message = conditionMessage(e)), class = "try-error")
+    })
+    parLapply(cl, X, safe)
+  }
 
-
-  madc_list <- par_fun(seq_len(nrow(hapgeno)), function(t) {
+  .locus_worker <- function(t) {
     onetag <- hapgeno[t, ]
 
     # Extract read depths from sample columns (col 3 to last)
@@ -410,20 +414,26 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
         stringsAsFactors  = FALSE
       )
     )
-  })
+  }
+  madc_list <- par_fun(seq_len(nrow(hapgeno)), .locus_worker)
 
-  # mclapply returns try-error objects for failed workers instead of propagating;
-  # detect them early and surface the real per-locus error message.
+  # Loci that errored inside the parallel worker are returned as try-error objects.
+  # Retry them sequentially — they usually succeed outside the parallel context.
   failed_idx <- which(vapply(madc_list, inherits, logical(1), what = "try-error"))
   if (length(failed_idx) > 0) {
-    err_msgs <- vapply(failed_idx, function(i) {
-      cond <- attr(madc_list[[i]], "condition")
-      if (!is.null(cond)) conditionMessage(cond) else as.character(madc_list[[i]])
-    }, character(1))
-    stop(paste0(
-      length(failed_idx), " locus/loci failed during processing.\n",
-      paste0("  Locus '", hapgeno[[1]][failed_idx], "': ", err_msgs, collapse = "\n")
-    ))
+    vmsg("%s locus/loci failed in parallel; retrying sequentially.",
+         verbose = verbose, level = 1, type = ">>", length(failed_idx))
+    for (t in failed_idx) {
+      madc_list[[t]] <- tryCatch(
+        .locus_worker(t),
+        error = function(e) {
+          vmsg("Locus '%s': sequential retry also failed \u2014 %s",
+               verbose = verbose, level = 1, type = ">>",
+               hapgeno[[1]][t], conditionMessage(e))
+          NULL
+        }
+      )
+    }
   }
 
   # Drop loci that were skipped (returned NULL, e.g. not found in FASTA)

@@ -197,7 +197,7 @@ madc2vcf_all <- function(madc,
     n_match <- sum(mi_df$CloneID %in% report$CloneID)
     n_total <- length(unique(report$CloneID))
     if(n_match < n_total)
-      vmsg("%s of %s MADC CloneIDs found in markers_info. Unmatched markers will be removed", verbose = verbose, level = 1, n_match, n_total)
+      vmsg("%s of %s MADC CloneIDs found in markers_info. Unmatched markers will be removed", verbose = verbose, level = 1,type = ">>", n_match, n_total)
   } else mi_df <- NULL
 
   if(any(!checks$checks[c("ChromPos")])){

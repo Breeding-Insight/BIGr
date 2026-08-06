@@ -46,5 +46,5 @@ BIGr development is supported by [Breeding Insight](https://breedinginsight.org/
 
 If you use BIGr in your research, please cite as:
 
-Sandercock, Alexander M., Cristiane H. Taniguti, Josue Chinchilla-Vargas, Dongyan Zhao, Shufen Chen, Meng Lin, Manoj Sapkota, and Breeding Insight Team. 2025. “Breeding Insight Genomics Functions for Polypoid and Diploid Species.” https://github.com/Breeding-Insight/BIGr.
+Sandercock A.M., Peel M.D., Taniguti C.H., Chinchilla-Vargas J., Chen S., Sapkota M., Lin M., Zhao D., Ackerman A.J., Basnet B.R., Beil C.T., Sheehan M.J. (2025). BIGapp: A User-Friendly Genomic Tool Kit Identified Quantitative Trait Loci for Creeping Rootedness in Alfalfa (Medicago sativa L.)., The Plant Genome. doi:https://doi.org/10.1002/tpg2.70067
 

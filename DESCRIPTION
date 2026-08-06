@@ -1,76 +1,65 @@
 Package: BIGr
-Title: Breeding Insight Genomics Functions for Polyploid and Diploid Species
-Version: 0.7.2
-Authors@R: c(person(given='Alexander M.',
-                    family='Sandercock',
-                    email='sandercock.alex@gmail.com',
-                    role=c('cre','aut')),
-             person(given='Cristiane',
-                    family='Taniguti',
-                    role = 'aut'),
-             person(given='Josue',
-                    family='Chinchilla-Vargas',
-                    role='aut'),
-             person(given='Shufen',
-                    family='Chen',
-                    role='ctb'),
-             person(given='Manoj',
-                    family='Sapkota',
-                    role='ctb'),
-             person(given='Meng',
-                    family='Lin',
-                    role='ctb'),
-             person(given='Dongyan',
-                    family='Zhao',
-                    role='ctb'),
-             person('University', "of Florida",
-                    role=c('cph'), 
-                    comment = "Breeding Insight"))
+Title: Breeding Insight Genomics Functions for Polyploid and Diploid
+    Species
+Version: 0.9.0
+Authors@R: c(
+    person("Alexander M.", "Sandercock", , "sandercock.alex@gmail.com", role = c("cre", "aut")),
+    person("Cristiane", "Taniguti", role = "aut"),
+    person("Josue", "Chinchilla-Vargas", role = "aut"),
+    person("Shufen", "Chen", role = "ctb"),
+    person("Manoj", "Sapkota", role = "ctb"),
+    person("Meng", "Lin", role = "ctb"),
+    person("Dongyan", "Zhao", role = "ctb"),
+    person("University", "of Florida", role = "cph",
+           comment = "Breeding Insight")
+  )
 Maintainer: Alexander M. Sandercock <sandercock.alex@gmail.com>
 Description: Functions developed within Breeding Insight to analyze
     diploid and polyploid breeding and genetic data. 'BIGr' provides the
-    ability to filter variant call format (VCF) files, extract single nucleotide polymorphisms (SNPs) 
-    from diversity arrays technology missing allele discovery count (DArT MADC) files, 
-    and manipulate genotype data for both diploid and polyploid species. It
-    also serves as the core dependency for the 'BIGapp' 'Shiny' app, which
-    provides a user-friendly interface for performing routine genotype
-    analysis tasks such as dosage calling, filtering, principal component analysis (PCA), 
-    genome-wide association studies (GWAS), and
-    genomic prediction. For more details about the included 'breedTools' 
-    functions, see Funkhouser et al. (2017) <doi:10.2527/tas2016.0003>, and
-    the 'updog' output format, see Gerard et al. (2018) <doi:10.1534/genetics.118.301468>.
+    ability to filter variant call format (VCF) files, extract single
+    nucleotide polymorphisms (SNPs) from diversity arrays technology
+    missing allele discovery count (DArT MADC) files, and manipulate
+    genotype data for both diploid and polyploid species. It also serves
+    as the core dependency for the 'BIGapp' 'Shiny' app, which provides a
+    user-friendly interface for performing routine genotype analysis tasks
+    such as dosage calling, filtering, principal component analysis (PCA),
+    genome-wide association studies (GWAS), and genomic prediction. For
+    more details about the 'updog' output
+    format, see Gerard et al. (2018) <doi:10.1534/genetics.118.301468>.
 License: Apache License (>= 2)
 URL: https://github.com/Breeding-Insight/BIGr
 BugReports: https://github.com/Breeding-Insight/BIGr/issues
-Encoding: UTF-8
-Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
-Depends: R (>= 4.4.0)
-biocViews:
+Depends: 
+    R (>= 4.4.0)
 Imports: 
-    parallel,
+    Biostrings,
     dplyr,
+    ggplot2,
+    parallel,
+    pwalign,
     Rdpack (>= 0.7),
     readr (>= 2.1.5),
     reshape2 (>= 1.4.4),
     rlang,
-    tidyr (>= 1.3.1),
-    vcfR (>= 1.15.0),
     Rsamtools,
-    Biostrings,
-    pwalign,
-    janitor,
-    quadprog,
-    tibble,
+    stats,
     stringr,
-    data.table
+    tibble,
+    tidyr (>= 1.3.1),
+    utils,
+    vcfR (>= 1.15.0)
 Suggests: 
+    testthat (>= 3.0.0),
     covr,
-    ggplot2,
     spelling,
-    rmdformats,
-    knitr (>= 1.10),
-    rmarkdown,
     polyRAD,
-    testthat (>= 3.0.0)   
-RdMacros: Rdpack
+    rmdformats,
+    knitr,
+    rmarkdown
+RdMacros: 
+    Rdpack
+biocViews:
+Config/roxygen2/version: 8.0.0
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3

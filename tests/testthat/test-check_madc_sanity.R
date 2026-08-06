@@ -2,13 +2,15 @@ test_that("check madc",{
   skip_if_offline("raw.githubusercontent.com")
 
   github_path <- "https://raw.githubusercontent.com/Breeding-Insight/BIGapp-PanelHub/refs/heads/long_seq/test_madcs/"
-  names <- c("Columns", "FixAlleleIDs", "IUPACcodes", "LowerCase", "Indels", "ChromPos", "allNAcol", "allNArow", "RefAltSeqs", "OtherAlleles")
+  names <- c("Columns", "FixAlleleIDs", "IUPACcodes", "IUPACcodes_IdenticalRefAlt",
+             "LowerCase", "Indels", "ChromPos", "allNAcol", "allNArow",
+             "RefAltSeqs", "OtherAlleles", "IUPACcodes_MatchAlleles")
 
   # raw madc
   report <- read.csv(paste0(github_path,"/alfalfa_madc_raw.csv"))
 
   res <- check_madc_sanity(report)
-  exp <- c(TRUE, FALSE, FALSE, FALSE, FALSE, TRUE, TRUE, FALSE, TRUE, FALSE)
+  exp <- c(TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, TRUE, FALSE, TRUE, FALSE, FALSE)
   names(exp) <- names
   expect_equal(res$checks, exp)
 
@@ -16,7 +18,7 @@ test_that("check madc",{
   report <- read.csv(paste0(github_path,"/alfalfa_lowercase.csv"))
 
   res <- check_madc_sanity(report)
-  exp <- c(TRUE, TRUE, FALSE, TRUE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE)
+  exp <- c(TRUE, TRUE, FALSE, FALSE, TRUE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE)
   names(exp) <- names
   expect_equal(res$checks, exp)
 
@@ -24,7 +26,7 @@ test_that("check madc",{
   report <- read.csv(paste0(github_path,"/alfalfa_IUPAC.csv"))
 
   res <- check_madc_sanity(report)
-  exp <- c(TRUE, TRUE, TRUE, FALSE, FALSE, TRUE, FALSE, FALSE,TRUE, FALSE)
+  exp <- c(TRUE, TRUE, TRUE, FALSE,FALSE, FALSE, TRUE, FALSE, FALSE,TRUE, FALSE,TRUE)
   names(exp) <- names
   expect_equal(res$checks, exp)
 
@@ -32,7 +34,7 @@ test_that("check madc",{
   report <- read.csv(paste0(github_path,"/alfalfa_madc.csv"))
 
   res <- check_madc_sanity(report)
-  exp <- c(TRUE, TRUE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE,TRUE, FALSE)
+  exp <- c(TRUE, TRUE, FALSE, FALSE,FALSE, FALSE, TRUE, FALSE, FALSE,TRUE, FALSE, FALSE)
   names(exp) <- names
   expect_equal(res$checks, exp)
 
@@ -40,7 +42,7 @@ test_that("check madc",{
   report <- read.csv(paste0(github_path,"/potato_indel_madc.csv"))
 
   res <- check_madc_sanity(report)
-  exp <- c(TRUE, TRUE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE,TRUE, FALSE)
+  exp <- c(TRUE, TRUE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE,TRUE, FALSE, FALSE)
   names(exp) <- names
   expect_equal(res$checks, exp)
 
@@ -48,7 +50,7 @@ test_that("check madc",{
   report <- read.csv(paste0(github_path,"/potato_indel_IUPAC.csv"))
 
   res <- check_madc_sanity(report)
-  exp <- c(TRUE, TRUE, TRUE, FALSE, TRUE, FALSE, FALSE, FALSE,TRUE, FALSE)
+  exp <- c(TRUE, TRUE, TRUE, FALSE,FALSE, TRUE, FALSE, FALSE, FALSE,TRUE, FALSE,TRUE)
   names(exp) <- names
   expect_equal(res$checks, exp)
 
@@ -56,7 +58,7 @@ test_that("check madc",{
   report <- read.csv(paste0(github_path,"/potato_indel_lowercase.csv"))
 
   res <- check_madc_sanity(report)
-  exp <- c(TRUE, TRUE, FALSE, TRUE, TRUE, FALSE, FALSE, FALSE,TRUE, FALSE)
+  exp <- c(TRUE, TRUE, FALSE, FALSE, TRUE, TRUE, FALSE, FALSE, FALSE,TRUE, FALSE, FALSE)
   names(exp) <- names
   expect_equal(res$checks, exp)
 
@@ -64,7 +66,7 @@ test_that("check madc",{
   report <- read.csv(paste0(github_path,"/potato_more_indels_madc_ChromPosFALSE.csv"))
 
   res <- check_madc_sanity(report)
-  exp <- c(TRUE, TRUE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE,TRUE, FALSE)
+  exp <- c(TRUE, TRUE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE,TRUE, FALSE, FALSE)
   names(exp) <- names
   expect_equal(res$checks, exp)
 })

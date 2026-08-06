@@ -1,3 +1,26 @@
+# BIGr 0.9.0
+
+* `check_madc_sanity` updates: distinguish presence of IUPAC codes on REF/ALT (return logical variable IUPACcodes) from RefMatch/AltMatch/Others (returned logical variable IUPACcodes_MatchAlleles) and from Identical IUPAC code in identical positions in REF/ALT (returned logical variable IUPACcodes_IdenticalRefAlt)
+* Two new arguments to the `madc2vcf_all` function:
+    * `others_min_dist` (default 5bp)
+    * `others_max_close_snps` (default 3 SNPs)
+
+* By default, `Other` tags will be discarded if they have more than 3 SNPs with less than 5bp distance between them   
+* Adapt `madc2vcf_all` code to let pass identical IUPAC code in identical position in REF/ALT but ignore polymorphims in Match or Other alleles at the same position
+* `madc2vcf_targets` and `madc2vcf_multi` will only throw an error if different IUPAC are present in REF/ALT sequences (IUPACcodes = TRUE)
+
+
+# BIGr 0.8.1
+
+- Fixed `filterVCF()` discarding SNPs whose INFO values are written in scientific notation. The `OD`, `BIAS`, and `PMC` filters read INFO values with a pattern that accepted only digits and decimal points, so a value such as `PMC=4.78e-07` was read as `4.78` and failed a `filter.PMC = 0.05` threshold that it actually passed by five orders of magnitude. `updog2vcf()` writes these values with `paste0()`, so R's default formatting produces scientific notation for small numbers, and updog's `od` and `prop_mis` are routinely small for good markers - meaning the SNPs most likely to be dropped were the cleanest ones. INFO values are now parsed with `as.numeric()` on the whole field, accepting any valid numeric representation. Field names are also matched against a complete INFO entry rather than as a substring, so a field such as `XOD` is no longer mistaken for `OD`.
+- Fixed `filterVCF()` writing corrupt all-`NA` variants when a filter value could not be read. A logical index containing `NA` does not drop a row in R, it inserts a row of `NA`s, so any variant with an unreadable `OD`, `BIAS` or `PMC` value, or an `NA` minor allele frequency, was written into the output with an empty `CHROM`, `POS`, `REF` and `ALT`. The `NA` frequency case was reachable through normal use, because `vcfR::maf()` returns `NA` for a variant left with no called genotypes and the `filter.DP` and `filter.MPP` masking can produce exactly that. These variants are now removed, and the number removed is reported in a warning so that they are never discarded silently.
+- `filterVCF()` now removes variants when none of them have a readable value for a requested filter, instead of returning the data unfiltered. Previously the `OD`, `BIAS` and `PMC` filters skipped filtering entirely in that situation and reported only "No valid values found", so a run that filtered nothing could look like a run that succeeded. All of the filters now behave the same way, and the warning names the likely cause so it can be diagnosed.
+- Fixed `filterVCF()` skipping a requested `OD`, `BIAS` or `PMC` filter when the first variant in the file did not carry that INFO field. The available INFO fields were read from the first record only, so a field that was absent from that one record disabled its filter for the entire file, with no warning and no indication in the output that filtering had not happened. A field may legally be absent from any individual record, so requested filters are now applied to every record, and records without a usable value are removed and reported. This also removes the last case where the order of records in the file could change the result of filtering.
+- Corrected and expanded the documentation for `filterVCF()`. `filter.DP` was described as a total read depth filter applied to each SNP; it is applied to each genotype call using the `DP` value in the FORMAT column, setting calls below the threshold to missing rather than removing variants. `filter.MPP` works the same way and was previously undescribed. The remaining filters now state which field they read and which direction the comparison runs, `filter.SAMPLE.miss` and `filter.SNP.miss` state that they take a proportion rather than a percentage, and `filter.BIAS.min` and `filter.BIAS.max` state that neither has any effect unless both are supplied. The return value is documented as a vcfR object when `output.file` is omitted, rather than always a gzipped file.
+- Updated madc2vcf_all and madc2vcf_targets. Before, it was possible for POS to be exported as scientific notation instead of integers, and for negative POS values to be present for off target SNPs. POS are corrected to be integers, and SNPs with a negative POS value are removed.
+- Remove BIGpopA functions - now it is a independent package: https://github.com/Breeding-Insight/BIGpopA 
+- Fixed `madc2vcf_all()` error "invalid substring arguments" that occurred with `add_others = TRUE` when an off-target ("Other") allele aligned to the reference with no mismatch positions remaining after the target SNP position was removed. The reference/alternate base lookups for off-target alleles are now guarded by the existing non-empty check, matching how the off-target Match alleles are already handled.
+
 # BIGr 0.7.2
 
 - Fixed manual text errors

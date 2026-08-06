@@ -9,7 +9,8 @@ rhampseq2madc(
   haplotype_allele_fasta,
   n_cores = 1,
   prefix = NULL,
-  verbose = TRUE
+  verbose = TRUE,
+  parallel_type = NULL
 )
 }
 \arguments{
@@ -26,8 +27,8 @@ sequences. Sequence names must follow the \code{"LocusID#N"} convention
 \code{hap_genotype_file} but absent from this file are skipped.}
 
 \item{n_cores}{Number of cores for parallel locus processing. Defaults to
-\code{1} (sequential). On Windows a PSOCK cluster is used; on Unix/macOS
-fork-based parallelism (\code{mclapply}) is applied.}
+\code{1} (sequential). On Windows a PSOCK cluster is always used; on
+Unix/macOS the type is controlled by \code{parallel_type}.}
 
 \item{prefix}{Optional character string. When provided, three files are
 written: \code{<prefix>_madc.csv}, \code{<prefix>_target_positions.csv},
@@ -35,6 +36,12 @@ and \code{<prefix>.fasta}. Defaults to \code{NULL} (no files written).}
 
 \item{verbose}{Logical. When \code{TRUE}, progress and per-locus warning
 messages are printed via \code{vmsg()}. Defaults to \code{TRUE}.}
+
+\item{parallel_type}{Character string controlling the cluster type on
+Unix/macOS when \code{n_cores > 1}. Use \code{"PSOCK"} for socket-based
+workers (safer, slightly more overhead) or \code{NULL} (default) for
+\code{"FORK"}-based workers (faster, shares memory). Ignored on Windows,
+which always uses PSOCK.}
 }
 \value{
 A named \code{list} with three elements:

@@ -30,8 +30,13 @@
 #'   (e.g. \code{"rhMAS_5GT_cons95#1"}). Loci present in
 #'   \code{hap_genotype_file} but absent from this file are skipped.
 #' @param n_cores Number of cores for parallel locus processing. Defaults to
-#'   \code{1} (sequential). On Windows a PSOCK cluster is used; on Unix/macOS
-#'   fork-based parallelism (\code{mclapply}) is applied.
+#'   \code{1} (sequential). On Windows a PSOCK cluster is always used; on
+#'   Unix/macOS the type is controlled by \code{parallel_type}.
+#' @param parallel_type Character string controlling the cluster type on
+#'   Unix/macOS when \code{n_cores > 1}. Use \code{"PSOCK"} for socket-based
+#'   workers (safer, slightly more overhead) or \code{NULL} (default) for
+#'   \code{"FORK"}-based workers (faster, shares memory). Ignored on Windows,
+#'   which always uses PSOCK.
 #' @param prefix Optional character string. When provided, three files are
 #'   written: \code{<prefix>_madc.csv}, \code{<prefix>_target_positions.csv},
 #'   and \code{<prefix>.fasta}. Defaults to \code{NULL} (no files written).
@@ -71,8 +76,8 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
   hapgeno <- read.table(hap_genotype_file, sep = "\t", header = TRUE)
   sequences <- readDNAStringSet(haplotype_allele_fasta)
   vmsg("%s loci and %s sequences read",
-    verbose = verbose, level = 1, type = ">>",
-    nrow(hapgeno), length(sequences)
+       verbose = verbose, level = 1, type = ">>",
+       nrow(hapgeno), length(sequences)
   )
 
   vmsg("Checking inputs", verbose = verbose, level = 0, type = ">>")
@@ -113,36 +118,42 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
   seq_prefix_index <- split(seq_along(sequences), sub("#[0-9]+$", "", names(sequences)))
 
   vmsg("Processing %s loci with %s core(s)",
-    verbose = verbose, level = 0, type = ">>",
-    nrow(hapgeno), n_cores
+       verbose = verbose, level = 0, type = ">>",
+       nrow(hapgeno), n_cores
   )
   # mclapply (fork) is unavailable on Windows; use a PSOCK cluster there instead
-  if (.Platform$OS.type == "windows" && n_cores > 1) {
-    cl <- makeCluster(n_cores, type = "PSOCK")
-  } else if (.Platform$OS.type != "windows" && n_cores > 1) {
-    if (!is.null(parallel_type) && parallel_type == "PSOCK") {
+  if (n_cores > 1) {
+    if (.Platform$OS.type == "windows") {
+      cl <- makeCluster(n_cores, type = "PSOCK")
+    } else if (!is.null(parallel_type) && parallel_type == "PSOCK") {
       cl <- makeCluster(n_cores, type = "PSOCK")
     } else {
       cl <- makeCluster(n_cores, type = "FORK")
     }
-  }
-  on.exit(stopCluster(cl), add = TRUE)
-  clusterExport(cl,
-    varlist = c("hapgeno", "sequences", "verbose", "seq_prefix_index"),
-    envir = environment()
-  )
-  clusterEvalQ(cl, {
-    library(Biostrings)
-    library(pwalign)
-  })
-  par_fun <- function(X, FUN) {
-    safe <- function(x) tryCatch(FUN(x), error = function(e) {
-      structure(list(message = conditionMessage(e)), class = "try-error")
+    on.exit(stopCluster(cl), add = TRUE)
+    clusterExport(cl,
+                  varlist = c("hapgeno", "sequences", "verbose", "seq_prefix_index"),
+                  envir = environment()
+    )
+    clusterEvalQ(cl, {
+      library(Biostrings)
+      library(pwalign)
     })
-    parLapply(cl, X, safe)
+    par_fun <- function(X, FUN) {
+      safe <- function(x) tryCatch(FUN(x), error = function(e) {
+        structure(list(message = conditionMessage(e)), class = "try-error")
+      })
+      parLapply(cl, X, safe)
+    }
+  } else {
+    par_fun <- function(X, FUN) lapply(X, FUN)
   }
 
   .locus_worker <- function(t) {
+    ## Debug code
+    #t <- which(hapgeno$Locus == "rh_chr13_25788278")
+    ###
+
     onetag <- hapgeno[t, ]
 
     # Extract read depths from sample columns (col 3 to last)
@@ -189,8 +200,8 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
     } else {
       all_allele_ids <- sort(unique(long_df$allele_id))
       depth_mat <- matrix(0L,
-        nrow = length(all_allele_ids), ncol = length(sample_names),
-        dimnames = list(NULL, sample_names)
+                          nrow = length(all_allele_ids), ncol = length(sample_names),
+                          dimnames = list(NULL, sample_names)
       )
       depth_mat[cbind(
         match(long_df$allele_id, all_allele_ids),
@@ -362,10 +373,10 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
 
     ## Has a specific change dynamic
     new_base <- switch(mid_base,
-      "A" = "C",
-      "C" = "A",
-      "G" = "T",
-      "T" = "G"
+                       "A" = "C",
+                       "C" = "A",
+                       "G" = "T",
+                       "T" = "G"
     )
 
     alttag <- replaceLetterAt(reftag, mid_pos, new_base)
@@ -377,11 +388,18 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
     # padding with zeros to match the four digits IDs
     ids_new <- sprintf("%04d", as.integer(ids_new))
 
-    AlleleID <- c(
-      paste0(cloneID, "|Ref_0001"),
-      paste0(cloneID, "|Alt_0002"),
-      paste0(cloneID, "|RefMatch_", ids_new)
-    )
+    if(length(ids_new) >0){
+      AlleleID <- c(
+        paste0(cloneID, "|Ref_0001"),
+        paste0(cloneID, "|Alt_0002"),
+        paste0(cloneID, "|RefMatch_", ids_new)
+      )
+    } else {
+      AlleleID <- c(
+        paste0(cloneID, "|Ref_0001"),
+        paste0(cloneID, "|Alt_0002")
+      )
+    }
 
     AlleleSequence <- c(
       as.character(reftag),
@@ -393,7 +411,7 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
     madc13_one <- data.frame(
       AlleleID = AlleleID,
       CloneID = cloneID,
-      AlleleSequence = AlleleSequence
+      AlleleSequence = unlist(AlleleSequence)
     )
 
     tomerge_idx <- match(c(1, "alt", ids_real), depth_wide$allele_id)
@@ -451,8 +469,8 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
   madc_list <- Filter(Negate(is.null), madc_list)
 
   vmsg("Assembling results from %s processed loci",
-    verbose = verbose, level = 0, type = ">>",
-    length(madc_list)
+       verbose = verbose, level = 0, type = ">>",
+       length(madc_list)
   )
   madc_final <- do.call(rbind, lapply(madc_list, "[[", "madc"))
   target_positions <- do.call(rbind, lapply(madc_list, "[[", "target_pos"))

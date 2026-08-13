@@ -24,14 +24,44 @@
 #' @param min.depth Minimum locus x sample read depth to be considered present. Default `10`.
 #' @param metadata Optional sample-metadata data.frame (see [madc_summary()]) used
 #'   to color the PCA / group the missing-data boxplot.
-#' @param group.col Category column in `metadata` (e.g. species/population).
+#' @param group.col Category column in `metadata` (e.g. species/population) used
+#'   to color the PCA and group the missing-data boxplot / heatmap.
+#' @param shape.col Optional second `metadata` column mapped to point shape in
+#'   the PCA (e.g. plate or location), so two variables can be shown at once.
+#' @param palette Optional vector of colors for the categorical scales (PCA
+#'   point color, missing-boxplot fill); interpolated to the number of
+#'   categories. `NULL` uses the ggplot2 defaults.
 #' @param markers_info Optional marker lookup (id + `Chr` + `Pos`) for the marker/circos plot.
 #' @param pc.x,pc.y Principal components to plot (PCA). Defaults `1`, `2`.
 #' @param loci.miss.max,sample.miss.max Drop loci/samples with missingness above
 #'   these fractions before PCA. Defaults `0.5`.
 #' @param fill Heatmap fill metric: `"depth"` (default) or `"mhaps"`.
 #' @param facet.chrom Logical; facet the heatmap by chromosome. Default `FALSE`.
+#'   When `metadata`/`group.col` are supplied, the heatmap also sorts samples by
+#'   category and labels each category (a facet column per group).
 #' @param max.loci,max.samples Optional caps; larger heatmaps are subsampled (with a note).
+#' @param density.window Window size in bp for the circos marker-density track.
+#'   Default `1e6` (1 Mb).
+#' @param density.col Gradient colors (low -> high) for the circos marker-density
+#'   heatmap ring; interpolated across the range. Default a grey-to-blue gradient.
+#' @param depth.col Length-3 vector of colors for the circos "Depth QC" ribbon:
+#'   markers that are `low depth` (mean depth below `min.depth`), `normal`, or a
+#'   high-depth `outlier`. Only low-depth and outlier markers are highlighted;
+#'   normal markers take the neutral middle color. Default
+#'   `c("#2166ac","#e0e0e0","#b2182b")`.
+#' @param depth.outlier Multiplier `k` for the robust high-depth outlier cutoff
+#'   `median + k * MAD` (not mean +/- SD, which a few extreme loci would drag up).
+#'   Default `3`.
+#' @param mhap.col Fill color for the circos "mHaps" log-scaled radial bars.
+#'   Default `"#35978f"`.
+#' @param paralog.flag Microhaplotype count above which a circos "mHaps" locus is
+#'   flagged as paralog-suspect: its bar's over-threshold excess is drawn as a red
+#'   segment above a dashed reference ring. Default `10`.
+#' @param tick.height,density.height,mhap.height Circos track heights (fraction of
+#'   the radius) for the per-marker locus tick rug, the density heatmap ring, and
+#'   the mHap bar track. Defaults `0.03`, `0.08`, and `0.18`.
+#' @param label.gap Width in degrees of the label corridor opened at 12 o'clock
+#'   for the circos track titles. Default `12`.
 #' @param mhap.min.reads Minimum reads for a mHap to count as present. Default `1`.
 #' @param output.file If not `NULL`, the figure is also saved here (`.png`/`.pdf`).
 #' @param width,height,dpi Saved-figure dimensions (inches) and resolution.
@@ -56,6 +86,8 @@ madc_plot <- function(madc,
                       min.depth      = 10,
                       metadata       = NULL,
                       group.col      = NULL,
+                      shape.col      = NULL,
+                      palette        = NULL,
                       markers_info   = NULL,
                       pc.x           = 1,
                       pc.y           = 2,
@@ -65,6 +97,16 @@ madc_plot <- function(madc,
                       facet.chrom    = FALSE,
                       max.loci       = NULL,
                       max.samples    = NULL,
+                      density.window = 1e6,
+                      density.col    = c("grey92", "#4292c6", "#08306b"),
+                      depth.col      = c("#2166ac", "#e0e0e0", "#b2182b"),
+                      depth.outlier  = 3,
+                      mhap.col       = "#35978f",
+                      paralog.flag   = 10,
+                      tick.height    = 0.03,
+                      density.height = 0.08,
+                      mhap.height    = 0.18,
+                      label.gap      = 12,
                       mhap.min.reads = 1,
                       output.file    = NULL,
                       width = 8, height = 6, dpi = 300,
@@ -79,6 +121,7 @@ madc_plot <- function(madc,
                      mhap.min.reads = mhap.min.reads, markers_info = markers_info,
                      verbose = FALSE)
   grp <- .madc_group(metadata, group.col, m$samples)
+  shp <- if (!is.null(shape.col)) .madc_group(metadata, shape.col, m$samples) else NULL
 
   # circos is a standalone base-graphics (circlize) figure - it cannot be embedded
   # in a grid multi-panel, so it must be requested on its own.
@@ -98,15 +141,19 @@ madc_plot <- function(madc,
       else grDevices::png(save_to, width = width, height = height, units = "in", res = dpi)
       on.exit(grDevices::dev.off(), add = TRUE)
     }
-    .madc_plot_circos(m)
+    .madc_plot_circos(m, paralog.flag = paralog.flag, density.window = density.window,
+                      density.col = density.col, depth.col = depth.col,
+                      depth.outlier = depth.outlier, mhap.col = mhap.col,
+                      tick.height = tick.height, density.height = density.height,
+                      mhap.height = mhap.height, label.gap = label.gap)
     return(invisible(save_to))
   }
 
   build <- list(
-    pca     = function() .madc_plot_pca(m, pc.x, pc.y, loci.miss.max, sample.miss.max, grp),
+    pca     = function() .madc_plot_pca(m, pc.x, pc.y, loci.miss.max, sample.miss.max, grp, shp, palette),
     marker  = function() .madc_plot_marker(m, facet.chrom = facet.chrom),
-    heatmap = function() .madc_plot_heatmap(m, fill, facet.chrom, max.loci, max.samples, verbose),
-    missing = function() .madc_plot_missing(m, grp)
+    heatmap = function() .madc_plot_heatmap(m, fill, facet.chrom, max.loci, max.samples, verbose, grp),
+    missing = function() .madc_plot_missing(m, grp, palette)
   )
 
   plots <- lapply(plot.type, function(pt) build[[pt]]())
@@ -133,7 +180,8 @@ madc_plot <- function(madc,
 #' @keywords internal
 #' @noRd
 .madc_plot_pca <- function(m, pc.x = 1, pc.y = 2,
-                           loci.miss.max = 0.5, sample.miss.max = 0.5, grp = NULL) {
+                           loci.miss.max = 0.5, sample.miss.max = 0.5,
+                           grp = NULL, shp = NULL, palette = NULL) {
   mat <- t(m$alt_ratio)                                   # samples x loci
   mat <- mat[, colMeans(is.na(mat)) <= loci.miss.max, drop = FALSE]
   mat <- mat[rowMeans(is.na(mat)) <= sample.miss.max, , drop = FALSE]
@@ -154,19 +202,32 @@ madc_plot <- function(madc,
   df <- data.frame(sample = rownames(mat),
                    PCx = pc$x[, pc.x], PCy = pc$x[, pc.y],
                    stringsAsFactors = FALSE)
-  if (!is.null(grp)) df$group <- grp[match(df$sample, m$samples)]
+  has_grp <- !is.null(grp)
+  has_shp <- !is.null(shp)
+  if (has_grp) df$group <- grp[match(df$sample, m$samples)]
+  if (has_shp) df$shape <- shp[match(df$sample, m$samples)]
 
-  aes_pca <- if (!is.null(grp))
-    ggplot2::aes(x = PCx, y = PCy, color = group) else
-    ggplot2::aes(x = PCx, y = PCy)
+  aes_args <- list(x = quote(PCx), y = quote(PCy))
+  if (has_grp) aes_args$colour <- quote(group)
+  if (has_shp) aes_args$shape  <- quote(shape)
 
-  ggplot2::ggplot(df, aes_pca) +
-    ggplot2::geom_point(size = 2.5, alpha = 0.9) +
+  p <- ggplot2::ggplot(df, do.call(ggplot2::aes, aes_args)) +
+    ggplot2::geom_point(size = 2.6, alpha = 0.9) +
     ggplot2::labs(title = "PCA of alternative read ratios",
                   x = sprintf("PC%d (%.1f%%)", pc.x, 100 * ve[pc.x]),
-                  y = sprintf("PC%d (%.1f%%)", pc.y, 100 * ve[pc.y]),
-                  color = NULL) +
+                  y = sprintf("PC%d (%.1f%%)", pc.y, 100 * ve[pc.y])) +
     .madc_theme()
+
+  if (has_grp && !is.null(palette)) {
+    n <- length(unique(stats::na.omit(df$group)))
+    p <- p + ggplot2::scale_colour_manual(values = grDevices::colorRampPalette(palette)(n))
+  }
+  if (has_shp) {
+    shapes <- c(16, 17, 15, 18, 3, 4, 8, 1, 2, 0, 5, 6, 7, 9, 10, 11, 12, 13, 14)
+    nsh <- length(unique(stats::na.omit(df$shape)))
+    p <- p + ggplot2::scale_shape_manual(values = rep(shapes, length.out = nsh))
+  }
+  p
 }
 
 # ---- Marker distribution (linear, positions only) --------------------------
@@ -195,7 +256,12 @@ madc_plot <- function(madc,
 # ---- Circos (circlize, three concentric tracks) ----------------------------
 #' @keywords internal
 #' @noRd
-.madc_plot_circos <- function(m, paralog.flag = 10) {
+.madc_plot_circos <- function(m, paralog.flag = 10, density.window = 1e6,
+                              density.col = c("grey92", "#4292c6", "#08306b"),
+                              depth.col = c("#2166ac", "#e0e0e0", "#b2182b"),
+                              depth.outlier = 3, mhap.col = "#35978f",
+                              tick.height = 0.03, density.height = 0.08,
+                              mhap.height = 0.18, label.gap = 12) {
   if (!requireNamespace("circlize", quietly = TRUE))
     stop("plot.type = 'circos' requires the 'circlize' package. Install it with install.packages('circlize').")
 
@@ -203,71 +269,166 @@ madc_plot <- function(madc,
   df$chr <- factor(df$chr, levels = sort(unique(df$chr)))
   df <- df[order(df$chr, df$pos), , drop = FALSE]
 
-  # per-sector bar half-width scaled to marker spacing (so bars are visible but not overlapping)
+  # per-window marker density (markers per `density.window` bp) per chromosome
+  dens <- lapply(levels(df$chr), function(cc) {
+    p  <- df$pos[df$chr == cc]
+    br <- seq(0, max(p) + density.window, by = density.window)
+    h  <- graphics::hist(p, breaks = br, plot = FALSE)
+    data.frame(start = utils::head(br, -1), end = br[-1], count = h$counts)
+  })
+  names(dens) <- levels(df$chr)
+  dmax <- max(1, vapply(dens, function(d) max(d$count), numeric(1)))
+  col_dens <- circlize::colorRamp2(seq(0, dmax, length.out = length(density.col)), density.col)
+
+  # mHap bar half-width scaled to marker spacing (visible but not overlapping)
   bar_hw <- max(vapply(split(df$pos, df$chr), function(p)
     if (length(p) > 1) stats::median(diff(sort(p))) * 0.35 else diff(range(df$pos)) * 0.01,
     numeric(1)))
 
-  dq <- stats::quantile(df$depth, c(0, 0.5, 1), na.rm = TRUE)
-  if (dq[2] <= dq[1]) dq[2] <- dq[1] + 1e-6
-  if (dq[3] <= dq[2]) dq[3] <- dq[2] + 1e-6
-  col_depth <- circlize::colorRamp2(dq, c("#2166ac", "#f7f7f7", "#b2182b"))
-
-  # bar drawer: a rectangle from 0 to value at each marker position
-  bars <- function(x, y, cols) circlize::circos.rect(
-    x - bar_hw, 0, x + bar_hw, y, col = cols, border = NA)
+  # discrete depth flags: colored only if "low depth" (mean depth below min.depth)
+  # or a high-depth "outlier"; everything else is the neutral middle color. The
+  # outlier cut is the robust median + k*MAD (not mean +/- SD, which a few extreme
+  # loci would drag up).
+  depth_thr <- stats::median(df$depth, na.rm = TRUE) +
+    depth.outlier * stats::mad(df$depth, na.rm = TRUE)
+  if (!is.finite(depth_thr) || depth_thr <= 0) depth_thr <- max(df$depth, na.rm = TRUE)
+  miss_thr <- m$min.depth
+  col_depth <- function(v) {
+    out <- rep(depth.col[2], length(v))              # normal
+    out[!is.na(v) & v <  miss_thr]  <- depth.col[1]  # low depth
+    out[!is.na(v) & v >= depth_thr] <- depth.col[3]  # high-depth outlier
+    out
+  }
 
   op <- graphics::par(mar = c(1, 1, 2, 1)); on.exit(graphics::par(op), add = TRUE)
   circlize::circos.clear()
   on.exit(circlize::circos.clear(), add = TRUE)
-  circlize::circos.par(gap.degree = if (nlevels(df$chr) == 1) 14 else 4,
-                       start.degree = 90, cell.padding = c(0, 0, 0, 0),
-                       track.margin = c(0.004, 0.008),
+  N <- nlevels(df$chr)
+  top_gap <- if (N == 1) max(label.gap, 30) else label.gap  # roomier corridor when one sector wraps
+  gaps <- if (N == 1) top_gap else c(rep(3, N - 1), top_gap)
+  circlize::circos.par(gap.after = gaps, start.degree = 90 - top_gap / 2,  # center gap at 12 o'clock
+                       cell.padding = c(0, 0, 0, 0), track.margin = c(0.006, 0.006),
+                       canvas.xlim = c(-1.35, 1.35), canvas.ylim = c(-1.35, 1.35),
                        points.overflow.warning = FALSE)
   circlize::circos.initialize(sectors = df$chr, x = df$pos)
 
-  # Track 1: chromosome band + Mb axis + chromosome label + marker ticks
+  chr_lab_y <- 1 + 0.18 / tick.height
+
+  # Track 1 (Loci): per-marker position ticks (kept dominant) + Mb coordinate
+  # axis (longer/heavier/darker so it stays distinct) + chromosome label
   circlize::circos.track(
-    sectors = df$chr, x = df$pos, ylim = c(0, 1), track.height = 0.07, bg.border = NA,
+    sectors = df$chr, x = df$pos, ylim = c(0, 1), track.height = tick.height, bg.border = NA,
     panel.fun = function(x, y) {
       xl <- circlize::CELL_META$xlim
-      circlize::circos.rect(xl[1], 0.25, xl[2], 0.75, col = "grey70", border = NA)
-      circlize::circos.segments(x, rep(0.1, length(x)), x, rep(0.9, length(x)),
-                                col = "grey25", lwd = 0.7)
-      circlize::circos.text(circlize::CELL_META$xcenter, 2.2,
+      circlize::circos.segments(x, rep(0, length(x)), x, rep(1, length(x)),
+                                col = "grey25", lwd = 0.4)
+      circlize::circos.text(circlize::CELL_META$xcenter, chr_lab_y,
                             circlize::CELL_META$sector.index,
                             facing = "bending.inside", niceFacing = TRUE, cex = 0.8)
       at <- pretty(xl, n = 5); at <- at[at >= xl[1] & at <= xl[2]]
-      circlize::circos.axis(h = "top", major.at = at,
-                            labels = paste0(round(at / 1e6, 1)),
-                            labels.cex = 0.45, major.tick.length = 0.5, lwd = 0.6)
+      circlize::circos.axis(h = "top", major.at = at, labels = paste0(round(at / 1e6, 1)),
+                            labels.cex = 0.45, major.tick.length = circlize::mm_y(1.5),
+                            minor.ticks = 0, lwd = 0.9, col = "black")
     })
 
-  # Track 2: # microhaplotypes per marker (bar height = count; paralog-suspect flagged red)
+  # Track 2 (Density): marker density heatmap over a grey background
   circlize::circos.track(
-    sectors = df$chr, x = df$pos, y = df$n_mhaps, ylim = c(0, max(df$n_mhaps)),
-    track.height = 0.22, bg.border = "grey90",
-    panel.fun = function(x, y)
-      bars(x, y, ifelse(y >= paralog.flag, "#b2182b", "#4575b4")))
-  circlize::circos.yaxis("left", sector.index = levels(df$chr)[1], track.index = 2,
+    sectors = df$chr, ylim = c(0, 1), track.height = density.height,
+    bg.col = "grey92", bg.border = "grey80",
+    panel.fun = function(x, y) {
+      d <- dens[[circlize::CELL_META$sector.index]]
+      circlize::circos.rect(d$start, 0, d$end, 1, col = col_dens(d$count), border = NA)
+    })
+
+  # Track 3 (mHaps): log2 bars (real-count axis) as two-tone bars - a neutral base
+  # up to the paralog threshold and a red segment for the over-threshold excess -
+  # plus a dashed reference ring at the threshold
+  ymax_l <- log2(max(df$n_mhaps, na.rm = TRUE) + 1)
+  ref_l  <- log2(paralog.flag + 1)
+  circlize::circos.track(
+    sectors = df$chr, x = df$pos, y = log2(df$n_mhaps + 1), ylim = c(0, ymax_l),
+    track.height = mhap.height, bg.border = "grey90",
+    panel.fun = function(x, y) {
+      base <- pmin(y, ref_l)
+      circlize::circos.rect(x - bar_hw, 0, x + bar_hw, base, col = mhap.col, border = NA)
+      hi <- y > ref_l
+      if (any(hi))
+        circlize::circos.rect(x[hi] - bar_hw, ref_l, x[hi] + bar_hw, y[hi],
+                              col = "#b2182b", border = NA)
+      if (ref_l < ymax_l)
+        circlize::circos.lines(circlize::CELL_META$xlim, c(ref_l, ref_l),
+                               col = "grey45", lty = 2, lwd = 0.6)
+    })
+  # radial scale on a sector near the bottom, clear of the 12 o'clock corridor
+  mlabs <- c(0, 2, 5, 10, 25, 50, 100); mk <- log2(mlabs + 1) <= ymax_l
+  ax_sector <- levels(df$chr)[1L + (N %/% 2L)]
+  circlize::circos.yaxis("left", at = log2(mlabs[mk] + 1), labels = mlabs[mk],
+                         sector.index = ax_sector, track.index = 3,
                          labels.cex = 0.4, lwd = 0.5)
 
-  # Track 3: mean read depth per marker (bar height + RdBu color = depth)
+  # Track 4 (Depth QC): contiguous categorical tile ribbon (gapless midpoint edges)
   circlize::circos.track(
-    sectors = df$chr, x = df$pos, y = df$depth, ylim = c(0, max(df$depth)),
-    track.height = 0.22, bg.border = "grey90",
-    panel.fun = function(x, y) bars(x, y, col_depth(y)))
-  circlize::circos.yaxis("left", sector.index = levels(df$chr)[1], track.index = 3,
-                         labels.cex = 0.4, lwd = 0.5)
+    sectors = df$chr, x = df$pos, y = df$depth, ylim = c(0, 1),
+    track.height = 0.055, bg.border = "grey90",
+    panel.fun = function(x, y) {
+      o <- order(x); xs <- x[o]
+      mid <- (utils::head(xs, -1) + xs[-1]) / 2
+      circlize::circos.rect(c(circlize::CELL_META$xlim[1], mid), 0,
+                            c(mid, circlize::CELL_META$xlim[2]), 1,
+                            col = col_depth(y[o]), border = NA)
+    })
 
-  graphics::title("Marker distribution (circos)", cex.main = 1)
-  graphics::legend("bottomleft", inset = c(0, 0), bty = "n", cex = 0.7, border = NA,
-                   fill = c("#4575b4", "#b2182b"),
-                   legend = c("# mHaps", sprintf("# mHaps >= %d (paralog-suspect)", paralog.flag)))
-  graphics::legend("bottomright", inset = c(0, 0), bty = "n", cex = 0.7, border = NA,
-                   fill = c("#2166ac", "#f7f7f7", "#b2182b"),
-                   legend = c("depth low", "depth mid", "depth high"))
+  # horizontal track titles in the 12 o'clock corridor, aligned to each ring
+  titles <- c("Loci", "Density", "mHaps", "Depth QC")
+  s1 <- levels(df$chr)[1]
+  for (ti in seq_along(titles)) {
+    rt <- circlize::get.cell.meta.data("cell.top.radius",    s1, track.index = ti)
+    rb <- circlize::get.cell.meta.data("cell.bottom.radius", s1, track.index = ti)
+    graphics::text(0, (rt + rb) / 2, titles[ti], adj = c(0.5, 0.5),
+                   cex = 0.5, font = 2, xpd = NA)
+  }
+
+  # compact color/scale keys in the empty center
+  .circos_center_legend(col_dens, dmax, density.window, mhap.col, paralog.flag,
+                        depth.col, miss_thr, depth_thr)
+
+  graphics::title("Marker distribution", cex.main = 1.1)
   invisible(NULL)
+}
+
+# compact legend drawn in the center hole of the circos (base-graphics, circos coords)
+#' @keywords internal
+#' @noRd
+.circos_center_legend <- function(col_dens, dmax, density.window, mhap.col, paralog.flag,
+                                  depth.col, miss_thr, depth_thr) {
+  # density: small horizontal continuous colour bar
+  n <- 64; bx <- seq(-0.17, 0.17, length.out = n + 1); yb <- 0.15; yt <- 0.19
+  vals <- seq(0, dmax, length.out = n)
+  for (i in seq_len(n))
+    graphics::rect(bx[i], yb, bx[i + 1], yt, col = col_dens(vals[i]), border = NA, xpd = NA)
+  graphics::rect(-0.17, yb, 0.17, yt, border = "grey55", lwd = 0.5, xpd = NA)
+  at <- pretty(c(0, dmax), n = 4); at <- at[at >= 0 & at <= dmax]
+  graphics::text(-0.17 + 0.34 * at / dmax, yb - 0.028, labels = at, cex = 0.42, xpd = NA)
+  graphics::text(0, yt + 0.035, sprintf("Markers/%g Mb", density.window / 1e6),
+                 cex = 0.5, font = 2, xpd = NA)
+
+  # mHaps key
+  graphics::text(0, 0.075, "mHaps", cex = 0.5, font = 2, xpd = NA)
+  graphics::rect(-0.16, 0.03, -0.13, 0.055, col = mhap.col, border = NA, xpd = NA)
+  graphics::text(-0.115, 0.0425, "count (log2)", cex = 0.42, adj = 0, xpd = NA)
+  graphics::rect(0.03, 0.03, 0.06, 0.055, col = "#b2182b", border = NA, xpd = NA)
+  graphics::text(0.07, 0.0425, sprintf("> %d (paralog)", paralog.flag), cex = 0.42, adj = 0, xpd = NA)
+
+  # depth QC key
+  graphics::text(0, -0.03, "Depth QC", cex = 0.5, font = 2, xpd = NA)
+  dl <- c(sprintf("low depth (< %g)", miss_thr), "normal",
+          sprintf("outlier (>= %g)", round(depth_thr)))
+  yk <- -0.065 - c(0, 0.035, 0.07)
+  for (j in 1:3) {
+    graphics::rect(-0.16, yk[j] - 0.011, -0.13, yk[j] + 0.011,
+                   col = depth.col[j], border = "grey70", xpd = NA)
+    graphics::text(-0.115, yk[j], dl[j], cex = 0.42, adj = 0, xpd = NA)
+  }
 }
 
 # shared marker data.frame (positions + per-marker #mHaps and mean depth)
@@ -286,7 +447,8 @@ madc_plot <- function(madc,
 #' @keywords internal
 #' @noRd
 .madc_plot_heatmap <- function(m, fill = "depth", facet.chrom = FALSE,
-                               max.loci = NULL, max.samples = NULL, verbose = TRUE) {
+                               max.loci = NULL, max.samples = NULL, verbose = TRUE,
+                               grp = NULL) {
   mat <- if (fill == "mhaps") m$n_mhaps_present else m$depth_total
   fill_lab <- if (fill == "mhaps") "# mHaps" else "Read depth"
 
@@ -312,6 +474,25 @@ madc_plot <- function(madc,
   long$marker <- factor(long$marker, levels = rownames(mat))
   if (facet.chrom) long$chr <- chr_ord[match(long$marker, rownames(mat))]
 
+  # when a category is given, sort samples by category and add ONE x-axis label
+  # per category (at its centre) so category labels never overlap, with white
+  # separators between categories.
+  has_grp <- !is.null(grp) && !all(is.na(grp))
+  cat_breaks <- cat_labels <- boundaries <- NULL
+  if (has_grp) {
+    sgrp <- grp[match(as.character(long$sample), m$samples)]
+    keep <- !is.na(sgrp)
+    long <- long[keep, , drop = FALSE]; sgrp <- sgrp[keep]
+    samp_order <- unique(long$sample[order(sgrp, as.character(long$sample))])
+    long$sample <- factor(long$sample, levels = samp_order)
+    og   <- grp[match(as.character(samp_order), m$samples)]   # group per ordered sample
+    runs <- rle(og)
+    ends <- cumsum(runs$lengths); starts <- ends - runs$lengths + 1L
+    cat_breaks <- as.character(samp_order)[round((starts + ends) / 2)]
+    cat_labels <- runs$values
+    boundaries <- utils::head(ends, -1) + 0.5
+  }
+
   # 0 (failed / no data) -> black; positive values -> a colorblind-safe diverging
   # scale (RdBu) centered at the median so both low- and high-depth markers stand out.
   pos_mid <- stats::median(long$value[long$value > 0], na.rm = TRUE)
@@ -324,18 +505,34 @@ madc_plot <- function(madc,
                                   high = "#b2182b", midpoint = pos_mid,
                                   na.value = "black") +
     ggplot2::labs(title = paste0("MADC heatmap (", fill_lab, ")"), x = NULL, y = NULL) +
-    .madc_theme() +
-    ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, vjust = 0.5))
+    .madc_theme()
   if (nrow(mat) > 60) p <- p + ggplot2::theme(axis.text.y = ggplot2::element_blank())
-  if (ncol(mat) > 60) p <- p + ggplot2::theme(axis.text.x = ggplot2::element_blank())
-  if (facet.chrom) p <- p + ggplot2::facet_wrap(~ chr, scales = "free_y")
+
+  if (has_grp) {
+    p <- p +
+      ggplot2::geom_vline(xintercept = boundaries, color = "white", linewidth = 0.4) +
+      ggplot2::scale_x_discrete(breaks = cat_breaks, labels = cat_labels) +
+      ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1, size = 8),
+                     axis.ticks.x = ggplot2::element_blank())
+  } else if (ncol(mat) > 60) {
+    p <- p + ggplot2::theme(axis.text.x = ggplot2::element_blank(),
+                            axis.ticks.x = ggplot2::element_blank())
+  } else {
+    p <- p + ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, vjust = 0.5))
+  }
+
+  # facet by chromosome (rows), keeping the chromosome labels visible on the left
+  if (facet.chrom)
+    p <- p + ggplot2::facet_grid(chr ~ ., scales = "free_y", space = "free_y", switch = "y") +
+      ggplot2::theme(strip.text.y.left = ggplot2::element_text(angle = 0),
+                     strip.placement = "outside", panel.spacing.y = grid::unit(2, "pt"))
   p
 }
 
 # ---- Missing-data boxplot --------------------------------------------------
 #' @keywords internal
 #' @noRd
-.madc_plot_missing <- function(m, grp = NULL) {
+.madc_plot_missing <- function(m, grp = NULL, palette = NULL) {
   df <- data.frame(sample = m$samples,
                    missing_rate = colMeans(m$missing_mask),
                    stringsAsFactors = FALSE)
@@ -349,6 +546,10 @@ madc_plot <- function(madc,
       ggplot2::labs(x = NULL) +
       ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
                      legend.position = "none")
+    if (!is.null(palette)) {
+      n <- length(unique(df$group))
+      p <- p + ggplot2::scale_fill_manual(values = grDevices::colorRampPalette(palette)(n))
+    }
   } else {
     p <- ggplot2::ggplot(df, ggplot2::aes(x = "all samples", y = missing_rate)) +
       ggplot2::geom_boxplot(outlier.shape = NA, alpha = 0.7, fill = "grey80") +

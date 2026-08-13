@@ -32,6 +32,32 @@ test_that("circos must be requested on its own", {
     madc_plot(madc_file(), plot.type = c("circos", "pca")))), "on its own")
 })
 
+test_that("circos honors a custom density.window", {
+  skip_if_not_installed("circlize")
+  tmp <- tempfile(fileext = ".png")
+  expect_no_error(suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = "circos", density.window = 5e5, output.file = tmp))))
+})
+
+test_that("circos accepts custom label.gap, paralog.flag, and track colors", {
+  skip_if_not_installed("circlize")
+  tmp <- tempfile(fileext = ".png")
+  expect_no_error(suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = "circos", label.gap = 20, paralog.flag = 5,
+              mhap.col = "#1f78b4", depth.col = c("navy", "grey90", "orange"),
+              output.file = tmp))))
+  expect_true(file.exists(tmp))
+})
+
+test_that("heatmap groups by category and facets by chromosome", {
+  meta <- data.frame(sample = paste0("Sample_", 1:10),
+                     species = rep(c("A", "B"), 5), stringsAsFactors = FALSE)
+  p <- suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = "heatmap",
+              metadata = meta, group.col = "species", facet.chrom = TRUE)))
+  expect_s3_class(p, "ggplot")
+})
+
 test_that("marker plot works with a markers_info lookup", {
   cids <- unique(read.csv(madc_file(), check.names = FALSE)$CloneID)
   mi <- data.frame(CloneID = cids, Chr = "chr1.1",
@@ -65,6 +91,18 @@ test_that("metadata colors PCA and groups the missing boxplot", {
     madc_plot(madc_file(), plot.type = "missing", metadata = meta, group.col = "species")))
   expect_s3_class(p1, "ggplot")
   expect_s3_class(p2, "ggplot")
+})
+
+test_that("PCA supports shape.col and a custom palette", {
+  meta <- data.frame(sample = paste0("Sample_", 1:10),
+                     species = rep(c("A", "B"), 5),
+                     plate   = rep(c("P1", "P2"), each = 5),
+                     stringsAsFactors = FALSE)
+  p <- suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = "pca", metadata = meta,
+              group.col = "species", shape.col = "plate",
+              palette = c("#440154", "#21918c", "#fde725"))))
+  expect_s3_class(p, "ggplot")
 })
 
 test_that("output.file writes an image", {

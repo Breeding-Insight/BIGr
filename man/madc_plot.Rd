@@ -11,6 +11,8 @@ madc_plot(
   min.depth = 10,
   metadata = NULL,
   group.col = NULL,
+  shape.col = NULL,
+  palette = NULL,
   markers_info = NULL,
   pc.x = 1,
   pc.y = 2,
@@ -20,6 +22,16 @@ madc_plot(
   facet.chrom = FALSE,
   max.loci = NULL,
   max.samples = NULL,
+  density.window = 1e+06,
+  density.col = c("grey92", "#4292c6", "#08306b"),
+  depth.col = c("#2166ac", "#e0e0e0", "#b2182b"),
+  depth.outlier = 3,
+  mhap.col = "#35978f",
+  paralog.flag = 10,
+  tick.height = 0.03,
+  density.height = 0.08,
+  mhap.height = 0.18,
+  label.gap = 12,
   mhap.min.reads = 1,
   output.file = NULL,
   width = 8,
@@ -42,7 +54,15 @@ return a multi-panel figure. \code{"circos"} must be requested on its own.}
 \item{metadata}{Optional sample-metadata data.frame (see \code{\link[=madc_summary]{madc_summary()}}) used
 to color the PCA / group the missing-data boxplot.}
 
-\item{group.col}{Category column in \code{metadata} (e.g. species/population).}
+\item{group.col}{Category column in \code{metadata} (e.g. species/population) used
+to color the PCA and group the missing-data boxplot / heatmap.}
+
+\item{shape.col}{Optional second \code{metadata} column mapped to point shape in
+the PCA (e.g. plate or location), so two variables can be shown at once.}
+
+\item{palette}{Optional vector of colors for the categorical scales (PCA
+point color, missing-boxplot fill); interpolated to the number of
+categories. \code{NULL} uses the ggplot2 defaults.}
 
 \item{markers_info}{Optional marker lookup (id + \code{Chr} + \code{Pos}) for the marker/circos plot.}
 
@@ -53,9 +73,41 @@ these fractions before PCA. Defaults \code{0.5}.}
 
 \item{fill}{Heatmap fill metric: \code{"depth"} (default) or \code{"mhaps"}.}
 
-\item{facet.chrom}{Logical; facet the heatmap by chromosome. Default \code{FALSE}.}
+\item{facet.chrom}{Logical; facet the heatmap by chromosome. Default \code{FALSE}.
+When \code{metadata}/\code{group.col} are supplied, the heatmap also sorts samples by
+category and labels each category (a facet column per group).}
 
 \item{max.loci, max.samples}{Optional caps; larger heatmaps are subsampled (with a note).}
+
+\item{density.window}{Window size in bp for the circos marker-density track.
+Default \code{1e6} (1 Mb).}
+
+\item{density.col}{Gradient colors (low -> high) for the circos marker-density
+heatmap ring; interpolated across the range. Default a grey-to-blue gradient.}
+
+\item{depth.col}{Length-3 vector of colors for the circos "Depth QC" ribbon:
+markers that are \verb{low depth} (mean depth below \code{min.depth}), \code{normal}, or a
+high-depth \code{outlier}. Only low-depth and outlier markers are highlighted;
+normal markers take the neutral middle color. Default
+\code{c("#2166ac","#e0e0e0","#b2182b")}.}
+
+\item{depth.outlier}{Multiplier \code{k} for the robust high-depth outlier cutoff
+\code{median + k * MAD} (not mean +/- SD, which a few extreme loci would drag up).
+Default \code{3}.}
+
+\item{mhap.col}{Fill color for the circos "mHaps" log-scaled radial bars.
+Default \code{"#35978f"}.}
+
+\item{paralog.flag}{Microhaplotype count above which a circos "mHaps" locus is
+flagged as paralog-suspect: its bar's over-threshold excess is drawn as a red
+segment above a dashed reference ring. Default \code{10}.}
+
+\item{tick.height, density.height, mhap.height}{Circos track heights (fraction of
+the radius) for the per-marker locus tick rug, the density heatmap ring, and
+the mHap bar track. Defaults \code{0.03}, \code{0.08}, and \code{0.18}.}
+
+\item{label.gap}{Width in degrees of the label corridor opened at 12 o'clock
+for the circos track titles. Default \code{12}.}
 
 \item{mhap.min.reads}{Minimum reads for a mHap to count as present. Default \code{1}.}
 

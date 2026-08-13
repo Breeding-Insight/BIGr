@@ -12,7 +12,7 @@ utils::globalVariables(c(
   # madc_plot() aes symbols
   "n_mhaps", "depth", "len", "marker", "sample", "value",
   "missing_rate", "group", "PCx", "PCy", "Var2",
-  "gx", "x0", "x1"
+  "gx", "x0", "x1", "shape"
 ))
 
 #' Convert GT format to numeric dosage

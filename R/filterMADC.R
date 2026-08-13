@@ -38,8 +38,8 @@
 #'
 #' #Remove mhaps exceeding 3 per target region including the ref and alt target mhaps
 #' filtered_df <- filterMADC(madc_file,
-#'                          min.mean.reads = NULL,
-#'                          max.mean.reads = NULL,
+#'                          min.locus.depth = NULL,
+#'                          max.locus.depth = NULL,
 #'                          max.mhaps.per.loci = 3,
 #'                          min.reads.per.site = 1,
 #'                          min.ind.with.reads = NULL,

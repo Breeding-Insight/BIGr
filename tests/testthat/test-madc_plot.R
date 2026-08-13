@@ -1,0 +1,80 @@
+context("MADC plot")
+
+madc_file <- function() system.file("example_MADC_FixedAlleleID.csv", package = "BIGr")
+
+test_that("single plot.type returns a ggplot", {
+  p <- suppressWarnings(suppressMessages(madc_plot(madc_file(), plot.type = "missing")))
+  expect_s3_class(p, "ggplot")
+})
+
+test_that("pca, heatmap, marker build without error", {
+  expect_no_error(suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = "pca"))))
+  expect_no_error(suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = "heatmap", fill = "depth"))))
+  expect_no_error(suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = "heatmap", fill = "mhaps"))))
+  # example CloneIDs are Chr_Pos -> marker plot works from CloneID directly
+  expect_no_error(suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = "marker"))))
+})
+
+test_that("circos plot builds without error", {
+  skip_if_not_installed("circlize")
+  tmp <- tempfile(fileext = ".png")
+  expect_no_error(suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = "circos", output.file = tmp))))
+  expect_true(file.exists(tmp))
+})
+
+test_that("circos must be requested on its own", {
+  expect_error(suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = c("circos", "pca")))), "on its own")
+})
+
+test_that("marker plot works with a markers_info lookup", {
+  cids <- unique(read.csv(madc_file(), check.names = FALSE)$CloneID)
+  mi <- data.frame(CloneID = cids, Chr = "chr1.1",
+                   Pos = as.numeric(sub(".*_", "", cids)),
+                   stringsAsFactors = FALSE)
+  expect_no_error(suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = "marker", markers_info = mi))))
+})
+
+test_that("multiple plot.types return list + panel", {
+  res <- suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = c("pca", "missing"))))
+  expect_type(res, "list")
+  expect_s3_class(res$plots$pca, "ggplot")
+  expect_true(grid::is.grob(res$panel))
+})
+
+test_that("bare default call builds the 4-panel figure (no circos)", {
+  res <- suppressWarnings(suppressMessages(madc_plot(madc_file())))
+  expect_type(res, "list")
+  expect_equal(names(res$plots), c("pca", "marker", "heatmap", "missing"))
+  expect_true(grid::is.grob(res$panel))
+})
+
+test_that("metadata colors PCA and groups the missing boxplot", {
+  meta <- data.frame(sample = paste0("Sample_", 1:10),
+                     species = rep(c("A", "B"), 5), stringsAsFactors = FALSE)
+  p1 <- suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = "pca", metadata = meta, group.col = "species")))
+  p2 <- suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = "missing", metadata = meta, group.col = "species")))
+  expect_s3_class(p1, "ggplot")
+  expect_s3_class(p2, "ggplot")
+})
+
+test_that("output.file writes an image", {
+  out <- tempfile(fileext = ".png")
+  suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = "missing", output.file = out)))
+  expect_true(file.exists(out))
+})
+
+test_that("raw MADC is rejected", {
+  raw <- system.file("iris_DArT_MADC.csv", package = "BIGr")
+  expect_error(suppressMessages(madc_plot(raw, plot.type = "pca")), "HapApp")
+})

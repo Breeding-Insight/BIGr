@@ -1,5 +1,7 @@
+AlleleIDs
 BIGapp
 CMD
+CloneIDs
 DArT
 DArTag
 Dongyan
@@ -9,14 +11,26 @@ fasta
 et al
 Funkhouser
 GWAS
+HapApp
 Heterozygosity
+Mb
+PCA
+circos
+ggplot
+ideogram
 madc
 MADC
 MADCs
 MAF
+mHap
+mHaps
+microhaplotype
+microhaplotypes
 Newcom
 OffTargets
+offtarget
 Polypoid
+prcomp
 RO
 Steibel
 Updog

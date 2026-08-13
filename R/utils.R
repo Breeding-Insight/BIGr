@@ -8,7 +8,11 @@ utils::globalVariables(c(
   "CloneID", "Count", "qualifying_sites_count",
   "MarkerID", "SampleID", "Dosage",
   "pos", "alt", "match_key",
-  ":=", ".SD", "Sex", "Male_Parent", "Female_Parent", "chr"
+  ":=", ".SD", "Sex", "Male_Parent", "Female_Parent", "chr",
+  # madc_plot() aes symbols
+  "n_mhaps", "depth", "len", "marker", "sample", "value",
+  "missing_rate", "group", "PCx", "PCy", "Var2",
+  "gx", "x0", "x1"
 ))
 
 #' Convert GT format to numeric dosage

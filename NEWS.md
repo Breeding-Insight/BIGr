@@ -1,3 +1,13 @@
+# BIGr 0.10.0
+
+* `filterMADC` updates:
+    * Now only accepts fixed allele ID MADC files (processed through HapApp). The input is validated with `check_madc_sanity` and raw DArT MADC files (or any file without fixed AlleleIDs) are rejected with an error. This also fixes a crash on raw MADC files caused by non-unique AlleleIDs.
+    * Removed the `n.summary.columns` argument (breaking change). Fixed allele ID MADC has a fixed column layout, so summary columns no longer need to be specified or detected.
+    * Replaced the per-mhap `min.mean.reads`/`max.mean.reads` arguments with a per-locus depth window `min.locus.depth`/`max.locus.depth` (breaking change). Depth is the mean reads per sample at a locus (sum of all mhap reads at the locus divided by the number of samples), and loci outside the window are removed whole (Ref and Alt together) - e.g. `max.locus.depth` to exclude paralogous over-amplification.
+    * `max.mhaps.per.loci` and `target.only` now retain strictly the target `|Ref`/`|Alt` alleles at affected loci, also removing `|Other` alleles (previously only `|RefMatch`/`|AltMatch` were removed).
+    * The `min.ind.with.reads` presence filter now protects the target `|Ref`/`|Alt` alleles, only pruning non-target (`|RefMatch`/`|AltMatch`/`|Other`) mhaps, so a locus never loses its Ref/Alt pair.
+
+
 # BIGr 0.9.0
 
 * `check_madc_sanity` updates: distinguish presence of IUPAC codes on REF/ALT (return logical variable IUPACcodes) from RefMatch/AltMatch/Others (returned logical variable IUPACcodes_MatchAlleles) and from Identical IUPAC code in identical positions in REF/ALT (returned logical variable IUPACcodes_IdenticalRefAlt)

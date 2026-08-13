@@ -6,32 +6,29 @@
 \usage{
 filterMADC(
   madc_file,
-  min.mean.reads = NULL,
-  max.mean.reads = NULL,
+  min.locus.depth = NULL,
+  max.locus.depth = NULL,
   max.mhaps.per.loci = NULL,
   min.reads.per.site = 1,
   min.ind.with.reads = NULL,
   target.only = FALSE,
-  n.summary.columns = NULL,
   output.file = NULL
 )
 }
 \arguments{
-\item{madc_file}{Path to the MADC file to be filtered}
+\item{madc_file}{Path to the fixed allele ID MADC file to be filtered}
 
-\item{min.mean.reads}{Minimum mean read depth for filtering}
+\item{min.locus.depth}{Minimum mean read depth per sample at a locus. Depth is the sum of all mhap reads at the locus (\code{|Ref}, \code{|Alt}, \code{|RefMatch}, \code{|AltMatch}, and \code{|Other}) divided by the number of samples. Loci below this threshold are removed entirely (Ref and Alt together). If NULL, no minimum is applied.}
 
-\item{max.mean.reads}{Maximum mean read depth for filtering}
+\item{max.locus.depth}{Maximum mean read depth per sample at a locus (computed as for \code{min.locus.depth}). Loci above this threshold are removed entirely, e.g. to exclude paralogous over-amplification. If NULL, no maximum is applied.}
 
-\item{max.mhaps.per.loci}{Maximum number of matching mhaps per target loci. Retains only the target Ref and Alt loci at the sites that exceeds the \code{max.mhaps.per.loci} threshold.}
+\item{max.mhaps.per.loci}{Maximum number of mhaps per target loci. At loci whose total number of mhaps exceeds the \code{max.mhaps.per.loci} threshold, only the target \code{|Ref} and \code{|Alt} alleles are retained (the \code{|RefMatch}, \code{|AltMatch}, and \code{|Other} alleles are removed).}
 
-\item{min.reads.per.site}{Minimum number of reads per site for \code{min.ind.with.reads}. Otherwise, this parameter is ignored}
+\item{min.reads.per.site}{Minimum number of reads for a site (mhap in a sample) to count toward \code{min.ind.with.reads}.}
 
-\item{min.ind.with.reads}{Minimum number of individuals with \code{min.reads.per.site} reads for filtering}
+\item{min.ind.with.reads}{Minimum number of individuals with \code{min.reads.per.site} reads required to retain a mhap. Target \code{|Ref}/\code{|Alt} alleles are always retained; only non-target (\code{|RefMatch}/\code{|AltMatch}/\code{|Other}) mhaps are removed by this filter.}
 
-\item{target.only}{Logical indicating whether to filter for target loci only}
-
-\item{n.summary.columns}{(optional) Number of summary columns to remove from MADC file not including the first three. Otherwise, the columns will be automatically detected and removed.}
+\item{target.only}{Logical indicating whether to retain only the target \code{|Ref} and \code{|Alt} alleles (dropping \code{|RefMatch}, \code{|AltMatch}, and \code{|Other})}
 
 \item{output.file}{Path to save the filtered data (if NULL, data will not be saved)}
 }
@@ -42,9 +39,17 @@ data.frame or saved csv file
 Filter and process MADC files to remove low quality microhaplotypes
 }
 \details{
-This function can filter raw MADC files or pre-processed MADC files with fixed allele IDs. Additionally,
-it can filter based on mean read depth, number of mhaps per target loci, and other criteria. Optionally, users
-can plot summary statistics and save the filtered data to a file.
+This function filters a fixed allele ID MADC file (one processed through HapApp so that
+AlleleIDs carry unique \code{|Ref_0001}/\code{|Alt_0002}-style suffixes). The input is
+validated with \code{\link{check_madc_sanity}}; raw DArT MADC files (or any file without
+fixed AlleleIDs) are rejected with an error.
+
+Filtering is designed so that a locus never loses its target \code{|Ref}/\code{|Alt} pair:
+the per-locus read-depth window (\code{min.locus.depth}/\code{max.locus.depth}) removes
+whole loci (Ref and Alt together), and the other filters
+(\code{max.mhaps.per.loci}, \code{min.ind.with.reads}, \code{target.only}) only prune
+non-target \code{|RefMatch}/\code{|AltMatch}/\code{|Other} mhaps. The filtered data can
+optionally be saved to a file.
 }
 \examples{
 #Example
@@ -60,7 +65,6 @@ filtered_df <- filterMADC(madc_file,
                          min.reads.per.site = 1,
                          min.ind.with.reads = NULL,
                          target.only = FALSE,
-                         n.summary.columns = NULL,
                          output.file = NULL)
 
 

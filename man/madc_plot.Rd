@@ -18,6 +18,8 @@ madc_plot(
   pc.y = 2,
   loci.miss.max = 0.5,
   sample.miss.max = 0.5,
+  miss.sort = c("none", "desc", "asc"),
+  horizontal = FALSE,
   fill = c("depth", "mhaps"),
   facet.chrom = FALSE,
   max.loci = NULL,
@@ -70,6 +72,15 @@ categories. \code{NULL} uses the ggplot2 defaults.}
 
 \item{loci.miss.max, sample.miss.max}{Drop loci/samples with missingness above
 these fractions before PCA. Defaults \code{0.5}.}
+
+\item{miss.sort}{Ordering of the category boxes in the \code{"missing"} plot by their
+median missing rate: \code{"none"} (default, keeps category order), \code{"desc"}
+(highest to lowest), or \code{"asc"} (lowest to highest). Only applies when a
+grouping category is supplied.}
+
+\item{horizontal}{Logical; draw the \code{"missing"} boxplots horizontally
+(\code{coord_flip}). Default \code{FALSE}. With \code{miss.sort}, the order then reads
+top-to-bottom.}
 
 \item{fill}{Heatmap fill metric: \code{"depth"} (default) or \code{"mhaps"}.}
 

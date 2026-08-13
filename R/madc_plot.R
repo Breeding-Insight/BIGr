@@ -35,6 +35,13 @@
 #' @param pc.x,pc.y Principal components to plot (PCA). Defaults `1`, `2`.
 #' @param loci.miss.max,sample.miss.max Drop loci/samples with missingness above
 #'   these fractions before PCA. Defaults `0.5`.
+#' @param miss.sort Ordering of the category boxes in the `"missing"` plot by their
+#'   median missing rate: `"none"` (default, keeps category order), `"desc"`
+#'   (highest to lowest), or `"asc"` (lowest to highest). Only applies when a
+#'   grouping category is supplied.
+#' @param horizontal Logical; draw the `"missing"` boxplots horizontally
+#'   (`coord_flip`). Default `FALSE`. With `miss.sort`, the order then reads
+#'   top-to-bottom.
 #' @param fill Heatmap fill metric: `"depth"` (default) or `"mhaps"`.
 #' @param facet.chrom Logical; facet the heatmap by chromosome. Default `FALSE`.
 #'   When `metadata`/`group.col` are supplied, the heatmap also sorts samples by
@@ -93,6 +100,8 @@ madc_plot <- function(madc,
                       pc.y           = 2,
                       loci.miss.max  = 0.5,
                       sample.miss.max = 0.5,
+                      miss.sort      = c("none", "desc", "asc"),
+                      horizontal     = FALSE,
                       fill           = c("depth", "mhaps"),
                       facet.chrom    = FALSE,
                       max.loci       = NULL,
@@ -114,7 +123,8 @@ madc_plot <- function(madc,
 
   plot.type <- match.arg(plot.type, c("pca", "marker", "heatmap", "missing", "circos"),
                          several.ok = TRUE)
-  fill   <- match.arg(fill)
+  fill      <- match.arg(fill)
+  miss.sort <- match.arg(miss.sort)
 
   report <- .read_and_check_madc(madc, verbose = verbose)
   m <- .madc_metrics(report, min.depth = min.depth, target.only = target.only,
@@ -153,7 +163,8 @@ madc_plot <- function(madc,
     pca     = function() .madc_plot_pca(m, pc.x, pc.y, loci.miss.max, sample.miss.max, grp, shp, palette),
     marker  = function() .madc_plot_marker(m, facet.chrom = facet.chrom),
     heatmap = function() .madc_plot_heatmap(m, fill, facet.chrom, max.loci, max.samples, verbose, grp),
-    missing = function() .madc_plot_missing(m, grp, palette)
+    missing = function() .madc_plot_missing(m, grp, palette, sort = miss.sort,
+                                            horizontal = horizontal)
   )
 
   plots <- lapply(plot.type, function(pt) build[[pt]]())
@@ -532,20 +543,33 @@ madc_plot <- function(madc,
 # ---- Missing-data boxplot --------------------------------------------------
 #' @keywords internal
 #' @noRd
-.madc_plot_missing <- function(m, grp = NULL, palette = NULL) {
+.madc_plot_missing <- function(m, grp = NULL, palette = NULL,
+                               sort = "none", horizontal = FALSE) {
   df <- data.frame(sample = m$samples,
                    missing_rate = colMeans(m$missing_mask),
                    stringsAsFactors = FALSE)
   if (!is.null(grp)) df$group <- grp[match(df$sample, m$samples)]
 
-  if (!is.null(grp) && !all(is.na(df$group))) {
+  grouped <- !is.null(grp) && !all(is.na(df$group))
+  if (grouped) {
     df <- df[!is.na(df$group), , drop = FALSE]
+    # order the category boxes by their median missing rate when requested; in
+    # horizontal mode reverse so the sort reads top-to-bottom (coord_flip stacks
+    # the first factor level at the bottom)
+    if (sort != "none") {
+      med <- tapply(df$missing_rate, df$group, stats::median, na.rm = TRUE)
+      ord <- names(base::sort(med, decreasing = (sort == "desc")))
+      if (horizontal) ord <- rev(ord)
+      df$group <- factor(df$group, levels = ord)
+    }
     p <- ggplot2::ggplot(df, ggplot2::aes(x = group, y = missing_rate, fill = group)) +
       ggplot2::geom_boxplot(outlier.shape = NA, alpha = 0.7) +
       ggplot2::geom_jitter(width = 0.15, size = 1.2, alpha = 0.7) +
       ggplot2::labs(x = NULL) +
-      ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
-                     legend.position = "none")
+      ggplot2::theme(legend.position = "none")
+    # angled tick labels only help the vertical layout; horizontal reads flat
+    if (!horizontal)
+      p <- p + ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1))
     if (!is.null(palette)) {
       n <- length(unique(df$group))
       p <- p + ggplot2::scale_fill_manual(values = grDevices::colorRampPalette(palette)(n))
@@ -556,6 +580,8 @@ madc_plot <- function(madc,
       ggplot2::geom_jitter(width = 0.15, size = 1.5, alpha = 0.8) +
       ggplot2::labs(x = NULL)
   }
-  p + ggplot2::labs(title = "Per-sample missing rate", y = "Missing rate") +
+  p <- p + ggplot2::labs(title = "Per-sample missing rate", y = "Missing rate") +
     ggplot2::ylim(0, NA) + .madc_theme()
+  if (horizontal) p <- p + ggplot2::coord_flip()
+  p
 }

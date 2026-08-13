@@ -105,6 +105,22 @@ test_that("PCA supports shape.col and a custom palette", {
   expect_s3_class(p, "ggplot")
 })
 
+test_that("missing boxplot supports miss.sort and horizontal", {
+  meta <- data.frame(sample = paste0("Sample_", 1:10),
+                     species = rep(c("A", "B"), 5), stringsAsFactors = FALSE)
+  for (s in c("none", "asc", "desc")) for (h in c(TRUE, FALSE)) {
+    p <- suppressWarnings(suppressMessages(
+      madc_plot(madc_file(), plot.type = "missing", metadata = meta,
+                group.col = "species", miss.sort = s, horizontal = h)))
+    expect_s3_class(p, "ggplot")
+  }
+  # horizontal also works without a grouping category
+  expect_s3_class(suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = "missing", horizontal = TRUE))), "ggplot")
+  expect_error(suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = "missing", miss.sort = "bogus"))))
+})
+
 test_that("output.file writes an image", {
   out <- tempfile(fileext = ".png")
   suppressWarnings(suppressMessages(

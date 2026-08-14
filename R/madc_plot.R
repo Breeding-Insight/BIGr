@@ -139,9 +139,11 @@ madc_plot <- function(madc,
     if (length(plot.type) > 1)
       stop("plot.type = 'circos' must be requested on its own (it renders as a standalone circular figure).")
     save_to <- output.file
-    # non-interactive with no output.file: capture to a temp file rather than
-    # letting base graphics leave a stray Rplots.pdf.
-    if (is.null(save_to) && !interactive()) {
+    # no output.file and no graphics device open: capture to a temp file rather
+    # than letting base graphics leave a stray Rplots.pdf. When a device is already
+    # open (interactive session, knitr/R Markdown, or a user-opened device) draw
+    # straight to it so the circos renders in place.
+    if (is.null(save_to) && grDevices::dev.cur() == 1L) {
       save_to <- tempfile(fileext = ".png")
       if (verbose) message("No graphics device / output.file; circos written to ", save_to)
     }

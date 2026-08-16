@@ -98,9 +98,18 @@
   n_mhaps_present <- reidx(rowsum(present, clone[use_rows]), fill = 0)
 
   # --- panel-level number of mHaps per marker ---
+  # n_mhaps_defined  = number of AlleleID rows defined for the marker in the panel
+  #                    (independent of read counts).
+  # n_mhaps_observed = number of those alleles actually supported (>= mhap.min.reads
+  #                    in at least one sample) - empirical run evidence.
   tab <- table(clone[use_rows])
   n_mhaps_marker <- stats::setNames(as.integer(tab[master]), master)
   n_mhaps_marker[is.na(n_mhaps_marker)] <- 0L
+
+  allele_obs <- rowSums(present) >= 1
+  obs_tab <- table(clone[use_rows][allele_obs])
+  n_mhaps_observed <- stats::setNames(as.integer(obs_tab[master]), master)
+  n_mhaps_observed[is.na(n_mhaps_observed)] <- 0L
 
   # --- off-target reads and fraction ---
   if (!target.only && any(is_off)) {
@@ -121,8 +130,10 @@
        alt_ratio = alt_ratio, depth_total = depth_total, ontarget_depth = ontarget_depth,
        missing_mask = missing_mask,
        n_mhaps_present = n_mhaps_present, n_mhaps_marker = n_mhaps_marker,
+       n_mhaps_defined = n_mhaps_marker, n_mhaps_observed = n_mhaps_observed,
        offtarget = offtarget, offtarget_frac = offtarget_frac,
        markers = master, chr = cp$chr, pos = cp$pos, samples = samp_cols,
+       mhap.min.reads = mhap.min.reads,
        target.only = target.only, min.depth = min.depth)
 }
 
@@ -165,8 +176,13 @@
                                "Sample_ID"), names(metadata))
   id_col <- if (length(id_candidates)) id_candidates[1] else names(metadata)[1]
   grp <- as.character(metadata[[group.col]][match(samples, metadata[[id_col]])])
-  if (all(is.na(grp)))
+  n_match <- sum(!is.na(grp))
+  if (all(is.na(grp))) {
     warning("No `metadata` sample IDs matched the MADC sample columns; grouping skipped.")
+  } else if (n_match < length(samples)) {
+    message(sprintf("Metadata matched %d of %d MADC samples; %d unmatched sample(s) grouped as NA.",
+                    n_match, length(samples), length(samples) - n_match))
+  }
   grp
 }
 

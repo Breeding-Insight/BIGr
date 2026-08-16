@@ -19,6 +19,22 @@ test_that("pca, heatmap, marker build without error", {
     madc_plot(madc_file(), plot.type = "marker"))))
 })
 
+test_that("balance and depth plots build", {
+  expect_s3_class(suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = "balance"))), "ggplot")
+  # ploidy adds expected-ratio guides
+  expect_s3_class(suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = "balance", ploidy = 2))), "ggplot")
+  expect_error(suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = "balance", ploidy = 0))), "positive")
+  expect_s3_class(suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = "depth"))), "ggplot")
+  # both embed in a multi-panel figure
+  res <- suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = c("depth", "balance"))))
+  expect_true(grid::is.grob(res$panel))
+})
+
 test_that("circos plot builds without error", {
   skip_if_not_installed("circlize")
   tmp <- tempfile(fileext = ".png")
@@ -37,6 +53,14 @@ test_that("circos honors a custom density.window", {
   tmp <- tempfile(fileext = ".png")
   expect_no_error(suppressWarnings(suppressMessages(
     madc_plot(madc_file(), plot.type = "circos", density.window = 5e5, output.file = tmp))))
+})
+
+test_that("circos honors depth.qc.maxmiss for the combined Depth ring", {
+  skip_if_not_installed("circlize")
+  tmp <- tempfile(fileext = ".png")
+  expect_no_error(suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = "circos", depth.qc.maxmiss = 0.3, output.file = tmp))))
+  expect_true(file.exists(tmp))
 })
 
 test_that("circos accepts custom label.gap, paralog.flag, and track colors", {

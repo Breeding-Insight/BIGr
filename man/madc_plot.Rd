@@ -13,6 +13,7 @@ madc_plot(
   group.col = NULL,
   shape.col = NULL,
   palette = NULL,
+  ploidy = NULL,
   markers_info = NULL,
   pc.x = 1,
   pc.y = 2,
@@ -28,6 +29,7 @@ madc_plot(
   density.col = c("grey92", "#4292c6", "#08306b"),
   depth.col = c("#2166ac", "#e0e0e0", "#b2182b"),
   depth.outlier = 3,
+  depth.qc.maxmiss = 0.5,
   mhap.col = "#35978f",
   paralog.flag = 10,
   tick.height = 0.03,
@@ -46,8 +48,9 @@ madc_plot(
 \item{madc}{Path to a fixed allele ID MADC file, or an already-read data.frame.}
 
 \item{plot.type}{One or more of \code{"pca"}, \code{"marker"}, \code{"heatmap"}, \code{"missing"},
-\code{"circos"}. A single value returns that plot; several (excluding \code{"circos"})
-return a multi-panel figure. \code{"circos"} must be requested on its own.}
+\code{"balance"}, \code{"depth"}, \code{"circos"}. A single value returns that plot; several
+(excluding \code{"circos"}) return a multi-panel figure. \code{"circos"} must be
+requested on its own.}
 
 \item{target.only}{Logical; restrict to target \verb{|Ref}/\verb{|Alt} alleles. Default \code{FALSE}.}
 
@@ -65,6 +68,12 @@ the PCA (e.g. plate or location), so two variables can be shown at once.}
 \item{palette}{Optional vector of colors for the categorical scales (PCA
 point color, missing-boxplot fill); interpolated to the number of
 categories. \code{NULL} uses the ggplot2 defaults.}
+
+\item{ploidy}{Optional integer species ploidy for the \code{"balance"} plot. When
+supplied, dashed guides are drawn at the expected alt-read ratios
+\code{(0:ploidy)/ploidy} (e.g. 0, 0.5, 1 for a diploid); \code{NULL} (default) draws
+the ratio x depth density with no guides, which also suits mixed/unknown
+ploidy panels.}
 
 \item{markers_info}{Optional marker lookup (id + \code{Chr} + \code{Pos}) for the marker/circos plot.}
 
@@ -106,6 +115,11 @@ normal markers take the neutral middle color. Default
 \code{median + k * MAD} (not mean +/- SD, which a few extreme loci would drag up).
 Default \code{3}.}
 
+\item{depth.qc.maxmiss}{Circos "Depth" ring: a marker is flagged problematic
+when its mean depth is below \code{min.depth} OR its missing rate exceeds this
+fraction - catching high-dropout markers (e.g. 50\% zeros / 50\% deep) that a
+mean-depth cut alone reads as normal. Default \code{0.5}.}
+
 \item{mhap.col}{Fill color for the circos "mHaps" log-scaled radial bars.
 Default \code{"#35978f"}.}
 
@@ -137,9 +151,11 @@ with \code{plots} (named list) and \code{panel} (the assembled multi-panel grob)
 Visualize a fixed allele ID MADC file (one processed through HapApp) with a
 choice of plots selected via \code{plot.type}: a PCA of alternative read ratios, a
 linear marker-distribution genome plot, a markers x samples read-depth/#mHaps
-heatmap, a per-sample missing-data boxplot, and a \code{circos} circular plot with
-concentric marker-position, #mHaps, and read-depth tracks. Requesting one type
-returns that plot; requesting several (non-circos) returns a multi-panel figure.
+heatmap, a per-sample missing-data boxplot, an allele read-ratio balance
+diagnostic, a marker mean-depth (uniformity) distribution, and a \code{circos}
+circular plot with concentric marker-position, #mHaps, and read-depth tracks.
+Requesting one type returns that plot; requesting several (non-circos) returns
+a multi-panel figure.
 }
 \details{
 The input is validated with \code{\link[=check_madc_sanity]{check_madc_sanity()}}; raw DArT MADC files are
@@ -148,13 +164,18 @@ rejected with an error. All plots honor \code{target.only} (restrict to \verb{|R
 missing). Plotting uses only \code{ggplot2} and base \code{grid}; the \code{circos} plot
 additionally requires the suggested \code{circlize} package and, being a base
 graphics figure, must be requested on its own (it cannot be embedded in a
-multi-panel).
+multi-panel). The \code{"pca"} plot is a sample/data-interpretation diagnostic
+(missing ratios are mean-imputed and the PCA is unscaled), so strong biological
+structure can dominate it - read it for sample swaps / population separation,
+not as evidence the sequencing run itself was good or bad. The \code{"balance"} plot
+is the direct read-out of whether the assay yields interpretable dosage signal.
 }
 \examples{
 madc_file <- system.file("example_MADC_FixedAlleleID.csv", package = "BIGr")
 p <- madc_plot(madc_file, plot.type = "missing")
 \donttest{
 madc_plot(madc_file, plot.type = c("pca", "heatmap"))
+madc_plot(madc_file, plot.type = "balance", ploidy = 2)
 }
 
 }

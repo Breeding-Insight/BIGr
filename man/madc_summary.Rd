@@ -13,8 +13,15 @@ madc_summary(
   markers_info = NULL,
   mhap.cap = 10,
   miss.thresholds = c(0, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100)/100,
+  depth.thresholds = c(1, 5, 10, 20, 50, 100),
   mhap.min.reads = 1,
+  min.locus.depth = min.depth,
+  max.locus.depth = NULL,
+  max.missing = NULL,
+  max.offtarget = NULL,
+  max.mhaps.per.loci = NULL,
   output.file = NULL,
+  output.format = c("csv", "xlsx"),
   verbose = TRUE
 )
 }
@@ -45,18 +52,48 @@ markers with more mHaps are pooled into a \code{">mhap.cap"} bucket. Default \co
 \item{miss.thresholds}{Numeric vector of missingness fractions for the
 threshold sweep. Default \code{c(0,5,...,100)/100}.}
 
+\item{depth.thresholds}{Numeric vector of read-depth cutoffs for the
+\code{depth_sweep} table. Default \code{c(1, 5, 10, 20, 50, 100)}.}
+
 \item{mhap.min.reads}{Minimum reads for a mHap to count as present in a sample
 when tallying per-sample mHap counts. Default \code{1}.}
 
-\item{output.file}{If not \code{NULL}, each table is written to
-\code{paste0(output.file, "_<table>.csv")}.}
+\item{min.locus.depth, max.locus.depth}{Marker-QC read-depth window (mean reads
+per sample at the locus). A marker below \code{min.locus.depth} is \code{FAIL}ed (low
+depth); one above \code{max.locus.depth} is \code{FLAG}ged (over-amplified). Names/units
+match \code{\link[=filterMADC]{filterMADC()}}, so a \code{FAIL} on \code{min.locus.depth} is the marker
+\code{filterMADC} would drop at the same value. \code{min.locus.depth} defaults to
+\code{min.depth}; \code{max.locus.depth} is off (\code{NULL}) by default. Set either to
+\code{NULL} to disable that criterion.}
+
+\item{max.missing}{Marker-QC maximum per-marker missing rate; markers above it
+are \code{FAIL}ed (catches the high-dropout case a mean-depth cut alone misses).
+\code{NULL} (default) disables it.}
+
+\item{max.offtarget}{Marker-QC maximum read-weighted off-target fraction;
+markers above it are \code{FLAG}ged. \code{NULL} (default) disables it.}
+
+\item{max.mhaps.per.loci}{Marker-QC maximum number of defined mHaps; markers
+above it are \code{FLAG}ged (paralog-suspect). \code{NULL} (default) disables it.}
+
+\item{output.file}{If not \code{NULL}, the tables are written here: as
+\code{paste0(output.file, "_<table>.csv")} when \code{output.format = "csv"}, or as a
+single \code{.xlsx} workbook (one sheet per table) when \code{output.format = "xlsx"}.}
+
+\item{output.format}{One of \code{"csv"} (default; one CSV per table) or \code{"xlsx"}
+(a single multi-sheet workbook, requires the \code{writexl} package).}
 
 \item{verbose}{Logical; print progress/validation messages. Default \code{TRUE}.}
 }
 \value{
 A named list of data.frames: \code{mhap_freq}, \code{per_sample}, \code{per_marker},
-\code{missingness}, \code{overall}, and (when \code{metadata}/\code{group.col} are given)
-\code{by_category}.
+\code{missingness}, \code{depth_sweep}, \code{marker_qc}, \code{overall}, and (when
+\code{metadata}/\code{group.col} are given) \code{by_category}. Depth is summarized by both
+the mean and robust statistics (\code{median_depth}, \code{depth_mad}, \code{depth_q10},
+\code{depth_q90}); off-target is reported both as the mean per-locus ratio
+(\code{offtarget_fraction}) and read-weighted (\code{offtarget_fraction_weighted}); and
+mHap counts are split into \code{n_mhaps_defined} (allele rows in the panel) and
+\code{n_mhaps_observed} (alleles actually supported by reads).
 }
 \description{
 Computes read-only summary tables for a fixed allele ID MADC file (one

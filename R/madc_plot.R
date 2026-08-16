@@ -3,9 +3,11 @@
 #' Visualize a fixed allele ID MADC file (one processed through HapApp) with a
 #' choice of plots selected via `plot.type`: a PCA of alternative read ratios, a
 #' linear marker-distribution genome plot, a markers x samples read-depth/#mHaps
-#' heatmap, a per-sample missing-data boxplot, and a `circos` circular plot with
-#' concentric marker-position, #mHaps, and read-depth tracks. Requesting one type
-#' returns that plot; requesting several (non-circos) returns a multi-panel figure.
+#' heatmap, a per-sample missing-data boxplot, an allele read-ratio balance
+#' diagnostic, a marker mean-depth (uniformity) distribution, and a `circos`
+#' circular plot with concentric marker-position, #mHaps, and read-depth tracks.
+#' Requesting one type returns that plot; requesting several (non-circos) returns
+#' a multi-panel figure.
 #'
 #' @details
 #' The input is validated with [check_madc_sanity()]; raw DArT MADC files are
@@ -14,12 +16,17 @@
 #' missing). Plotting uses only `ggplot2` and base `grid`; the `circos` plot
 #' additionally requires the suggested `circlize` package and, being a base
 #' graphics figure, must be requested on its own (it cannot be embedded in a
-#' multi-panel).
+#' multi-panel). The `"pca"` plot is a sample/data-interpretation diagnostic
+#' (missing ratios are mean-imputed and the PCA is unscaled), so strong biological
+#' structure can dominate it - read it for sample swaps / population separation,
+#' not as evidence the sequencing run itself was good or bad. The `"balance"` plot
+#' is the direct read-out of whether the assay yields interpretable dosage signal.
 #'
 #' @param madc Path to a fixed allele ID MADC file, or an already-read data.frame.
 #' @param plot.type One or more of `"pca"`, `"marker"`, `"heatmap"`, `"missing"`,
-#'   `"circos"`. A single value returns that plot; several (excluding `"circos"`)
-#'   return a multi-panel figure. `"circos"` must be requested on its own.
+#'   `"balance"`, `"depth"`, `"circos"`. A single value returns that plot; several
+#'   (excluding `"circos"`) return a multi-panel figure. `"circos"` must be
+#'   requested on its own.
 #' @param target.only Logical; restrict to target `|Ref`/`|Alt` alleles. Default `FALSE`.
 #' @param min.depth Minimum locus x sample read depth to be considered present. Default `10`.
 #' @param metadata Optional sample-metadata data.frame (see [madc_summary()]) used
@@ -31,6 +38,11 @@
 #' @param palette Optional vector of colors for the categorical scales (PCA
 #'   point color, missing-boxplot fill); interpolated to the number of
 #'   categories. `NULL` uses the ggplot2 defaults.
+#' @param ploidy Optional integer species ploidy for the `"balance"` plot. When
+#'   supplied, dashed guides are drawn at the expected alt-read ratios
+#'   `(0:ploidy)/ploidy` (e.g. 0, 0.5, 1 for a diploid); `NULL` (default) draws
+#'   the ratio x depth density with no guides, which also suits mixed/unknown
+#'   ploidy panels.
 #' @param markers_info Optional marker lookup (id + `Chr` + `Pos`) for the marker/circos plot.
 #' @param pc.x,pc.y Principal components to plot (PCA). Defaults `1`, `2`.
 #' @param loci.miss.max,sample.miss.max Drop loci/samples with missingness above
@@ -59,6 +71,10 @@
 #' @param depth.outlier Multiplier `k` for the robust high-depth outlier cutoff
 #'   `median + k * MAD` (not mean +/- SD, which a few extreme loci would drag up).
 #'   Default `3`.
+#' @param depth.qc.maxmiss Circos "Depth" ring: a marker is flagged problematic
+#'   when its mean depth is below `min.depth` OR its missing rate exceeds this
+#'   fraction - catching high-dropout markers (e.g. 50% zeros / 50% deep) that a
+#'   mean-depth cut alone reads as normal. Default `0.5`.
 #' @param mhap.col Fill color for the circos "mHaps" log-scaled radial bars.
 #'   Default `"#35978f"`.
 #' @param paralog.flag Microhaplotype count above which a circos "mHaps" locus is
@@ -83,6 +99,7 @@
 #' p <- madc_plot(madc_file, plot.type = "missing")
 #' \donttest{
 #' madc_plot(madc_file, plot.type = c("pca", "heatmap"))
+#' madc_plot(madc_file, plot.type = "balance", ploidy = 2)
 #' }
 #'
 #' @seealso [madc_summary()], [filterMADC()]
@@ -95,6 +112,7 @@ madc_plot <- function(madc,
                       group.col      = NULL,
                       shape.col      = NULL,
                       palette        = NULL,
+                      ploidy         = NULL,
                       markers_info   = NULL,
                       pc.x           = 1,
                       pc.y           = 2,
@@ -110,6 +128,7 @@ madc_plot <- function(madc,
                       density.col    = c("grey92", "#4292c6", "#08306b"),
                       depth.col      = c("#2166ac", "#e0e0e0", "#b2182b"),
                       depth.outlier  = 3,
+                      depth.qc.maxmiss = 0.5,
                       mhap.col       = "#35978f",
                       paralog.flag   = 10,
                       tick.height    = 0.03,
@@ -121,7 +140,8 @@ madc_plot <- function(madc,
                       width = 8, height = 6, dpi = 300,
                       verbose        = TRUE) {
 
-  plot.type <- match.arg(plot.type, c("pca", "marker", "heatmap", "missing", "circos"),
+  plot.type <- match.arg(plot.type, c("pca", "marker", "heatmap", "missing",
+                                      "balance", "depth", "circos"),
                          several.ok = TRUE)
   fill      <- match.arg(fill)
   miss.sort <- match.arg(miss.sort)
@@ -155,7 +175,8 @@ madc_plot <- function(madc,
     }
     .madc_plot_circos(m, paralog.flag = paralog.flag, density.window = density.window,
                       density.col = density.col, depth.col = depth.col,
-                      depth.outlier = depth.outlier, mhap.col = mhap.col,
+                      depth.outlier = depth.outlier, depth.qc.maxmiss = depth.qc.maxmiss,
+                      mhap.col = mhap.col,
                       tick.height = tick.height, density.height = density.height,
                       mhap.height = mhap.height, label.gap = label.gap)
     return(invisible(save_to))
@@ -166,7 +187,9 @@ madc_plot <- function(madc,
     marker  = function() .madc_plot_marker(m, facet.chrom = facet.chrom),
     heatmap = function() .madc_plot_heatmap(m, fill, facet.chrom, max.loci, max.samples, verbose, grp),
     missing = function() .madc_plot_missing(m, grp, palette, sort = miss.sort,
-                                            horizontal = horizontal)
+                                            horizontal = horizontal),
+    balance = function() .madc_plot_balance(m, ploidy = ploidy, palette = palette),
+    depth   = function() .madc_plot_depth(m)
   )
 
   plots <- lapply(plot.type, function(pt) build[[pt]]())
@@ -272,7 +295,8 @@ madc_plot <- function(madc,
 .madc_plot_circos <- function(m, paralog.flag = 10, density.window = 1e6,
                               density.col = c("grey92", "#4292c6", "#08306b"),
                               depth.col = c("#2166ac", "#e0e0e0", "#b2182b"),
-                              depth.outlier = 3, mhap.col = "#35978f",
+                              depth.outlier = 3, depth.qc.maxmiss = 0.5,
+                              mhap.col = "#35978f",
                               tick.height = 0.03, density.height = 0.08,
                               mhap.height = 0.18, label.gap = 12) {
   if (!requireNamespace("circlize", quietly = TRUE))
@@ -298,20 +322,21 @@ madc_plot <- function(madc,
     if (length(p) > 1) stats::median(diff(sort(p))) * 0.35 else diff(range(df$pos)) * 0.01,
     numeric(1)))
 
-  # discrete depth flags: colored only if "low depth" (mean depth below min.depth)
-  # or a high-depth "outlier"; everything else is the neutral middle color. The
-  # outlier cut is the robust median + k*MAD (not mean +/- SD, which a few extreme
-  # loci would drag up).
+  # Combined depth QC. The outlier cut is the robust median + k*MAD (not mean +/-
+  # SD, which a few extreme loci would drag up). A marker is "problematic" if its
+  # mean depth is below min.depth OR it is missing (below min.depth) in more than
+  # depth.qc.maxmiss of samples - the high-dropout case (e.g. 50% zeros / 50% deep)
+  # that a mean-depth cut alone reads as "normal". Colors are precomputed per
+  # marker and looked up inside the track by a chr_pos key.
   depth_thr <- stats::median(df$depth, na.rm = TRUE) +
     depth.outlier * stats::mad(df$depth, na.rm = TRUE)
   if (!is.finite(depth_thr) || depth_thr <= 0) depth_thr <- max(df$depth, na.rm = TRUE)
   miss_thr <- m$min.depth
-  col_depth <- function(v) {
-    out <- rep(depth.col[2], length(v))              # normal
-    out[!is.na(v) & v <  miss_thr]  <- depth.col[1]  # low depth
-    out[!is.na(v) & v >= depth_thr] <- depth.col[3]  # high-depth outlier
-    out
-  }
+  qc_problem <- (df$depth < miss_thr) | ((1 - df$call_rate) > depth.qc.maxmiss)
+  qc_col <- rep(depth.col[2], nrow(df))                        # normal
+  qc_col[qc_problem] <- depth.col[1]                           # low depth / high missing
+  qc_col[df$depth >= depth_thr & !qc_problem] <- depth.col[3]  # high-depth outlier
+  names(qc_col) <- paste(df$chr, df$pos, sep = "_")
 
   op <- graphics::par(mar = c(1, 1, 2, 1)); on.exit(graphics::par(op), add = TRUE)
   circlize::circos.clear()
@@ -379,20 +404,21 @@ madc_plot <- function(madc,
                          sector.index = ax_sector, track.index = 3,
                          labels.cex = 0.4, lwd = 0.5)
 
-  # Track 4 (Depth QC): contiguous categorical tile ribbon (gapless midpoint edges)
+  # Track 4 (Depth): contiguous categorical tile ribbon (gapless midpoint edges)
   circlize::circos.track(
-    sectors = df$chr, x = df$pos, y = df$depth, ylim = c(0, 1),
+    sectors = df$chr, x = df$pos, ylim = c(0, 1),
     track.height = 0.055, bg.border = "grey90",
     panel.fun = function(x, y) {
-      o <- order(x); xs <- x[o]
+      xs  <- sort(x)
       mid <- (utils::head(xs, -1) + xs[-1]) / 2
+      key <- paste(circlize::CELL_META$sector.index, xs, sep = "_")
       circlize::circos.rect(c(circlize::CELL_META$xlim[1], mid), 0,
                             c(mid, circlize::CELL_META$xlim[2]), 1,
-                            col = col_depth(y[o]), border = NA)
+                            col = qc_col[key], border = NA)
     })
 
   # horizontal track titles in the 12 o'clock corridor, aligned to each ring
-  titles <- c("Loci", "Density", "mHaps", "Depth QC")
+  titles <- c("Loci", "Density", "mHaps", "Depth")
   s1 <- levels(df$chr)[1]
   for (ti in seq_along(titles)) {
     rt <- circlize::get.cell.meta.data("cell.top.radius",    s1, track.index = ti)
@@ -403,7 +429,7 @@ madc_plot <- function(madc,
 
   # compact color/scale keys in the empty center
   .circos_center_legend(col_dens, dmax, density.window, mhap.col, paralog.flag,
-                        depth.col, miss_thr, depth_thr)
+                        depth.col, miss_thr, depth_thr, depth.qc.maxmiss)
 
   graphics::title("Marker distribution", cex.main = 1.1)
   invisible(NULL)
@@ -413,7 +439,7 @@ madc_plot <- function(madc,
 #' @keywords internal
 #' @noRd
 .circos_center_legend <- function(col_dens, dmax, density.window, mhap.col, paralog.flag,
-                                  depth.col, miss_thr, depth_thr) {
+                                  depth.col, miss_thr, depth_thr, depth.qc.maxmiss = 0.5) {
   # density: small horizontal continuous colour bar
   n <- 64; bx <- seq(-0.17, 0.17, length.out = n + 1); yb <- 0.15; yt <- 0.19
   vals <- seq(0, dmax, length.out = n)
@@ -432,9 +458,9 @@ madc_plot <- function(madc,
   graphics::rect(0.03, 0.03, 0.06, 0.055, col = "#b2182b", border = NA, xpd = NA)
   graphics::text(0.07, 0.0425, sprintf("> %d (paralog)", paralog.flag), cex = 0.42, adj = 0, xpd = NA)
 
-  # depth QC key
-  graphics::text(0, -0.03, "Depth QC", cex = 0.5, font = 2, xpd = NA)
-  dl <- c(sprintf("low depth (< %g)", miss_thr), "normal",
+  # depth key
+  graphics::text(0, -0.03, "Depth", cex = 0.5, font = 2, xpd = NA)
+  dl <- c(sprintf("low <%g / miss >%g", miss_thr, depth.qc.maxmiss), "normal",
           sprintf("outlier (>= %g)", round(depth_thr)))
   yk <- -0.065 - c(0, 0.035, 0.07)
   for (j in 1:3) {
@@ -452,7 +478,9 @@ madc_plot <- function(madc,
     stop("CloneIDs are not in Chr_Pos format; supply `markers_info` with Chr/Pos for the marker/circos plot.")
   df <- data.frame(CloneID = m$markers, chr = m$chr, pos = m$pos,
                    n_mhaps = as.integer(m$n_mhaps_marker),
-                   depth = rowMeans(m$depth_total), stringsAsFactors = FALSE)
+                   depth = rowMeans(m$depth_total),
+                   call_rate = 1 - rowMeans(m$missing_mask),
+                   stringsAsFactors = FALSE)
   df[!is.na(df$pos), , drop = FALSE]
 }
 
@@ -470,17 +498,18 @@ madc_plot <- function(madc,
   mat <- mat[ord, , drop = FALSE]
   chr_ord <- m$chr[ord]
 
-  # optional subsample for very large panels
+  # optional subsample for very large panels - deterministic evenly-spaced pick so
+  # repeated calls give identical figures and genomic/sample spread is preserved
   if (!is.null(max.loci) && nrow(mat) > max.loci) {
-    idx <- sort(sample.int(nrow(mat), max.loci))
+    idx <- unique(round(seq(1, nrow(mat), length.out = max.loci)))
     mat <- mat[idx, , drop = FALSE]; chr_ord <- chr_ord[idx]
-    if (verbose) message("Heatmap: subsampled to ", max.loci, " of ",
-                         length(ord), " loci.")
+    if (verbose) message("Heatmap: subsampled to ", length(idx), " of ",
+                         length(ord), " loci (evenly spaced).")
   }
   if (!is.null(max.samples) && ncol(mat) > max.samples) {
-    idx <- sort(sample.int(ncol(mat), max.samples))
+    idx <- unique(round(seq(1, ncol(mat), length.out = max.samples)))
     mat <- mat[, idx, drop = FALSE]
-    if (verbose) message("Heatmap: subsampled to ", max.samples, " samples.")
+    if (verbose) message("Heatmap: subsampled to ", length(idx), " samples (evenly spaced).")
   }
 
   long <- reshape2::melt(mat, varnames = c("marker", "sample"), value.name = "value")
@@ -586,4 +615,75 @@ madc_plot <- function(madc,
     ggplot2::ylim(0, NA) + .madc_theme()
   if (horizontal) p <- p + ggplot2::coord_flip()
   p
+}
+
+# ---- Allele read-ratio balance --------------------------------------------
+#' @keywords internal
+#' @noRd
+.madc_plot_balance <- function(m, ploidy = NULL, palette = NULL) {
+  # One point-density cell per (marker x sample) that amplified its target: alt
+  # read ratio on x, target depth (ref + alt) on a log y. Shows whether the
+  # chemistry yields interpretable dosage signal (bands) and whether balance
+  # depends on depth. `palette` is accepted for signature symmetry but unused
+  # (the fill is a continuous cell count).
+  ratio <- m$alt_ratio
+  size  <- m$size_matrix
+  keep  <- is.finite(ratio) & is.finite(size) & size >= m$min.depth
+  if (!any(keep))
+    stop("No (marker x sample) cells pass the depth filter for the balance plot.")
+  df <- data.frame(alt_ratio = as.numeric(ratio[keep]),
+                   depth      = as.numeric(size[keep]))
+
+  # Encode bin count in BOTH fill and alpha (log-scaled): sparse noise fades into
+  # the background so the dense dosage bands - and the expected-ratio guides drawn
+  # over them - stand out. One shared legend (alpha guide hidden).
+  p <- ggplot2::ggplot(df, ggplot2::aes(x = alt_ratio, y = depth)) +
+    ggplot2::geom_bin2d(ggplot2::aes(alpha = ggplot2::after_stat(count)), bins = 60) +
+    ggplot2::scale_fill_viridis_c("Cells", trans = "log10") +
+    ggplot2::scale_alpha_continuous(trans = "log10", range = c(0.1, 1), guide = "none") +
+    ggplot2::scale_x_continuous(limits = c(-0.02, 1.02),
+                                breaks = seq(0, 1, 0.25)) +
+    ggplot2::scale_y_log10() +
+    ggplot2::labs(title = "Allele read-ratio balance",
+                  x = "Alt read ratio  (alt / (ref + alt))",
+                  y = "Target depth, ref + alt (log10)") +
+    .madc_theme()
+
+  if (!is.null(ploidy)) {
+    ploidy <- as.integer(ploidy)
+    if (is.na(ploidy) || ploidy < 1L) stop("`ploidy` must be a positive integer.")
+    gx <- (0:ploidy) / ploidy
+    p <- p +
+      ggplot2::geom_vline(xintercept = gx, linetype = 2, colour = "grey35", linewidth = 0.4) +
+      ggplot2::labs(subtitle = sprintf("Dashed = expected ratios under ploidy %d: %s",
+                                       ploidy, paste(round(gx, 3), collapse = ", ")))
+  }
+  p
+}
+
+# ---- Marker depth (uniformity) distribution --------------------------------
+#' @keywords internal
+#' @noRd
+.madc_plot_depth <- function(m) {
+  d   <- rowMeans(m$depth_total)
+  d   <- d[is.finite(d)]
+  med <- stats::median(d)
+  q1  <- stats::quantile(d, 0.25, names = FALSE)
+  q3  <- stats::quantile(d, 0.75, names = FALSE)
+  nz  <- sum(d <= 0)
+  df  <- data.frame(depth = d[d > 0])
+  if (!nrow(df)) stop("All markers have zero mean depth; nothing to plot.")
+
+  sub <- sprintf("median %.1f (IQR %.1f-%.1f); dashed line = min.depth %g",
+                 med, q1, q3, m$min.depth)
+  if (nz > 0) sub <- paste0(sub, sprintf("; %d zero-depth marker(s) omitted", nz))
+
+  ggplot2::ggplot(df, ggplot2::aes(x = depth)) +
+    ggplot2::geom_histogram(bins = 40, fill = "#4292c6", colour = "white", linewidth = 0.2) +
+    ggplot2::scale_x_log10() +
+    ggplot2::geom_vline(xintercept = m$min.depth, linetype = 2,
+                        colour = "#b2182b", linewidth = 0.5) +
+    ggplot2::labs(title = "Marker mean-depth distribution", subtitle = sub,
+                  x = "Mean read depth per marker (log10)", y = "Markers") +
+    .madc_theme()
 }

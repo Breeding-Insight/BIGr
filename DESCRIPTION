@@ -60,7 +60,9 @@ Suggests:
     polyRAD,
     rmdformats,
     knitr,
-    rmarkdown
+    rmarkdown,
+    readxl,
+    writexl
 RdMacros: 
     Rdpack
 biocViews:

@@ -39,15 +39,39 @@
 #'   markers with more mHaps are pooled into a `">mhap.cap"` bucket. Default `10`.
 #' @param miss.thresholds Numeric vector of missingness fractions for the
 #'   threshold sweep. Default `c(0,5,...,100)/100`.
+#' @param depth.thresholds Numeric vector of read-depth cutoffs for the
+#'   `depth_sweep` table. Default `c(1, 5, 10, 20, 50, 100)`.
 #' @param mhap.min.reads Minimum reads for a mHap to count as present in a sample
 #'   when tallying per-sample mHap counts. Default `1`.
-#' @param output.file If not `NULL`, each table is written to
-#'   `paste0(output.file, "_<table>.csv")`.
+#' @param min.locus.depth,max.locus.depth Marker-QC read-depth window (mean reads
+#'   per sample at the locus). A marker below `min.locus.depth` is `FAIL`ed (low
+#'   depth); one above `max.locus.depth` is `FLAG`ged (over-amplified). Names/units
+#'   match [filterMADC()], so a `FAIL` on `min.locus.depth` is the marker
+#'   `filterMADC` would drop at the same value. `min.locus.depth` defaults to
+#'   `min.depth`; `max.locus.depth` is off (`NULL`) by default. Set either to
+#'   `NULL` to disable that criterion.
+#' @param max.missing Marker-QC maximum per-marker missing rate; markers above it
+#'   are `FAIL`ed (catches the high-dropout case a mean-depth cut alone misses).
+#'   `NULL` (default) disables it.
+#' @param max.offtarget Marker-QC maximum read-weighted off-target fraction;
+#'   markers above it are `FLAG`ged. `NULL` (default) disables it.
+#' @param max.mhaps.per.loci Marker-QC maximum number of defined mHaps; markers
+#'   above it are `FLAG`ged (paralog-suspect). `NULL` (default) disables it.
+#' @param output.file If not `NULL`, the tables are written here: as
+#'   `paste0(output.file, "_<table>.csv")` when `output.format = "csv"`, or as a
+#'   single `.xlsx` workbook (one sheet per table) when `output.format = "xlsx"`.
+#' @param output.format One of `"csv"` (default; one CSV per table) or `"xlsx"`
+#'   (a single multi-sheet workbook, requires the `writexl` package).
 #' @param verbose Logical; print progress/validation messages. Default `TRUE`.
 #'
 #' @return A named list of data.frames: `mhap_freq`, `per_sample`, `per_marker`,
-#'   `missingness`, `overall`, and (when `metadata`/`group.col` are given)
-#'   `by_category`.
+#'   `missingness`, `depth_sweep`, `marker_qc`, `overall`, and (when
+#'   `metadata`/`group.col` are given) `by_category`. Depth is summarized by both
+#'   the mean and robust statistics (`median_depth`, `depth_mad`, `depth_q10`,
+#'   `depth_q90`); off-target is reported both as the mean per-locus ratio
+#'   (`offtarget_fraction`) and read-weighted (`offtarget_fraction_weighted`); and
+#'   mHap counts are split into `n_mhaps_defined` (allele rows in the panel) and
+#'   `n_mhaps_observed` (alleles actually supported by reads).
 #'
 #' @examples
 #' madc_file <- system.file("example_MADC_FixedAlleleID.csv", package = "BIGr")
@@ -65,10 +89,18 @@ madc_summary <- function(madc,
                          markers_info    = NULL,
                          mhap.cap        = 10,
                          miss.thresholds = c(0, 5, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100) / 100,
+                         depth.thresholds = c(1, 5, 10, 20, 50, 100),
                          mhap.min.reads  = 1,
+                         min.locus.depth    = min.depth,
+                         max.locus.depth    = NULL,
+                         max.missing        = NULL,
+                         max.offtarget      = NULL,
+                         max.mhaps.per.loci = NULL,
                          output.file     = NULL,
+                         output.format   = c("csv", "xlsx"),
                          verbose         = TRUE) {
 
+  output.format <- match.arg(output.format)
   report <- .read_and_check_madc(madc, verbose = verbose)
   m <- .madc_metrics(report, min.depth = min.depth, target.only = target.only,
                      mhap.min.reads = mhap.min.reads, markers_info = markers_info,
@@ -83,31 +115,53 @@ madc_summary <- function(madc,
                           n_markers = n_markers,
                           stringsAsFactors = FALSE)
 
+  ## --- shared helpers -------------------------------------------------------
+  # depth       = total reads at the locus (how well the region amplifies);
+  # target_depth= reads on the designed |Ref/|Alt alleles (how well the targets
+  #               work); offtarget_fraction is the mean of the per-locus off-target
+  #               ratios, offtarget_fraction_weighted is the read-weighted share
+  #               sum(offtarget)/sum(total) (the "% of reads off target" number).
+  q10 <- function(v) stats::quantile(v, 0.10, names = FALSE, na.rm = TRUE)
+  q90 <- function(v) stats::quantile(v, 0.90, names = FALSE, na.rm = TRUE)
+  safe_ratio <- function(a, b) { r <- a / b; r[!is.finite(r)] <- NA; r }
+
   ## --- per-sample metrics ---
-  # depth = total reads at the locus (how well the region amplifies);
-  # target_depth = reads on the designed |Ref/|Alt alleles (how well the target
-  # markers work); offtarget_fraction = share of reads from Match/Other alleles.
   per_sample <- data.frame(
-    sample             = m$samples,
-    depth              = colMeans(m$depth_total),
-    target_depth       = colMeans(m$ontarget_depth),
-    missing_rate       = colMeans(m$missing_mask),
-    n_mhaps            = colMeans(m$n_mhaps_present),
-    offtarget_fraction = colMeans(m$offtarget_frac, na.rm = TRUE),
-    stringsAsFactors   = FALSE)
+    sample                      = m$samples,
+    depth                       = colMeans(m$depth_total),
+    median_depth                = apply(m$depth_total, 2, stats::median),
+    depth_mad                   = apply(m$depth_total, 2, stats::mad),
+    depth_q10                   = apply(m$depth_total, 2, q10),
+    depth_q90                   = apply(m$depth_total, 2, q90),
+    target_depth                = colMeans(m$ontarget_depth),
+    total_reads                 = colSums(m$depth_total),
+    target_reads                = colSums(m$ontarget_depth),
+    missing_rate                = colMeans(m$missing_mask),
+    call_rate                   = 1 - colMeans(m$missing_mask),
+    n_mhaps_observed            = colMeans(m$n_mhaps_present),
+    offtarget_fraction          = colMeans(m$offtarget_frac, na.rm = TRUE),
+    offtarget_fraction_weighted = safe_ratio(colSums(m$offtarget), colSums(m$depth_total)),
+    stringsAsFactors            = FALSE)
   rownames(per_sample) <- NULL
 
   ## --- per-marker metrics ---
   per_marker <- data.frame(
-    CloneID            = m$markers,
-    Chr                = m$chr,
-    Pos                = m$pos,
-    depth              = rowMeans(m$depth_total),
-    target_depth       = rowMeans(m$ontarget_depth),
-    missing_rate       = rowMeans(m$missing_mask),
-    n_mhaps            = as.integer(m$n_mhaps_marker),
-    offtarget_fraction = rowMeans(m$offtarget_frac, na.rm = TRUE),
-    stringsAsFactors   = FALSE)
+    CloneID                     = m$markers,
+    Chr                         = m$chr,
+    Pos                         = m$pos,
+    depth                       = rowMeans(m$depth_total),
+    median_depth                = apply(m$depth_total, 1, stats::median),
+    depth_mad                   = apply(m$depth_total, 1, stats::mad),
+    depth_q10                   = apply(m$depth_total, 1, q10),
+    depth_q90                   = apply(m$depth_total, 1, q90),
+    target_depth                = rowMeans(m$ontarget_depth),
+    missing_rate                = rowMeans(m$missing_mask),
+    call_rate                   = 1 - rowMeans(m$missing_mask),
+    n_mhaps_defined             = as.integer(m$n_mhaps_defined),
+    n_mhaps_observed            = as.integer(m$n_mhaps_observed),
+    offtarget_fraction          = rowMeans(m$offtarget_frac, na.rm = TRUE),
+    offtarget_fraction_weighted = safe_ratio(rowSums(m$offtarget), rowSums(m$depth_total)),
+    stringsAsFactors            = FALSE)
   rownames(per_marker) <- NULL
   if (all(is.na(per_marker$Chr)) && all(is.na(per_marker$Pos))) {
     per_marker$Chr <- NULL
@@ -125,19 +179,78 @@ madc_summary <- function(madc,
     samples_retained = vapply(miss.thresholds, function(t) sum(samp_miss  <= t), integer(1)),
     stringsAsFactors = FALSE)
 
+  ## --- depth threshold sweep (mirrors the missingness sweep) ---
+  cell_depth <- m$depth_total
+  depth_sweep <- data.frame(
+    depth_threshold            = depth.thresholds,
+    cells_passing              = vapply(depth.thresholds, function(t) mean(cell_depth >= t), numeric(1)),
+    loci_passing_90pct_samples = vapply(depth.thresholds, function(t)
+                                          sum(rowMeans(cell_depth >= t) >= 0.90), integer(1)),
+    loci_passing_95pct_samples = vapply(depth.thresholds, function(t)
+                                          sum(rowMeans(cell_depth >= t) >= 0.95), integer(1)),
+    samples_passing_90pct_loci = vapply(depth.thresholds, function(t)
+                                          sum(colMeans(cell_depth >= t) >= 0.90), integer(1)),
+    stringsAsFactors           = FALSE)
+
+  ## --- per-marker QC status (advisory; does NOT filter) ---
+  # Thresholds reuse filterMADC's vocabulary so a marker FAILing `min.locus.depth`
+  # here is the same marker filterMADC drops at that threshold (both key off the
+  # mean per-sample locus depth). Each threshold set to NULL disables its criterion.
+  n_mk      <- length(m$markers)
+  qc_reason <- character(n_mk)
+  fail <- logical(n_mk); flag <- logical(n_mk)
+  add_qc <- function(cond, label, is_fail) {
+    cond[is.na(cond)] <- FALSE
+    if (is_fail) fail <<- fail | cond else flag <<- flag | cond
+    qc_reason[cond] <<- ifelse(nzchar(qc_reason[cond]),
+                               paste0(qc_reason[cond], "; ", label), label)
+  }
+  if (!is.null(min.locus.depth))
+    add_qc(per_marker$depth < min.locus.depth,       sprintf("low depth (<%g)", min.locus.depth), TRUE)
+  if (!is.null(max.missing))
+    add_qc(per_marker$missing_rate > max.missing,    sprintf("high missing (>%g)", max.missing), TRUE)
+  if (!is.null(max.locus.depth))
+    add_qc(per_marker$depth > max.locus.depth,       sprintf("over-amplified (>%g)", max.locus.depth), FALSE)
+  if (!is.null(max.offtarget))
+    add_qc(per_marker$offtarget_fraction_weighted > max.offtarget,
+                                                     sprintf("high off-target (>%g)", max.offtarget), FALSE)
+  if (!is.null(max.mhaps.per.loci))
+    add_qc(per_marker$n_mhaps_defined > max.mhaps.per.loci,
+                                                     sprintf("high mHaps (>%g, paralog-suspect)", max.mhaps.per.loci), FALSE)
+  marker_qc <- data.frame(
+    CloneID                     = m$markers,
+    Chr                         = m$chr,
+    Pos                         = m$pos,
+    mean_depth                  = per_marker$depth,
+    call_rate                   = 1 - rowMeans(m$missing_mask),
+    offtarget_fraction_weighted = per_marker$offtarget_fraction_weighted,
+    n_mhaps_defined             = as.integer(m$n_mhaps_defined),
+    n_mhaps_observed            = as.integer(m$n_mhaps_observed),
+    qc_status                   = ifelse(fail, "FAIL", ifelse(flag, "FLAG", "PASS")),
+    qc_reason                   = qc_reason,
+    stringsAsFactors            = FALSE)
+  rownames(marker_qc) <- NULL
+  if (all(is.na(marker_qc$Chr)) && all(is.na(marker_qc$Pos))) {
+    marker_qc$Chr <- NULL; marker_qc$Pos <- NULL
+  }
+
   ## --- overall one-row summary ---
   overall <- data.frame(
-    n_samples               = length(m$samples),
-    n_markers               = length(m$markers),
-    n_mhaps_total           = sum(m$n_mhaps_marker),
-    mean_depth              = mean(m$depth_total),
-    overall_missing_rate    = mean(m$missing_mask),
-    mean_offtarget_fraction = mean(m$offtarget_frac, na.rm = TRUE),
-    median_mhaps_per_marker = stats::median(m$n_mhaps_marker),
-    stringsAsFactors        = FALSE)
+    n_samples                        = length(m$samples),
+    n_markers                        = length(m$markers),
+    n_mhaps_total                    = sum(m$n_mhaps_marker),
+    mean_depth                       = mean(m$depth_total),
+    median_depth                     = stats::median(m$depth_total),
+    overall_missing_rate             = mean(m$missing_mask),
+    overall_call_rate                = 1 - mean(m$missing_mask),
+    mean_offtarget_fraction          = mean(m$offtarget_frac, na.rm = TRUE),
+    read_weighted_offtarget_fraction = safe_ratio(sum(m$offtarget), sum(m$depth_total)),
+    median_mhaps_per_marker          = stats::median(m$n_mhaps_marker),
+    stringsAsFactors                 = FALSE)
 
   out <- list(mhap_freq = mhap_freq, per_sample = per_sample,
-              per_marker = per_marker, missingness = missingness, overall = overall)
+              per_marker = per_marker, missingness = missingness,
+              depth_sweep = depth_sweep, marker_qc = marker_qc, overall = overall)
 
   ## --- optional by-category aggregation ---
   grp <- .madc_group(metadata, group.col, m$samples)
@@ -158,12 +271,20 @@ madc_summary <- function(madc,
       stringsAsFactors        = FALSE)
   }
 
-  ## --- optional CSV output ---
+  ## --- optional output: per-table CSVs or a single multi-sheet workbook ---
   if (!is.null(output.file)) {
-    for (nm in names(out))
-      utils::write.csv(out[[nm]], paste0(output.file, "_", nm, ".csv"), row.names = FALSE)
-    if (verbose) message("Wrote ", length(out), " summary tables to ",
-                         output.file, "_*.csv")
+    if (output.format == "xlsx") {
+      if (!requireNamespace("writexl", quietly = TRUE))
+        stop("output.format = 'xlsx' requires the 'writexl' package. Install it with install.packages('writexl').")
+      path <- if (grepl("\\.xlsx$", output.file, ignore.case = TRUE)) output.file else paste0(output.file, ".xlsx")
+      writexl::write_xlsx(out, path)
+      if (verbose) message("Wrote ", length(out), " summary tables as sheets to ", path)
+    } else {
+      for (tab in names(out))
+        utils::write.csv(out[[tab]], paste0(output.file, "_", tab, ".csv"), row.names = FALSE)
+      if (verbose) message("Wrote ", length(out), " summary tables to ",
+                           output.file, "_*.csv")
+    }
   }
 
   out

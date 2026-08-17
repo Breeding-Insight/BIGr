@@ -22,9 +22,11 @@ test_that("pca, heatmap, marker build without error", {
 test_that("balance and depth plots build", {
   expect_s3_class(suppressWarnings(suppressMessages(
     madc_plot(madc_file(), plot.type = "balance"))), "ggplot")
-  # ploidy adds expected-ratio guides
+  # ploidy adds expected-ratio guides + a binomial envelope (diploid and higher)
   expect_s3_class(suppressWarnings(suppressMessages(
     madc_plot(madc_file(), plot.type = "balance", ploidy = 2))), "ggplot")
+  expect_s3_class(suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = "balance", ploidy = 4))), "ggplot")
   expect_error(suppressWarnings(suppressMessages(
     madc_plot(madc_file(), plot.type = "balance", ploidy = 0))), "positive")
   expect_s3_class(suppressWarnings(suppressMessages(
@@ -33,6 +35,17 @@ test_that("balance and depth plots build", {
   res <- suppressWarnings(suppressMessages(
     madc_plot(madc_file(), plot.type = c("depth", "balance"))))
   expect_true(grid::is.grob(res$panel))
+})
+
+test_that("balance.density stacks a marginal panel (composite grob)", {
+  # a lone balance plot with the marginal returns a composite grob
+  g <- suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = "balance", ploidy = 2, balance.density = TRUE)))
+  expect_true(grid::is.grob(g))
+  # combined with another type, the density is ignored and balance stays a ggplot
+  res <- suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = c("balance", "depth"), balance.density = TRUE)))
+  expect_s3_class(res$plots$balance, "ggplot")
 })
 
 test_that("circos plot builds without error", {

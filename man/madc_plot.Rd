@@ -14,6 +14,7 @@ madc_plot(
   shape.col = NULL,
   palette = NULL,
   ploidy = NULL,
+  balance.density = FALSE,
   markers_info = NULL,
   pc.x = 1,
   pc.y = 2,
@@ -71,9 +72,16 @@ categories. \code{NULL} uses the ggplot2 defaults.}
 
 \item{ploidy}{Optional integer species ploidy for the \code{"balance"} plot. When
 supplied, dashed guides are drawn at the expected alt-read ratios
-\code{(0:ploidy)/ploidy} (e.g. 0, 0.5, 1 for a diploid); \code{NULL} (default) draws
-the ratio x depth density with no guides, which also suits mixed/unknown
-ploidy panels.}
+\code{(0:ploidy)/ploidy} (e.g. 0, 0.5, 1 for a diploid) and a depth-dependent 95\%
+binomial interval band is drawn around each interior expected ratio (the
+expected spread of \code{A/D} under \code{Binomial(D, ratio)}), so observed dispersion
+wider than sampling noise stands out. \code{NULL} (default) draws the ratio x
+depth density with no guides/band, which also suits mixed/unknown ploidy.}
+
+\item{balance.density}{Logical; for a lone \code{plot.type = "balance"}, stack a
+marginal frequency-polygon of the alt-read ratio above the heatmap (aligned
+x-axis). This returns a composite grob instead of a \code{ggplot}, so it is
+ignored when \code{"balance"} is combined with other plot types. Default \code{FALSE}.}
 
 \item{markers_info}{Optional marker lookup (id + \code{Chr} + \code{Pos}) for the marker/circos plot.}
 
@@ -143,9 +151,11 @@ for the circos track titles. Default \code{12}.}
 \item{verbose}{Logical; print progress/validation messages. Default \code{TRUE}.}
 }
 \value{
-For a single \code{plot.type}, a \code{ggplot}; for several, an (invisible) list
-with \code{plots} (named list) and \code{panel} (the assembled multi-panel grob).
-\code{"circos"} draws to the active device and returns \code{NULL} invisibly.
+For a single \code{plot.type}, a \code{ggplot} (a composite grob when
+\code{plot.type = "balance"} and \code{balance.density = TRUE}); for several, an
+(invisible) list with \code{plots} (named list) and \code{panel} (the assembled
+multi-panel grob). \code{"circos"} draws to the active device and returns \code{NULL}
+invisibly.
 }
 \description{
 Visualize a fixed allele ID MADC file (one processed through HapApp) with a
@@ -168,7 +178,9 @@ multi-panel). The \code{"pca"} plot is a sample/data-interpretation diagnostic
 (missing ratios are mean-imputed and the PCA is unscaled), so strong biological
 structure can dominate it - read it for sample swaps / population separation,
 not as evidence the sequencing run itself was good or bad. The \code{"balance"} plot
-is the direct read-out of whether the assay yields interpretable dosage signal.
+is the direct read-out of whether the assay yields interpretable dosage signal;
+it shows every cell with a defined ratio (including below \code{min.depth}, marked by
+a dotted line) and, with \code{ploidy}, a depth-dependent binomial expectation band.
 }
 \examples{
 madc_file <- system.file("example_MADC_FixedAlleleID.csv", package = "BIGr")

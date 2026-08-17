@@ -20,7 +20,9 @@
 #' (missing ratios are mean-imputed and the PCA is unscaled), so strong biological
 #' structure can dominate it - read it for sample swaps / population separation,
 #' not as evidence the sequencing run itself was good or bad. The `"balance"` plot
-#' is the direct read-out of whether the assay yields interpretable dosage signal.
+#' is the direct read-out of whether the assay yields interpretable dosage signal;
+#' it shows every cell with a defined ratio (including below `min.depth`, marked by
+#' a dotted line) and, with `ploidy`, a depth-dependent binomial expectation band.
 #'
 #' @param madc Path to a fixed allele ID MADC file, or an already-read data.frame.
 #' @param plot.type One or more of `"pca"`, `"marker"`, `"heatmap"`, `"missing"`,
@@ -40,9 +42,15 @@
 #'   categories. `NULL` uses the ggplot2 defaults.
 #' @param ploidy Optional integer species ploidy for the `"balance"` plot. When
 #'   supplied, dashed guides are drawn at the expected alt-read ratios
-#'   `(0:ploidy)/ploidy` (e.g. 0, 0.5, 1 for a diploid); `NULL` (default) draws
-#'   the ratio x depth density with no guides, which also suits mixed/unknown
-#'   ploidy panels.
+#'   `(0:ploidy)/ploidy` (e.g. 0, 0.5, 1 for a diploid) and a depth-dependent 95%
+#'   binomial interval band is drawn around each interior expected ratio (the
+#'   expected spread of `A/D` under `Binomial(D, ratio)`), so observed dispersion
+#'   wider than sampling noise stands out. `NULL` (default) draws the ratio x
+#'   depth density with no guides/band, which also suits mixed/unknown ploidy.
+#' @param balance.density Logical; for a lone `plot.type = "balance"`, stack a
+#'   marginal frequency-polygon of the alt-read ratio above the heatmap (aligned
+#'   x-axis). This returns a composite grob instead of a `ggplot`, so it is
+#'   ignored when `"balance"` is combined with other plot types. Default `FALSE`.
 #' @param markers_info Optional marker lookup (id + `Chr` + `Pos`) for the marker/circos plot.
 #' @param pc.x,pc.y Principal components to plot (PCA). Defaults `1`, `2`.
 #' @param loci.miss.max,sample.miss.max Drop loci/samples with missingness above
@@ -90,9 +98,11 @@
 #' @param width,height,dpi Saved-figure dimensions (inches) and resolution.
 #' @param verbose Logical; print progress/validation messages. Default `TRUE`.
 #'
-#' @return For a single `plot.type`, a `ggplot`; for several, an (invisible) list
-#'   with `plots` (named list) and `panel` (the assembled multi-panel grob).
-#'   `"circos"` draws to the active device and returns `NULL` invisibly.
+#' @return For a single `plot.type`, a `ggplot` (a composite grob when
+#'   `plot.type = "balance"` and `balance.density = TRUE`); for several, an
+#'   (invisible) list with `plots` (named list) and `panel` (the assembled
+#'   multi-panel grob). `"circos"` draws to the active device and returns `NULL`
+#'   invisibly.
 #'
 #' @examples
 #' madc_file <- system.file("example_MADC_FixedAlleleID.csv", package = "BIGr")
@@ -113,6 +123,7 @@ madc_plot <- function(madc,
                       shape.col      = NULL,
                       palette        = NULL,
                       ploidy         = NULL,
+                      balance.density = FALSE,
                       markers_info   = NULL,
                       pc.x           = 1,
                       pc.y           = 2,
@@ -182,13 +193,17 @@ madc_plot <- function(madc,
     return(invisible(save_to))
   }
 
+  # the marginal-density composite only applies to a lone "balance" plot (it
+  # returns a grob, which can't embed in the ggplot multi-panel)
+  bal_density <- isTRUE(balance.density) && length(plot.type) == 1L
+
   build <- list(
     pca     = function() .madc_plot_pca(m, pc.x, pc.y, loci.miss.max, sample.miss.max, grp, shp, palette),
     marker  = function() .madc_plot_marker(m, facet.chrom = facet.chrom),
     heatmap = function() .madc_plot_heatmap(m, fill, facet.chrom, max.loci, max.samples, verbose, grp),
     missing = function() .madc_plot_missing(m, grp, palette, sort = miss.sort,
                                             horizontal = horizontal),
-    balance = function() .madc_plot_balance(m, ploidy = ploidy, palette = palette),
+    balance = function() .madc_plot_balance(m, ploidy = ploidy, density = bal_density, palette = palette),
     depth   = function() .madc_plot_depth(m)
   )
 
@@ -620,45 +635,112 @@ madc_plot <- function(madc,
 # ---- Allele read-ratio balance --------------------------------------------
 #' @keywords internal
 #' @noRd
-.madc_plot_balance <- function(m, ploidy = NULL, palette = NULL) {
-  # One point-density cell per (marker x sample) that amplified its target: alt
+.madc_plot_balance <- function(m, ploidy = NULL, density = FALSE, palette = NULL) {
+  # One point-density cell per (marker x sample) with a defined allele ratio: alt
   # read ratio on x, target depth (ref + alt) on a log y. Shows whether the
-  # chemistry yields interpretable dosage signal (bands) and whether balance
-  # depends on depth. `palette` is accepted for signature symmetry but unused
-  # (the fill is a continuous cell count).
+  # chemistry yields interpretable dosage signal (bands), whether balance depends
+  # on depth, and - with `ploidy` - whether observed spread exceeds binomial
+  # sampling. `palette` is accepted for signature symmetry but unused (the fill is
+  # a continuous cell count).
   ratio <- m$alt_ratio
   size  <- m$size_matrix
-  keep  <- is.finite(ratio) & is.finite(size) & size >= m$min.depth
+  keep  <- is.finite(ratio) & is.finite(size) & size >= 1   # keep sub-min.depth cells too
   if (!any(keep))
-    stop("No (marker x sample) cells pass the depth filter for the balance plot.")
+    stop("No (marker x sample) cells have a defined allele ratio for the balance plot.")
   df <- data.frame(alt_ratio = as.numeric(ratio[keep]),
                    depth      = as.numeric(size[keep]))
 
-  # Encode bin count in BOTH fill and alpha (log-scaled): sparse noise fades into
-  # the background so the dense dosage bands - and the expected-ratio guides drawn
-  # over them - stand out. One shared legend (alpha guide hidden).
-  p <- ggplot2::ggplot(df, ggplot2::aes(x = alt_ratio, y = depth)) +
-    ggplot2::geom_bin2d(ggplot2::aes(alpha = ggplot2::after_stat(count)), bins = 60) +
-    ggplot2::scale_fill_viridis_c("Cells", trans = "log10") +
-    ggplot2::scale_alpha_continuous(trans = "log10", range = c(0.1, 1), guide = "none") +
-    ggplot2::scale_x_continuous(limits = c(-0.02, 1.02),
-                                breaks = seq(0, 1, 0.25)) +
-    ggplot2::scale_y_log10() +
-    ggplot2::labs(title = "Allele read-ratio balance",
-                  x = "Alt read ratio  (alt / (ref + alt))",
-                  y = "Target depth, ref + alt (log10)") +
-    .madc_theme()
-
+  gx <- NULL
   if (!is.null(ploidy)) {
     ploidy <- as.integer(ploidy)
     if (is.na(ploidy) || ploidy < 1L) stop("`ploidy` must be a positive integer.")
     gx <- (0:ploidy) / ploidy
-    p <- p +
-      ggplot2::geom_vline(xintercept = gx, linetype = 2, colour = "grey35", linewidth = 0.4) +
-      ggplot2::labs(subtitle = sprintf("Dashed = expected ratios under ploidy %d: %s",
-                                       ploidy, paste(round(gx, 3), collapse = ", ")))
   }
-  p
+
+  # shared x scale so the optional marginal panel lines up with the heatmap
+  x_scale <- ggplot2::scale_x_continuous(limits = c(-0.02, 1.02),
+                                         breaks = seq(0, 1, 0.25), expand = c(0, 0))
+  guides  <- if (!is.null(gx))
+    ggplot2::geom_vline(xintercept = gx, linetype = "dashed",
+                        colour = "grey50", linewidth = 0.4, alpha = 0.6) else NULL
+  comma <- function(x) format(x, big.mark = ",", scientific = FALSE, trim = TRUE)
+
+  # depth-dependent 95% binomial interval of A/D around each interior expected
+  # ratio (funnels toward the ratio as depth rises); homozygous 0/1 are degenerate
+  env <- if (!is.null(gx)) .balance_binom_envelope(gx, max(df$depth)) else NULL
+
+  # --- heatmap: count in BOTH fill and alpha (log) so sparse noise recedes ---
+  p <- ggplot2::ggplot(df, ggplot2::aes(x = alt_ratio, y = depth)) +
+    ggplot2::geom_bin2d(ggplot2::aes(alpha = ggplot2::after_stat(count)), bins = 60) +
+    ggplot2::scale_fill_viridis_c("Observations per bin", trans = "log10",
+                                  breaks = c(1, 10, 100, 1000, 10000), labels = comma) +
+    ggplot2::scale_alpha_continuous(trans = "log10", range = c(0.3, 1), guide = "none") +
+    x_scale + ggplot2::scale_y_log10() +
+    ggplot2::geom_hline(yintercept = m$min.depth, linetype = "dotted",
+                        linewidth = 0.5, colour = "grey30")
+  if (!is.null(env))
+    p <- p +
+      ggplot2::geom_ribbon(data = env, inherit.aes = FALSE,
+        ggplot2::aes(y = depth, xmin = ratio_lo, xmax = ratio_hi, group = grp),
+        orientation = "y", fill = "grey30", alpha = 0.10) +
+      ggplot2::geom_path(data = env, inherit.aes = FALSE,
+        ggplot2::aes(x = ratio_lo, y = depth, group = grp),
+        linetype = "dotted", linewidth = 0.35, colour = "grey20") +
+      ggplot2::geom_path(data = env, inherit.aes = FALSE,
+        ggplot2::aes(x = ratio_hi, y = depth, group = grp),
+        linetype = "dotted", linewidth = 0.35, colour = "grey20")
+  if (!is.null(guides)) p <- p + guides
+
+  sub <- if (!is.null(gx))
+    paste0(sprintf("Expected ratios (ploidy %d): %s", ploidy,
+                   paste(round(gx, 3), collapse = ", ")),
+           if (!is.null(env)) "; band = 95% binomial interval" else "") else NULL
+  p <- p +
+    ggplot2::labs(title = "Allele balance vs. target depth", subtitle = sub,
+                  x = "ALT read ratio (ALT / [REF + ALT])",
+                  y = "Target depth (REF + ALT reads, log scale)",
+                  caption = sprintf("Dotted line = min.depth (%g); cells below would be dropped at that threshold",
+                                    m$min.depth)) +
+    .madc_theme()
+
+  if (!isTRUE(density)) return(p)
+
+  # --- optional marginal observed-ratio density stacked above (aligned x) ---
+  # histogram (not KDE) because allele ratios are discrete at low depth. Use a
+  # data-range scale + coord_cartesian (zoom, not hard limits) so the boundary
+  # bins aren't clipped/warned; the -0.02..1.02 view matches the heatmap panel.
+  top <- ggplot2::ggplot(df, ggplot2::aes(x = alt_ratio)) +
+    ggplot2::geom_histogram(bins = 80, fill = "grey35", colour = NA) +
+    ggplot2::scale_x_continuous(breaks = seq(0, 1, 0.25), expand = c(0, 0)) +
+    ggplot2::coord_cartesian(xlim = c(-0.02, 1.02)) +
+    ggplot2::labs(title = "Allele balance vs. target depth", subtitle = sub, y = "Obs.") +
+    .madc_theme() +
+    ggplot2::theme(axis.title.x = ggplot2::element_blank(),
+                   axis.text.x  = ggplot2::element_blank(),
+                   axis.ticks.x = ggplot2::element_blank())
+  if (!is.null(guides)) top <- top + guides
+  p <- p + ggplot2::labs(title = NULL, subtitle = NULL)   # one title, on the top panel
+
+  .arrange_grobs(list(top, p), nrow = 2, ncol = 1,
+                 heights = grid::unit(c(0.25, 0.75), "null"), align_widths = TRUE)
+}
+
+# depth-stratified 95% binomial interval of A/D around each interior expected ratio
+#' @keywords internal
+#' @noRd
+.balance_binom_envelope <- function(gx, max_depth, n = 200, lo = 0.025, hi = 0.975) {
+  interior <- gx[gx > 0 & gx < 1]
+  if (!length(interior)) return(NULL)
+  Dgrid <- unique(round(10^seq(0, log10(max(max_depth, 2)), length.out = n)))
+  Dgrid <- Dgrid[Dgrid >= 1]
+  do.call(rbind, lapply(seq_along(interior), function(i) {
+    p <- interior[i]
+    data.frame(depth    = Dgrid,
+               ratio_lo = stats::qbinom(lo, Dgrid, p) / Dgrid,
+               ratio_hi = stats::qbinom(hi, Dgrid, p) / Dgrid,
+               grp      = paste0("p", i),
+               stringsAsFactors = FALSE)
+  }))
 }
 
 # ---- Marker depth (uniformity) distribution --------------------------------

@@ -14,7 +14,6 @@
 #' @return A vcf file
 #' @import dplyr
 #' @import tidyr
-#' @importFrom Rdpack reprompt
 #' @importFrom utils write.table
 #' @importFrom Rsamtools bgzip
 #' @references

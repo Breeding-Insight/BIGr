@@ -10,7 +10,7 @@ Authors@R: c(
     person("Manoj", "Sapkota", role = "ctb"),
     person("Meng", "Lin", role = "ctb"),
     person("Dongyan", "Zhao", role = "ctb"),
-    person("University", "of Florida", role = "cph",
+    person(family = "University of Florida", role = "cph",
            comment = "Breeding Insight")
   )
 Maintainer: Alexander M. Sandercock <sandercock.alex@gmail.com>
@@ -40,7 +40,6 @@ Imports:
     grid,
     parallel,
     pwalign,
-    Rdpack (>= 0.7),
     readr (>= 2.1.5),
     reshape2 (>= 1.4.4),
     rlang,
@@ -63,8 +62,6 @@ Suggests:
     rmarkdown,
     readxl,
     writexl
-RdMacros: 
-    Rdpack
 biocViews:
 Config/roxygen2/version: 8.0.0
 Encoding: UTF-8

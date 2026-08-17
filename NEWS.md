@@ -1,7 +1,7 @@
 # BIGr 0.10.0
 
 * Add function `rhampseq2madc`  and associated testthat
-
+* Small bugfix on `madc2vcf_all` message when not all locus are present in the markers_info file
 
 # BIGr 0.9.0
 

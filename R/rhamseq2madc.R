@@ -64,8 +64,12 @@
 #' @importFrom parallel makeCluster stopCluster clusterExport clusterEvalQ parLapply mclapply
 #'
 #' @export
-rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1,
-                          prefix = NULL, verbose = TRUE, parallel_type = NULL) {
+rhampseq2madc <- function(hap_genotype_file,
+                          haplotype_allele_fasta,
+                          n_cores = 1,
+                          prefix = NULL,
+                          verbose = TRUE,
+                          parallel_type = NULL) {
   vmsg("Running BIGr rhampseq2madc", verbose = verbose, level = 0, type = ">>")
   vmsg("hap_genotype_file      : %s", verbose = verbose, level = 1, type = ">>", hap_genotype_file)
   vmsg("haplotype_allele_fasta : %s", verbose = verbose, level = 1, type = ">>", haplotype_allele_fasta)
@@ -151,7 +155,7 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
 
   .locus_worker <- function(t) {
     ## Debug code
-    #t <- which(hapgeno$Locus == "rh_chr13_25788278")
+    #t <- which(hapgeno$Locus == "P1_1_7687844_1002_VariantMasked")
     ###
 
     onetag <- hapgeno[t, ]
@@ -356,7 +360,7 @@ rhampseq2madc <- function(hap_genotype_file, haplotype_allele_fasta, n_cores = 1
         }
         ir <- pos_indels[[nm]]
         if (length(ir) > 0) {
-          ip <- unlist(Map(seq.int, ir@start, ir@start + ir@width - 1L))
+          ip <- unlist(Map(seq.int, ir$start, ir$start + ir$width - 1L))
           ip <- ip[ip >= 1L & ip <= seq_len]
           poly_cov[ip] <- poly_cov[ip] + 1L
         }

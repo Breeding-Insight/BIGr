@@ -158,6 +158,7 @@ rhampseq2madc <- function(hap_genotype_file,
     #t <- which(hapgeno$Locus == "P1_1_7687844_1002_VariantMasked")
     ###
 
+    .info <- list(fallback_ref = FALSE, dup_ref = FALSE)
     onetag <- hapgeno[t, ]
 
     # Extract read depths from sample columns (col 3 to last)
@@ -243,6 +244,7 @@ rhampseq2madc <- function(hap_genotype_file,
         verbose = verbose, level = 1, type = ">>",
         cloneID, fallback_num
       )
+      .info$fallback_ref <- TRUE
     }
     reftag <- sequences[[reftag_idx]]
 
@@ -286,6 +288,7 @@ rhampseq2madc <- function(hap_genotype_file,
         verbose = verbose, level = 1, type = ">>",
         cloneID, length(extra_ref_names), paste(extra_ref_names, collapse = ", ")
       )
+      .info$dup_ref <- TRUE
 
       # Merge extra-ref depths into the reference row of depth_wide
       ref_row_idx <- match(1L, depth_wide$allele_id)
@@ -432,13 +435,15 @@ rhampseq2madc <- function(hap_genotype_file,
         target_position   = mid_pos,
         target_base       = paste0(mid_base, "/", new_base),
         stringsAsFactors  = FALSE
-      )
+      ),
+      info = .info
     )
   }
   madc_list <- par_fun(seq_len(nrow(hapgeno)), .locus_worker)
 
   # Loci that errored inside the parallel worker are returned as try-error objects.
   # Retry them sequentially — they usually succeed outside the parallel context.
+  retry_failed_ids <- character(0)
   failed_idx <- which(vapply(madc_list, inherits, logical(1), what = "try-error"))
   if (length(failed_idx) > 0) {
     vmsg("%s locus/loci failed in parallel; retrying sequentially.",
@@ -447,6 +452,7 @@ rhampseq2madc <- function(hap_genotype_file,
       madc_list[[t]] <- tryCatch(
         .locus_worker(t),
         error = function(e) {
+          retry_failed_ids <<- c(retry_failed_ids, as.character(hapgeno[[1]][t]))
           vmsg("Locus '%s': sequential retry also failed \u2014 %s",
                verbose = verbose, level = 1, type = ">>",
                hapgeno[[1]][t], conditionMessage(e))
@@ -458,9 +464,11 @@ rhampseq2madc <- function(hap_genotype_file,
 
   # Report loci intentionally skipped inside workers and convert to NULL
   # (vmsg inside workers writes to worker stdout, not the console)
+  no_fasta_ids <- character(0)
   skipped_mask <- vapply(madc_list, function(x) is.list(x) && isTRUE(x$.skipped), logical(1))
   if (any(skipped_mask)) {
     skip_idx <- which(skipped_mask)
+    no_fasta_ids <- as.character(hapgeno[[1]][skip_idx])
     for (i in skip_idx) {
       vmsg("Locus '%s': %s — skipped.",
            verbose = verbose, level = 1, type = ">>",
@@ -468,6 +476,9 @@ rhampseq2madc <- function(hap_genotype_file,
     }
     madc_list[skip_idx] <- list(NULL)
   }
+
+  fallback_ref_ids <- as.character(hapgeno[[1]][vapply(madc_list, function(x) is.list(x) && isTRUE(x$info$fallback_ref), logical(1))])
+  dup_ref_ids      <- as.character(hapgeno[[1]][vapply(madc_list, function(x) is.list(x) && isTRUE(x$info$dup_ref),      logical(1))])
 
   # Drop all NULL entries (skipped + sequential-retry failures)
   madc_list <- Filter(Negate(is.null), madc_list)
@@ -491,5 +502,15 @@ rhampseq2madc <- function(hap_genotype_file,
   }
 
   vmsg("Done!", verbose = verbose, level = 0, type = ">>")
-  list(madc = madc_final, target_positions = target_positions, new_fasta = new_fasta)
+  list(
+    madc             = madc_final,
+    target_positions = target_positions,
+    new_fasta        = new_fasta,
+    info             = list(
+      no_fasta_ids     = no_fasta_ids,
+      fallback_ref_ids = fallback_ref_ids,
+      dup_ref_ids      = dup_ref_ids,
+      retry_failed_ids = retry_failed_ids
+    )
+  )
 }

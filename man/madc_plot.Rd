@@ -38,6 +38,7 @@ madc_plot(
   mhap.height = 0.18,
   label.gap = 12,
   mhap.min.reads = 1,
+  titles = TRUE,
   output.file = NULL,
   width = 8,
   height = 6,
@@ -143,6 +144,12 @@ the mHap bar track. Defaults \code{0.03}, \code{0.08}, and \code{0.18}.}
 for the circos track titles. Default \code{12}.}
 
 \item{mhap.min.reads}{Minimum reads for a mHap to count as present. Default \code{1}.}
+
+\item{titles}{Logical; draw the plot titles and subtitles. Default \code{TRUE}.
+\code{FALSE} drops both from every requested plot (including the \code{"circos"}
+figure and the multi-panel), leaving the axis labels, legends and the
+\code{"balance"} caption - useful when the figure is captioned externally
+(manuscript, report, slide).}
 
 \item{output.file}{If not \code{NULL}, the figure is also saved here (\code{.png}/\code{.pdf}).}
 

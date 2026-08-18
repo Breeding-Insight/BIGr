@@ -94,6 +94,11 @@
 #' @param label.gap Width in degrees of the label corridor opened at 12 o'clock
 #'   for the circos track titles. Default `12`.
 #' @param mhap.min.reads Minimum reads for a mHap to count as present. Default `1`.
+#' @param titles Logical; draw the plot titles and subtitles. Default `TRUE`.
+#'   `FALSE` drops both from every requested plot (including the `"circos"`
+#'   figure and the multi-panel), leaving the axis labels, legends and the
+#'   `"balance"` caption - useful when the figure is captioned externally
+#'   (manuscript, report, slide).
 #' @param output.file If not `NULL`, the figure is also saved here (`.png`/`.pdf`).
 #' @param width,height,dpi Saved-figure dimensions (inches) and resolution.
 #' @param verbose Logical; print progress/validation messages. Default `TRUE`.
@@ -147,6 +152,7 @@ madc_plot <- function(madc,
                       mhap.height    = 0.18,
                       label.gap      = 12,
                       mhap.min.reads = 1,
+                      titles         = TRUE,
                       output.file    = NULL,
                       width = 8, height = 6, dpi = 300,
                       verbose        = TRUE) {
@@ -189,7 +195,8 @@ madc_plot <- function(madc,
                       depth.outlier = depth.outlier, depth.qc.maxmiss = depth.qc.maxmiss,
                       mhap.col = mhap.col,
                       tick.height = tick.height, density.height = density.height,
-                      mhap.height = mhap.height, label.gap = label.gap)
+                      mhap.height = mhap.height, label.gap = label.gap,
+                      titles = titles)
     return(invisible(save_to))
   }
 
@@ -203,12 +210,16 @@ madc_plot <- function(madc,
     heatmap = function() .madc_plot_heatmap(m, fill, facet.chrom, max.loci, max.samples, verbose, grp),
     missing = function() .madc_plot_missing(m, grp, palette, sort = miss.sort,
                                             horizontal = horizontal),
-    balance = function() .madc_plot_balance(m, ploidy = ploidy, density = bal_density, palette = palette),
+    balance = function() .madc_plot_balance(m, ploidy = ploidy, density = bal_density,
+                                            palette = palette, titles = titles),
     depth   = function() .madc_plot_depth(m)
   )
 
   plots <- lapply(plot.type, function(pt) build[[pt]]())
   names(plots) <- plot.type
+  # `balance` handles `titles` itself (its density form returns a grob); the rest
+  # are plain ggplots, so the title/subtitle come off after they are built.
+  if (!isTRUE(titles)) plots <- lapply(plots, .madc_drop_titles)
 
   if (length(plots) == 1L) {
     result <- plots[[1]]
@@ -225,6 +236,13 @@ madc_plot <- function(madc,
   panel <- .arrange_grobs(plots, nrow = nrow, ncol = ncol)
   if (!is.null(output.file)) .madc_save(panel, output.file, width, height, dpi)
   invisible(list(plots = plots, panel = panel))
+}
+
+# drop the title/subtitle of a built ggplot (grobs pass through untouched)
+#' @keywords internal
+#' @noRd
+.madc_drop_titles <- function(p) {
+  if (inherits(p, "ggplot")) p + ggplot2::labs(title = NULL, subtitle = NULL) else p
 }
 
 # ---- PCA -------------------------------------------------------------------
@@ -313,7 +331,8 @@ madc_plot <- function(madc,
                               depth.outlier = 3, depth.qc.maxmiss = 0.5,
                               mhap.col = "#35978f",
                               tick.height = 0.03, density.height = 0.08,
-                              mhap.height = 0.18, label.gap = 12) {
+                              mhap.height = 0.18, label.gap = 12,
+                              titles = TRUE) {
   if (!requireNamespace("circlize", quietly = TRUE))
     stop("plot.type = 'circos' requires the 'circlize' package. Install it with install.packages('circlize').")
 
@@ -353,7 +372,8 @@ madc_plot <- function(madc,
   qc_col[df$depth >= depth_thr & !qc_problem] <- depth.col[3]  # high-depth outlier
   names(qc_col) <- paste(df$chr, df$pos, sep = "_")
 
-  op <- graphics::par(mar = c(1, 1, 2, 1)); on.exit(graphics::par(op), add = TRUE)
+  op <- graphics::par(mar = c(1, 1, if (isTRUE(titles)) 2 else 1, 1))
+  on.exit(graphics::par(op), add = TRUE)
   circlize::circos.clear()
   on.exit(circlize::circos.clear(), add = TRUE)
   N <- nlevels(df$chr)
@@ -446,7 +466,7 @@ madc_plot <- function(madc,
   .circos_center_legend(col_dens, dmax, density.window, mhap.col, paralog.flag,
                         depth.col, miss_thr, depth_thr, depth.qc.maxmiss)
 
-  graphics::title("Marker distribution", cex.main = 1.1)
+  if (isTRUE(titles)) graphics::title("Marker distribution", cex.main = 1.1)
   invisible(NULL)
 }
 
@@ -635,7 +655,8 @@ madc_plot <- function(madc,
 # ---- Allele read-ratio balance --------------------------------------------
 #' @keywords internal
 #' @noRd
-.madc_plot_balance <- function(m, ploidy = NULL, density = FALSE, palette = NULL) {
+.madc_plot_balance <- function(m, ploidy = NULL, density = FALSE, palette = NULL,
+                               titles = TRUE) {
   # One point-density cell per (marker x sample) with a defined allele ratio: alt
   # read ratio on x, target depth (ref + alt) on a log y. Shows whether the
   # chemistry yields interpretable dosage signal (bands), whether balance depends
@@ -695,8 +716,10 @@ madc_plot <- function(madc,
     paste0(sprintf("Expected ratios (ploidy %d): %s", ploidy,
                    paste(round(gx, 3), collapse = ", ")),
            if (!is.null(env)) "; band = 95% binomial interval" else "") else NULL
+  if (!isTRUE(titles)) sub <- NULL
   p <- p +
-    ggplot2::labs(title = "Allele balance vs. target depth", subtitle = sub,
+    ggplot2::labs(title = if (isTRUE(titles)) "Allele balance vs. target depth",
+                  subtitle = sub,
                   x = "ALT read ratio (ALT / [REF + ALT])",
                   y = "Target depth (REF + ALT reads, log scale)",
                   caption = sprintf("Dotted line = min.depth (%g); cells below would be dropped at that threshold",
@@ -713,7 +736,8 @@ madc_plot <- function(madc,
     ggplot2::geom_histogram(bins = 80, fill = "grey35", colour = NA) +
     ggplot2::scale_x_continuous(breaks = seq(0, 1, 0.25), expand = c(0, 0)) +
     ggplot2::coord_cartesian(xlim = c(-0.02, 1.02)) +
-    ggplot2::labs(title = "Allele balance vs. target depth", subtitle = sub, y = "Obs.") +
+    ggplot2::labs(title = if (isTRUE(titles)) "Allele balance vs. target depth",
+                  subtitle = sub, y = "Obs.") +
     .madc_theme() +
     ggplot2::theme(axis.title.x = ggplot2::element_blank(),
                    axis.text.x  = ggplot2::element_blank(),

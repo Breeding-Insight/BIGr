@@ -158,6 +158,40 @@ test_that("missing boxplot supports miss.sort and horizontal", {
     madc_plot(madc_file(), plot.type = "missing", miss.sort = "bogus"))))
 })
 
+test_that("titles = FALSE drops the title and subtitle", {
+  for (pt in c("missing", "depth", "balance", "marker", "heatmap")) {
+    p <- suppressWarnings(suppressMessages(
+      madc_plot(madc_file(), plot.type = pt, ploidy = 2, titles = FALSE)))
+    expect_null(p$labels$title)
+    expect_null(p$labels$subtitle)
+  }
+  # titles are on by default
+  p <- suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = "depth")))
+  expect_false(is.null(p$labels$title))
+  expect_false(is.null(p$labels$subtitle))
+  # the balance caption is kept (it documents the min.depth line)
+  p <- suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = "balance", titles = FALSE)))
+  expect_false(is.null(p$labels$caption))
+  # multi-panel and the balance density composite still build
+  res <- suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = c("pca", "missing"), titles = FALSE)))
+  expect_null(res$plots$pca$labels$title)
+  expect_true(grid::is.grob(res$panel))
+  expect_true(grid::is.grob(suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = "balance", ploidy = 2,
+              balance.density = TRUE, titles = FALSE)))))
+})
+
+test_that("circos builds with titles = FALSE", {
+  skip_if_not_installed("circlize")
+  tmp <- tempfile(fileext = ".png")
+  expect_no_error(suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = "circos", titles = FALSE, output.file = tmp))))
+  expect_true(file.exists(tmp))
+})
+
 test_that("output.file writes an image", {
   out <- tempfile(fileext = ".png")
   suppressWarnings(suppressMessages(

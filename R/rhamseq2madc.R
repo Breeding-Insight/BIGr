@@ -188,6 +188,14 @@ rhampseq2madc <- function(hap_genotype_file,
       } else {
         alleles_list <- strsplit(allele_parts, "/", fixed = TRUE)
         depths_list <- strsplit(depth_parts, ",", fixed = TRUE)
+        # Pad depth vector when fewer depths than alleles are reported (e.g. "2/2:39").
+        # 0/0 genotypes: the single depth belongs to the first position → pad right.
+        # All other genotypes: the single depth belongs to the last position → pad left.
+        depths_list <- mapply(function(a, d) {
+          if (length(d) >= length(a)) return(d)
+          pad <- rep("0", length(a) - length(d))
+          if (all(a == "0")) c(d, pad) else c(pad, d)
+        }, alleles_list, depths_list, SIMPLIFY = FALSE)
         lens <- lengths(alleles_list)
         long_df <- data.frame(
           allele_id = as.integer(unlist(alleles_list, use.names = FALSE)),

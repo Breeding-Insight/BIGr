@@ -296,7 +296,7 @@ rhampseq2madc <- function(hap_genotype_file,
         verbose = verbose, level = 1, type = ">>",
         cloneID, length(extra_ref_names), paste(extra_ref_names, collapse = ", ")
       )
-      .info$dup_ref <- TRUE
+      .info$dup_ref_seqnames <- extra_ref_names
 
       # Merge extra-ref depths into the reference row of depth_wide
       ref_row_idx <- match(1L, depth_wide$allele_id)
@@ -486,7 +486,9 @@ rhampseq2madc <- function(hap_genotype_file,
   }
 
   fallback_ref_ids <- as.character(hapgeno[[1]][vapply(madc_list, function(x) is.list(x) && isTRUE(x$info$fallback_ref), logical(1))])
-  dup_ref_ids      <- as.character(hapgeno[[1]][vapply(madc_list, function(x) is.list(x) && isTRUE(x$info$dup_ref),      logical(1))])
+  dup_ref_ids      <- unlist(lapply(madc_list, function(x) {
+    if (is.list(x) && length(x$info$dup_ref_seqnames) > 0) x$info$dup_ref_seqnames else character(0)
+  }), use.names = FALSE)
 
   # Drop all NULL entries (skipped + sequential-retry failures)
   madc_list <- Filter(Negate(is.null), madc_list)

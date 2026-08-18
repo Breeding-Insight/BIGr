@@ -3,21 +3,28 @@
 #' Filter and process MADC files to remove low quality microhaplotypes
 #'
 #' @details
-#' This function can filter raw MADC files or pre-processed MADC files with fixed allele IDs. Additionally,
-#' it can filter based on mean read depth, number of mhaps per target loci, and other criteria. Optionally, users
-#' can plot summary statistics and save the filtered data to a file.
+#' This function filters a fixed allele ID MADC file (one processed through HapApp so that
+#' AlleleIDs carry unique \code{|Ref_0001}/\code{|Alt_0002}-style suffixes). The input is
+#' validated with \code{\link{check_madc_sanity}}; raw DArT MADC files (or any file without
+#' fixed AlleleIDs) are rejected with an error.
+#'
+#' Filtering is designed so that a locus never loses its target \code{|Ref}/\code{|Alt} pair:
+#' the per-locus read-depth window (\code{min.locus.depth}/\code{max.locus.depth}) removes
+#' whole loci (Ref and Alt together), and the other filters
+#' (\code{max.mhaps.per.loci}, \code{min.ind.with.reads}, \code{target.only}) only prune
+#' non-target \code{|RefMatch}/\code{|AltMatch}/\code{|Other} mhaps. The filtered data can
+#' optionally be saved to a file.
 #'
 #'@import dplyr
-#'@importFrom utils read.csv
+#'@importFrom utils read.csv write.csv
 #'
-#'@param madc_file Path to the MADC file to be filtered
-#'@param min.mean.reads Minimum mean read depth for filtering
-#'@param max.mean.reads Maximum mean read depth for filtering
-#'@param max.mhaps.per.loci Maximum number of matching mhaps per target loci. Retains only the target Ref and Alt loci at the sites that exceeds the \code{max.mhaps.per.loci} threshold.
-#'@param min.reads.per.site Minimum number of reads per site for \code{min.ind.with.reads}. Otherwise, this parameter is ignored
-#'@param min.ind.with.reads Minimum number of individuals with \code{min.reads.per.site} reads for filtering
-#'@param target.only Logical indicating whether to filter for target loci only
-#'@param n.summary.columns (optional) Number of summary columns to remove from MADC file not including the first three. Otherwise, the columns will be automatically detected and removed.
+#'@param madc_file Path to the fixed allele ID MADC file to be filtered
+#'@param min.locus.depth Minimum mean read depth per sample at a locus. Depth is the sum of all mhap reads at the locus (\code{|Ref}, \code{|Alt}, \code{|RefMatch}, \code{|AltMatch}, and \code{|Other}) divided by the number of samples. Loci below this threshold are removed entirely (Ref and Alt together). If NULL, no minimum is applied.
+#'@param max.locus.depth Maximum mean read depth per sample at a locus (computed as for \code{min.locus.depth}). Loci above this threshold are removed entirely, e.g. to exclude paralogous over-amplification. If NULL, no maximum is applied.
+#'@param max.mhaps.per.loci Maximum number of mhaps per target loci. At loci whose total number of mhaps exceeds the \code{max.mhaps.per.loci} threshold, only the target \code{|Ref} and \code{|Alt} alleles are retained (the \code{|RefMatch}, \code{|AltMatch}, and \code{|Other} alleles are removed).
+#'@param min.reads.per.site Minimum number of reads for a site (mhap in a sample) to count toward \code{min.ind.with.reads}.
+#'@param min.ind.with.reads Minimum number of individuals with \code{min.reads.per.site} reads required to retain a mhap. Target \code{|Ref}/\code{|Alt} alleles are always retained; only non-target (\code{|RefMatch}/\code{|AltMatch}/\code{|Other}) mhaps are removed by this filter.
+#'@param target.only Logical indicating whether to retain only the target \code{|Ref} and \code{|Alt} alleles (dropping \code{|RefMatch}, \code{|AltMatch}, and \code{|Other})
 #@param plot.summary Logical indicating whether to plot summary statistics
 #'@param output.file Path to save the filtered data (if NULL, data will not be saved)
 #'
@@ -31,123 +38,94 @@
 #'
 #' #Remove mhaps exceeding 3 per target region including the ref and alt target mhaps
 #' filtered_df <- filterMADC(madc_file,
-#'                          min.mean.reads = NULL,
-#'                          max.mean.reads = NULL,
+#'                          min.locus.depth = NULL,
+#'                          max.locus.depth = NULL,
 #'                          max.mhaps.per.loci = 3,
 #'                          min.reads.per.site = 1,
 #'                          min.ind.with.reads = NULL,
 #'                          target.only = FALSE,
-#'                          n.summary.columns = NULL,
 #'                          output.file = NULL)
 #'
 #'
 #'
 #'@export
 filterMADC <- function(madc_file,
-                       min.mean.reads = NULL,
-                       max.mean.reads = NULL,
+                       min.locus.depth = NULL,
+                       max.locus.depth = NULL,
                        max.mhaps.per.loci = NULL,
                        min.reads.per.site = 1,
                        min.ind.with.reads = NULL,
                        target.only = FALSE,
-                       n.summary.columns = NULL,
                        #plot.summary = FALSE,
                        output.file = NULL) {
 
 
-  #Need to first inspect the first 7 rows of the MADC to see if it has been preprocessed or not
-  first_seven_rows <- read.csv(madc_file, header = FALSE, nrows = 7, colClasses = c(NA, "NULL"))
+  #Read and sanity-check (fixed allele ID MADC only)
+  report <- read.csv(madc_file, check.names = FALSE)
+  checks <- check_madc_sanity(report)
 
-  #Check if all entries in the first column are either blank or "*"
-  check_entries <- all(first_seven_rows[, 1] %in% c("", "*"))
+  #Surface all sanity checks as informational messages (non-blocking)
+  msgs <- mapply(function(check, message) if (isTRUE(check)) message[1] else message[2],
+                 checks$checks, checks$messages)
+  for (i in seq_along(msgs)) message(msgs[i])
 
-  #Check if the MADC file has the filler rows or is processed from updated fixed allele ID pipeline
-  if (check_entries) {
-    #Note: This assumes that the first 7 rows are placeholder info from DArT processing
+  #Hard stops: only accept fixed allele ID MADC files with the required columns
+  if (!isTRUE(checks$checks[["Columns"]]))
+    stop("The MADC file is missing required columns (CloneID, AlleleID, AlleleSequence)")
 
-    warning("The MADC file has not been pre-processed for Fixed Allele IDs. The first 7 rows are placeholder info from DArT processing.")
+  if (!isTRUE(checks$checks[["FixAlleleIDs"]]))
+    stop("The MADC file does not have fixed AlleleIDs. Please process the MADC file through HapApp before using this function.")
 
-    #Read the madc file
-    filtered_df <- read.csv(madc_file, sep = ',', skip = 7, check.names = FALSE)
-
-    #Remove extra text after Ref and Alt (_001 or _002)
-    #filtered_df$AlleleID <- sub("\\|Ref_.*", "|Ref", filtered_df$AlleleID)
-    #filtered_df$AlleleID <- sub("\\|Alt_.*", "|Alt", filtered_df$AlleleID)
-
-  } else {
-
-    #Read the madc file
-    filtered_df <- read.csv(madc_file, sep = ',', check.names = FALSE)
-
-    #Remove extra text after Ref and Alt (_001 or _002)
-    #filtered_df$AlleleID <- sub("\\|Ref_.*", "|Ref", filtered_df$AlleleID)
-    #filtered_df$AlleleID <- sub("\\|Alt_.*", "|Alt", filtered_df$AlleleID)
-
-  }
-  #Check for extra columns
-  #Save the three columns for later adding to the output
-  saved_columns <- filtered_df[,1:3]
-
-  if (!is.null(n.summary.columns)) {
-    #Remove the first n.summary.columns columns
-    filtered_df <- filtered_df[,-c(4:n.summary.columns)]
-  }else{
-    rm.col <- c("ClusterConsensusSequence",
-                "CallRate", "OneRatioRef", "OneRatioSnp", "FreqHomRef", "FreqHomSnp",
-                "FreqHets", "PICRef", "PICSnp", "AvgPIC", "AvgCountRef", "AvgCountSnp","RatioAvgCountRefAvgCountSnp")
-
-    filtered_df <- filtered_df[, !(colnames(filtered_df) %in% rm.col)]
-  }
-
-  #Now add rownames
-  rownames(filtered_df) <- saved_columns[,1]
-
-  #Remove refmatch and altmatch if wanted
-  if (target.only) {
-    message("Retaining target markers only")
-    #Retain only the Ref and Alt haplotypes
-    filtered_df <- filtered_df[!grepl("\\|AltMatch|\\|RefMatch", filtered_df$AlleleID), ]
-  }
+  #Fixed allele ID MADC has a standard layout: columns 1:3 are the ID columns
+  #(AlleleID, CloneID, AlleleSequence) and columns 4:ncol are numeric samples.
+  filtered_df <- report
 
   ## Filtering
 
-  #Min mean reads
-  if (!is.null(min.mean.reads)) {
-    message("Filtering for minimum mean reads across all samples")
-    #Get the mean value for each row, and remove the rows below that threshold
-    filtered_df$MeanReads <- rowMeans(filtered_df[, -c(1:3)], na.rm = TRUE)
-    filtered_df <- filtered_df[filtered_df$MeanReads >= min.mean.reads, ]
-    #Remove the MeanReads column
-    filtered_df <- filtered_df[, -which(colnames(filtered_df) == "MeanReads")]
+  #Per-locus depth window (runs first, on the full mhap set so paralogous
+  #over-amplification is measured before any trimming). Depth is the mean reads
+  #per sample at a locus = (sum of all mhap reads at the locus) / number of samples.
+  #Loci outside [min.locus.depth, max.locus.depth] are removed whole (Ref and Alt
+  #together), so retained loci always keep their Ref/Alt pair intact.
+  if (!is.null(min.locus.depth) || !is.null(max.locus.depth)) {
+    n_samples <- ncol(filtered_df) - 3
+    row_totals <- rowSums(filtered_df[, -c(1:3), drop = FALSE], na.rm = TRUE)
+    locus_depth <- tapply(row_totals, filtered_df$CloneID, sum) / n_samples
+
+    keep_mask <- rep(TRUE, length(locus_depth))
+    if (!is.null(min.locus.depth)) {
+      message("Filtering for minimum mean read depth per sample per locus")
+      keep_mask <- keep_mask & (locus_depth >= min.locus.depth)
+    }
+    if (!is.null(max.locus.depth)) {
+      message("Filtering for maximum mean read depth per sample per locus")
+      keep_mask <- keep_mask & (locus_depth <= max.locus.depth)
+    }
+    keep_loci <- names(locus_depth)[keep_mask]
+    filtered_df <- filtered_df[filtered_df$CloneID %in% keep_loci, ]
   }
 
-  #Max mean reads
-  if (!is.null(max.mean.reads)) {
-    message("Filtering for maximum mean reads across all samples")
-    #Get the mean value for each row, and remove the rows above that threshold
-    filtered_df$MeanReads <- rowMeans(filtered_df[, -c(1:3)], na.rm = TRUE)
-    filtered_df <- filtered_df[filtered_df$MeanReads <= max.mean.reads, ]
-    #Remove the MeanReads column
-    filtered_df <- filtered_df[, -which(colnames(filtered_df) == "MeanReads")]
+  #Remove refmatch, altmatch, and other if wanted (retain only the target Ref and Alt haplotypes)
+  if (target.only) {
+    message("Retaining target markers only")
+    filtered_df <- filtered_df[grepl("\\|(Ref|Alt)_", filtered_df$AlleleID), ]
   }
 
   #Max mhaps per loci
   if (!is.null(max.mhaps.per.loci)) {
     message("Filtering for maximum number of matching mhaps per target loci")
-    #Get the number of matching mhaps for loci, and remove the mhaps at those loci that exceed the max number
-    mhap_counts <- filtered_df %>%
+    #Count ALL mhaps per locus; at loci exceeding the max, retain only the target Ref/Alt alleles
+    clone_ids_to_target <- filtered_df %>%
       group_by(CloneID) %>%
       summarise(Count = n(), .groups = 'drop') %>%
-      filter(Count > max.mhaps.per.loci)
-
-    patterns_to_search <- "\\|AltMatch|\\|RefMatch"
-    clone_ids_to_target <- mhap_counts$CloneID
+      filter(Count > max.mhaps.per.loci) %>%
+      pull(CloneID)
 
     filtered_df <- filtered_df %>%
       filter(
         !( # "keep rows that DO NOT match both conditions"
-          CloneID %in% clone_ids_to_target &  # Condition 1: CloneID is one of the targeted IDs
-            grepl(patterns_to_search, AlleleID) # Condition 2: AlleleID contains one of the patterns
+          CloneID %in% clone_ids_to_target &  # Condition 1: locus is over the threshold
+            !grepl("\\|(Ref|Alt)_", AlleleID) # Condition 2: AlleleID is NOT a target Ref/Alt
         )
       )
   }
@@ -171,8 +149,9 @@ filterMADC <- function(madc_file,
         )
       ) %>%
       ungroup() %>% # Always ungroup after rowwise operations
-      # Filter rows where this count meets the 'min.ind.with.reads' threshold
-      filter(qualifying_sites_count >= min.ind.with.reads) %>%
+      # Always retain target Ref/Alt; only prune non-target (Match/Other) mhaps that
+      # fail the 'min.ind.with.reads' threshold, so a locus never loses its Ref/Alt pair
+      filter(grepl("\\|(Ref|Alt)_", AlleleID) | qualifying_sites_count >= min.ind.with.reads) %>%
       # Optionally, remove the temporary count column if it's no longer needed
       select(-qualifying_sites_count)
   }

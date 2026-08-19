@@ -173,8 +173,8 @@ rhampseq2madc <- function(hap_genotype_file,
 
   .locus_worker <- function(t) {
     ## Debug code
-    locus <- unique(hapgeno$Locus)
-    t <- which(hapgeno$Locus == locus[20])
+    #locus <- unique(hapgeno$Locus)
+    #t <- which(hapgeno$Locus == locus[20])
     ###
 
     .info <- list(fallback_ref = FALSE, dup_ref = FALSE)

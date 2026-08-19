@@ -1,3 +1,9 @@
+# BIGr 0.10.1
+
+* `rhampseq2madc` bugfix on indexation for markers with no information for any sample
+* `rhampseq2madc` address homozygous genotype information with only one value of allele counts (example: 2/2:53, now is 2/2:0,53)
+* `rhampseq2madc` add info item to result with information of alleles and sequences discarded during the process
+
 # BIGr 0.10.0
 
 * Add function `rhampseq2madc`  and associated testthat

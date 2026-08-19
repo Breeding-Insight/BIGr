@@ -19,12 +19,19 @@
 #' SNP is placed at the centre of the longest run of positions with the minimum
 #' polymorphism count across alleles.
 #'
+#' Genotype cells where a single depth value is reported for a diploid call
+#' (e.g. \code{"2/2:39"} or \code{"0/0:23"}) are handled by inferring the
+#' missing depth as zero. For \code{"0/0"} genotypes the observed depth is
+#' placed first and zero appended; for all other genotypes zero is prepended
+#' and the observed depth placed last.
+#'
 #' @param hap_genotype_file Path to a tab-delimited haplotype genotype file.
 #'   Column 1 must contain locus names; column 2 must contain haplotype
 #'   frequencies in \code{"N(freq);"} format (informational, not validated);
 #'   columns 3 onward must contain per-sample genotypes in
 #'   \code{"allele1/allele2:depth1,depth2"} format (\code{"./.:0"} for missing
-#'   calls).
+#'   calls). A single depth value for a diploid genotype (e.g.
+#'   \code{"2/2:39"}) is accepted; the missing depth is inferred as zero.
 #' @param haplotype_allele_fasta Path to a FASTA file of haplotype allele
 #'   sequences. Sequence names must follow the \code{"LocusID#N"} convention
 #'   (e.g. \code{"rhMAS_5GT_cons95#1"}). Loci present in
@@ -43,7 +50,7 @@
 #' @param verbose Logical. When \code{TRUE}, progress and per-locus warning
 #'   messages are printed via \code{vmsg()}. Defaults to \code{TRUE}.
 #'
-#' @return A named \code{list} with three elements:
+#' @return A named \code{list} with four elements:
 #'   \describe{
 #'     \item{madc}{A \code{data.frame} in MADC format with columns
 #'       \code{AlleleID}, \code{CloneID}, \code{AlleleSequence}, and one
@@ -57,6 +64,15 @@
 #'       \code{"from/to"} format, e.g. \code{"A/C"}).}
 #'     \item{new_fasta}{A \code{DNAStringSet} containing all allele sequences
 #'       from \code{madc}, with \code{AlleleID} values as sequence names.}
+#'     \item{info}{A named \code{list} of diagnostic character vectors:
+#'       \code{no_fasta_ids} (locus names absent from the FASTA),
+#'       \code{fallback_ref_ids} (locus names for which \code{#1} was absent
+#'       and a fallback reference was used),
+#'       \code{dup_ref_ids} (full FASTA sequence IDs — including the
+#'       \code{#N} suffix — of alleles found to be identical to the reference
+#'       and whose depths were merged into it, e.g. \code{"LocusID#3"}), and
+#'       \code{retry_failed_ids} (locus names that failed even after sequential
+#'       retry).}
 #'   }
 #'
 #' @importFrom Biostrings readDNAStringSet DNAStringSet subseq replaceLetterAt writeXStringSet

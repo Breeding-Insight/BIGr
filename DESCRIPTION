@@ -1,7 +1,7 @@
 Package: BIGr
 Title: Breeding Insight Genomics Functions for Polyploid and Diploid
     Species
-Version: 0.10.0
+Version: 0.10.1
 Authors@R: c(
     person("Alexander M.", "Sandercock", , "sandercock.alex@gmail.com", role = c("cre", "aut")),
     person("Cristiane", "Taniguti", role = "aut"),

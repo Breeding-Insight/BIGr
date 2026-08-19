@@ -95,7 +95,7 @@ rhampseq2madc <- function(hap_genotype_file,
   vmsg("prefix                 : %s", verbose = verbose, level = 1, type = ">>", if (is.null(prefix)) "NULL" else prefix)
 
   vmsg("Reading input files", verbose = verbose, level = 0, type = ">>")
-  hapgeno <- read.table(hap_genotype_file, sep = "\t", header = TRUE)
+  hapgeno <- read.table(hap_genotype_file, sep = "\t", header = TRUE, check.names = FALSE)
   sequences <- readDNAStringSet(haplotype_allele_fasta)
   vmsg("%s loci and %s sequences read",
        verbose = verbose, level = 1, type = ">>",

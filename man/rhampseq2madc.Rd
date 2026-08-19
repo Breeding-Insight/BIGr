@@ -19,8 +19,8 @@ Column 1 must contain locus names; column 2 must contain haplotype
 frequencies in \code{"N(freq);"} format (informational, not validated);
 columns 3 onward must contain per-sample genotypes in
 \code{"allele1/allele2:depth1,depth2"} format (\code{"./.:0"} for missing
-calls). A single depth value for a diploid genotype (e.g.
-\code{"2/2:39"}) is accepted; the missing depth is inferred as zero.}
+calls). Homozygous calls with a single depth (e.g. \code{"2/2:39"}) are
+collapsed to a single allele/depth pair before aggregation.}
 
 \item{haplotype_allele_fasta}{Path to a FASTA file of haplotype allele
 sequences. Sequence names must follow the \code{"LocusID#N"} convention
@@ -50,7 +50,9 @@ A named \code{list} with four elements:
 \item{madc}{A \code{data.frame} in MADC format with columns
 \code{AlleleID}, \code{CloneID}, \code{AlleleSequence}, and one
 column per sample containing integer read depths. Only loci found in
-the FASTA are included.}
+the FASTA are included. Sample depth columns contain no \code{NA}
+values; unobserved alleles and missing calls are represented as
+\code{0}.}
 \item{target_positions}{A \code{data.frame} with one row per processed
 locus and columns \code{AlleleID_rhAmpSeq} (reference sequence name,
 e.g. \code{"LocusID#1"}), \code{AlleleID} (locus name),
@@ -91,9 +93,9 @@ reference position is covered by at least one polymorphism, the synthetic
 SNP is placed at the centre of the longest run of positions with the minimum
 polymorphism count across alleles.
 
-Genotype cells where a single depth value is reported for a diploid call
-(e.g. \code{"2/2:39"} or \code{"0/0:23"}) are handled by inferring the
-missing depth as zero. For \code{"0/0"} genotypes the observed depth is
-placed first and zero appended; for all other genotypes zero is prepended
-and the observed depth placed last.
+Homozygous genotype cells with a single depth value (e.g. \code{"2/2:39"})
+are collapsed to a single allele entry (\code{"2:39"}) before depth
+aggregation, so the reported depth is attributed once to the unique allele.
+Missing calls (\code{"./.:0"}) are excluded from depth aggregation; any
+allele absent from all samples receives a depth of zero.
 }

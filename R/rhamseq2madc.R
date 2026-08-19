@@ -19,19 +19,19 @@
 #' SNP is placed at the centre of the longest run of positions with the minimum
 #' polymorphism count across alleles.
 #'
-#' Genotype cells where a single depth value is reported for a diploid call
-#' (e.g. \code{"2/2:39"} or \code{"0/0:23"}) are handled by inferring the
-#' missing depth as zero. For \code{"0/0"} genotypes the observed depth is
-#' placed first and zero appended; for all other genotypes zero is prepended
-#' and the observed depth placed last.
+#' Homozygous genotype cells with a single depth value (e.g. \code{"2/2:39"})
+#' are collapsed to a single allele entry (\code{"2:39"}) before depth
+#' aggregation, so the reported depth is attributed once to the unique allele.
+#' Missing calls (\code{"./.:0"}) are excluded from depth aggregation; any
+#' allele absent from all samples receives a depth of zero.
 #'
 #' @param hap_genotype_file Path to a tab-delimited haplotype genotype file.
 #'   Column 1 must contain locus names; column 2 must contain haplotype
 #'   frequencies in \code{"N(freq);"} format (informational, not validated);
 #'   columns 3 onward must contain per-sample genotypes in
 #'   \code{"allele1/allele2:depth1,depth2"} format (\code{"./.:0"} for missing
-#'   calls). A single depth value for a diploid genotype (e.g.
-#'   \code{"2/2:39"}) is accepted; the missing depth is inferred as zero.
+#'   calls). Homozygous calls with a single depth (e.g. \code{"2/2:39"}) are
+#'   collapsed to a single allele/depth pair before aggregation.
 #' @param haplotype_allele_fasta Path to a FASTA file of haplotype allele
 #'   sequences. Sequence names must follow the \code{"LocusID#N"} convention
 #'   (e.g. \code{"rhMAS_5GT_cons95#1"}). Loci present in
@@ -55,7 +55,9 @@
 #'     \item{madc}{A \code{data.frame} in MADC format with columns
 #'       \code{AlleleID}, \code{CloneID}, \code{AlleleSequence}, and one
 #'       column per sample containing integer read depths. Only loci found in
-#'       the FASTA are included.}
+#'       the FASTA are included. Sample depth columns contain no \code{NA}
+#'       values; unobserved alleles and missing calls are represented as
+#'       \code{0}.}
 #'     \item{target_positions}{A \code{data.frame} with one row per processed
 #'       locus and columns \code{AlleleID_rhAmpSeq} (reference sequence name,
 #'       e.g. \code{"LocusID#1"}), \code{AlleleID} (locus name),
@@ -171,7 +173,8 @@ rhampseq2madc <- function(hap_genotype_file,
 
   .locus_worker <- function(t) {
     ## Debug code
-    #t <- which(hapgeno$Locus == "P1_1_7687844_1002_VariantMasked")
+    locus <- unique(hapgeno$Locus)
+    t <- which(hapgeno$Locus == locus[20])
     ###
 
     .info <- list(fallback_ref = FALSE, dup_ref = FALSE)
@@ -204,14 +207,12 @@ rhampseq2madc <- function(hap_genotype_file,
       } else {
         alleles_list <- strsplit(allele_parts, "/", fixed = TRUE)
         depths_list <- strsplit(depth_parts, ",", fixed = TRUE)
-        # Pad depth vector when fewer depths than alleles are reported (e.g. "2/2:39").
-        # 0/0 genotypes: the single depth belongs to the first position → pad right.
-        # All other genotypes: the single depth belongs to the last position → pad left.
-        depths_list <- mapply(function(a, d) {
-          if (length(d) >= length(a)) return(d)
-          pad <- rep("0", length(a) - length(d))
-          if (all(a == "0")) c(d, pad) else c(pad, d)
+        # Collapse homozygous calls with a single depth (e.g. "2/2:39" → allele 2, depth 39).
+        keep <- mapply(function(a, d) {
+          if (length(d) < length(a) && length(unique(a)) == 1L) seq_len(1L) else seq_along(a)
         }, alleles_list, depths_list, SIMPLIFY = FALSE)
+        alleles_list <- mapply(function(a, k) a[k], alleles_list, keep, SIMPLIFY = FALSE)
+        depths_list  <- mapply(function(d, k) d[k], depths_list,  keep, SIMPLIFY = FALSE)
         lens <- lengths(alleles_list)
         long_df <- data.frame(
           allele_id = as.integer(unlist(alleles_list, use.names = FALSE)),
@@ -449,7 +450,8 @@ rhampseq2madc <- function(hap_genotype_file,
 
     madc_one <- cbind(madc13_one, depth_wide[tomerge_idx, -1])
 
-    madc_one[2, ][is.na(madc_one[2, ])] <- 0L
+    # Replace NAs in all sample columns (unobserved alleles and missing ./.:0 calls)
+    madc_one[, -(1:3)][is.na(madc_one[, -(1:3)])] <- 0L
 
     list(
       madc = madc_one,

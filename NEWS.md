@@ -1,8 +1,10 @@
 # BIGr 0.10.1
 
-* `rhampseq2madc` bugfix on indexation for markers with no information for any sample
-* `rhampseq2madc` address homozygous genotype information with only one value of allele counts (example: 2/2:53, now is 2/2:0,53)
-* `rhampseq2madc` add info item to result with information of alleles and sequences discarded during the process
+* Changes on `rhampseq2madc` 
+    - bugfix on indexation for markers with no information for any sample
+    - address homozygous genotype information with only one value of allele counts (example: 2/2:53, now is 2:53)
+    - add info item to result with information of alleles and sequences discarded during the process
+    - make sure all `./.:0` becomes 0 counts on the MADC
 
 # BIGr 0.10.0
 

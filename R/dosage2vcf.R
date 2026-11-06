@@ -330,8 +330,8 @@ dosage2vcf <- function(dart.report, dart.counts, ploidy, output.file) {
                             dimnames = list(ref_report$MarkerName, sample_cols))
       called <- !is.na(ref_matrix) & !is.na(alt_matrix)
       code_matrix[called & ref_matrix == "1" & alt_matrix == "0"] <- "0"
-      code_matrix[called & ref_matrix == "0" & alt_matrix == "1"] <- "1"
-      code_matrix[called & ref_matrix == "1" & alt_matrix == "1"] <- "2"
+      code_matrix[called & ref_matrix == "0" & alt_matrix == "1"] <- "2"
+      code_matrix[called & ref_matrix == "1" & alt_matrix == "1"] <- "1"
       code_matrix[called & ref_matrix == "0" & alt_matrix == "0"] <- NA_character_
       converted <- convert_snp_codes(code_matrix)
 

@@ -48,14 +48,14 @@
 #' @param metadata Optional sample-metadata data.frame (see [madc_summary()]) used
 #'   to color the PCA, group the missing-data boxplot, and sort the heatmap
 #'   samples by category.
-#' @param group.col Category column in `metadata` (e.g. species/population). Must
-#'   be supplied whenever `metadata` is given. In the heatmap, samples are sorted
-#'   by category, with one x-axis label per category and white lines between
-#'   categories. Samples not found in `metadata` are left out of the heatmap and
-#'   the missing-data boxplot.
+#' @param group.col Category column in `metadata` (e.g. species/population).
+#'   If `NULL` (default), samples are not grouped. In the heatmap, samples are
+#'   sorted by category, with one x-axis label per category and white lines
+#'   between categories. Samples not found in `metadata` are left out of the
+#'   heatmap and the missing-data boxplot.
 #' @param shape.col Optional second `metadata` column mapped to point shape in
 #'   the PCA (e.g. plate or location), so two variables can be shown at once.
-#'   Only used when `metadata` and `group.col` are supplied.
+#'   Only used when `metadata` is supplied.
 #' @param palette Optional vector of colors for the categorical scales (PCA
 #'   point color, missing-boxplot fill); interpolated to the number of
 #'   categories. `NULL` uses the ggplot2 defaults. Not used by the other plots.
@@ -125,18 +125,20 @@
 #'   figure and the multi-panel), leaving the axis labels, legends and the
 #'   `"balance"` caption - useful when the figure is captioned externally
 #'   (manuscript, report, slide).
-#' @param output.file If not `NULL`, the figure is also saved here: as a PDF when
-#'   the extension is `.pdf`, otherwise as a PNG.
+#' @param output.file If not `NULL`, the figure is also saved here. The format is
+#'   set by the extension: `.png`, `.pdf`, `.jpg`/`.jpeg`, `.tif`/`.tiff`, or
+#'   `.svg`; other extensions give an error.
 #' @param width,height,dpi Saved-figure dimensions (inches) and resolution (`dpi`
-#'   applies to PNG only).
+#'   applies to PNG, JPEG, and TIFF only).
 #' @param verbose Logical; print progress/validation messages. Default `TRUE`.
 #'
 #' @return For a single `plot.type`, a `ggplot`, returned invisibly when
 #'   `output.file` is given. With `plot.type = "balance"` and
 #'   `balance.density = TRUE` this is a composite grob; use
 #'   `grid::grid.draw()` to display it. For several types, an invisible list with
-#'   `plots` (named list) and `panel` (the assembled multi-panel grob); the panel
-#'   is not drawn, use `grid::grid.draw(res$panel)` to display it. `"circos"`
+#'   `plots` (named list) and `panel` (the assembled multi-panel grob); when
+#'   `output.file` is `NULL`, the panel is also drawn to the current graphics
+#'   device (in an interactive session, or when a device is already open). `"circos"`
 #'   returns invisibly the path of the saved figure (`output.file`, or a
 #'   temporary PNG when no `output.file` is given and no graphics device is open),
 #'   or `NULL` when it is drawn to an already open device.
@@ -145,8 +147,7 @@
 #' madc_file <- system.file("example_MADC_FixedAlleleID.csv", package = "BIGr")
 #' p <- madc_plot(madc_file, plot.type = "missing")
 #' \donttest{
-#' res <- madc_plot(madc_file, plot.type = c("pca", "heatmap"))
-#' grid::grid.draw(res$panel)
+#' madc_plot(madc_file, plot.type = c("pca", "heatmap"))
 #' madc_plot(madc_file, plot.type = "balance", ploidy = 2)
 #' }
 #'
@@ -196,12 +197,14 @@ madc_plot <- function(madc,
   fill      <- match.arg(fill)
   miss.sort <- match.arg(miss.sort)
 
+  if (!is.null(output.file)) .madc_check_ext(output.file)
+
   report <- .read_and_check_madc(madc, verbose = verbose)
   m <- .madc_metrics(report, min.depth = min.depth, target.only = target.only,
                      mhap.min.reads = mhap.min.reads, markers_info = markers_info,
                      verbose = FALSE)
   grp <- .madc_group(metadata, group.col, m$samples)
-  shp <- if (!is.null(shape.col)) .madc_group(metadata, shape.col, m$samples) else NULL
+  shp <- .madc_group(metadata, shape.col, m$samples, arg = "shape.col")
 
   # circos is a standalone base-graphics (circlize) figure - it cannot be embedded
   # in a grid multi-panel, so it must be requested on its own.
@@ -218,9 +221,7 @@ madc_plot <- function(madc,
       if (verbose) message("No graphics device / output.file; circos written to ", save_to)
     }
     if (!is.null(save_to)) {
-      ext <- tolower(tools::file_ext(save_to))
-      if (ext == "pdf") grDevices::pdf(save_to, width = width, height = height)
-      else grDevices::png(save_to, width = width, height = height, units = "in", res = dpi)
+      .madc_open_device(save_to, width, height, dpi)
       on.exit(grDevices::dev.off(), add = TRUE)
     }
     .madc_plot_circos(m, paralog.flag = paralog.flag, density.window = density.window,
@@ -239,7 +240,7 @@ madc_plot <- function(madc,
 
   build <- list(
     pca     = function() .madc_plot_pca(m, pc.x, pc.y, loci.miss.max, sample.miss.max, grp, shp, palette),
-    marker  = function() .madc_plot_marker(m, facet.chrom = facet.chrom),
+    marker  = function() .madc_plot_marker(m),
     heatmap = function() .madc_plot_heatmap(m, fill, facet.chrom, max.loci, max.samples, verbose, grp),
     missing = function() .madc_plot_missing(m, grp, palette, sort = miss.sort,
                                             horizontal = horizontal),
@@ -267,7 +268,14 @@ madc_plot <- function(madc,
   ncol <- 2L
   nrow <- ceiling(n / ncol)
   panel <- .arrange_grobs(plots, nrow = nrow, ncol = ncol)
-  if (!is.null(output.file)) .madc_save(panel, output.file, width, height, dpi)
+  if (!is.null(output.file)) {
+    .madc_save(panel, output.file, width, height, dpi)
+  } else if (interactive() || grDevices::dev.cur() != 1L) {
+    # draw the panel like a single ggplot would print; skipped when no device is
+    # open in a non-interactive session so no stray Rplots.pdf is left behind
+    grid::grid.newpage()
+    grid::grid.draw(panel)
+  }
   invisible(list(plots = plots, panel = panel))
 }
 
@@ -300,6 +308,12 @@ madc_plot <- function(madc,
   if (ncol(mat) < 2) stop("No informative (non-constant) loci remain for PCA.")
 
   pc <- stats::prcomp(mat, center = TRUE, scale. = FALSE)
+  n_pc <- ncol(pc$x)
+  bad_pc <- function(v) length(v) != 1L || !is.numeric(v) || is.na(v) ||
+    v != round(v) || v < 1 || v > n_pc
+  if (bad_pc(pc.x) || bad_pc(pc.y))
+    stop(sprintf("`pc.x` and `pc.y` must be whole numbers between 1 and %d (the number of principal components available).",
+                 n_pc))
   ve <- pc$sdev^2 / sum(pc$sdev^2)
   df <- data.frame(sample = rownames(mat),
                    PCx = pc$x[, pc.x], PCy = pc$x[, pc.y],
@@ -335,7 +349,7 @@ madc_plot <- function(madc,
 # ---- Marker distribution (linear, positions only) --------------------------
 #' @keywords internal
 #' @noRd
-.madc_plot_marker <- function(m, facet.chrom = FALSE) {
+.madc_plot_marker <- function(m) {
   df <- .madc_marker_df(m)
   chr_levels <- rev(sort(unique(df$chr)))
   df$chr <- factor(df$chr, levels = chr_levels)

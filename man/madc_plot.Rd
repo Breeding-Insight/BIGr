@@ -64,15 +64,15 @@ present (see Details for the plots that use it). Default \code{10}.}
 to color the PCA, group the missing-data boxplot, and sort the heatmap
 samples by category.}
 
-\item{group.col}{Category column in \code{metadata} (e.g. species/population). Must
-be supplied whenever \code{metadata} is given. In the heatmap, samples are sorted
-by category, with one x-axis label per category and white lines between
-categories. Samples not found in \code{metadata} are left out of the heatmap and
-the missing-data boxplot.}
+\item{group.col}{Category column in \code{metadata} (e.g. species/population).
+If \code{NULL} (default), samples are not grouped. In the heatmap, samples are
+sorted by category, with one x-axis label per category and white lines
+between categories. Samples not found in \code{metadata} are left out of the
+heatmap and the missing-data boxplot.}
 
 \item{shape.col}{Optional second \code{metadata} column mapped to point shape in
 the PCA (e.g. plate or location), so two variables can be shown at once.
-Only used when \code{metadata} and \code{group.col} are supplied.}
+Only used when \code{metadata} is supplied.}
 
 \item{palette}{Optional vector of colors for the categorical scales (PCA
 point color, missing-boxplot fill); interpolated to the number of
@@ -165,11 +165,12 @@ figure and the multi-panel), leaving the axis labels, legends and the
 \code{"balance"} caption - useful when the figure is captioned externally
 (manuscript, report, slide).}
 
-\item{output.file}{If not \code{NULL}, the figure is also saved here: as a PDF when
-the extension is \code{.pdf}, otherwise as a PNG.}
+\item{output.file}{If not \code{NULL}, the figure is also saved here. The format is
+set by the extension: \code{.png}, \code{.pdf}, \code{.jpg}/\code{.jpeg}, \code{.tif}/\code{.tiff}, or
+\code{.svg}; other extensions give an error.}
 
 \item{width, height, dpi}{Saved-figure dimensions (inches) and resolution (\code{dpi}
-applies to PNG only).}
+applies to PNG, JPEG, and TIFF only).}
 
 \item{verbose}{Logical; print progress/validation messages. Default \code{TRUE}.}
 }
@@ -178,8 +179,9 @@ For a single \code{plot.type}, a \code{ggplot}, returned invisibly when
 \code{output.file} is given. With \code{plot.type = "balance"} and
 \code{balance.density = TRUE} this is a composite grob; use
 \code{grid::grid.draw()} to display it. For several types, an invisible list with
-\code{plots} (named list) and \code{panel} (the assembled multi-panel grob); the panel
-is not drawn, use \code{grid::grid.draw(res$panel)} to display it. \code{"circos"}
+\code{plots} (named list) and \code{panel} (the assembled multi-panel grob); when
+\code{output.file} is \code{NULL}, the panel is also drawn to the current graphics
+device (in an interactive session, or when a device is already open). \code{"circos"}
 returns invisibly the path of the saved figure (\code{output.file}, or a
 temporary PNG when no \code{output.file} is given and no graphics device is open),
 or \code{NULL} when it is drawn to an already open device.
@@ -225,8 +227,7 @@ defined ratio (including below \code{min.depth}, marked by a dotted line) and, w
 madc_file <- system.file("example_MADC_FixedAlleleID.csv", package = "BIGr")
 p <- madc_plot(madc_file, plot.type = "missing")
 \donttest{
-res <- madc_plot(madc_file, plot.type = c("pca", "heatmap"))
-grid::grid.draw(res$panel)
+madc_plot(madc_file, plot.type = c("pca", "heatmap"))
 madc_plot(madc_file, plot.type = "balance", ploidy = 2)
 }
 

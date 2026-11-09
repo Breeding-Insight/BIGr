@@ -109,3 +109,12 @@ test_that("raw MADC is rejected", {
   raw <- system.file("iris_DArT_MADC.csv", package = "BIGr")
   expect_error(suppressMessages(madc_summary(raw)), "HapApp")
 })
+
+test_that("metadata without group.col returns no by_category table", {
+  madc_file <- system.file("example_MADC_FixedAlleleID.csv", package = "BIGr")
+  meta <- data.frame(sample  = paste0("Sample_", 1:10),
+                     species = rep(c("A", "B"), 5),
+                     stringsAsFactors = FALSE)
+  res <- suppressWarnings(suppressMessages(madc_summary(madc_file, metadata = meta)))
+  expect_null(res$by_category)
+})

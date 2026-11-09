@@ -163,15 +163,18 @@
 #' Resolve a per-sample grouping vector from a metadata table
 #'
 #' The sample-id column is auto-detected (sample/Sample/ID/SampleID/...) or the
-#' first column; values are matched to the MADC sample column names.
+#' first column; values are matched to the MADC sample column names. Returns
+#' NULL when `metadata` or the requested column is NULL. `arg` is the argument
+#' name used in the error message (e.g. "group.col" or "shape.col").
 #'
 #' @keywords internal
 #' @noRd
-.madc_group <- function(metadata, group.col, samples) {
+.madc_group <- function(metadata, group.col, samples, arg = "group.col") {
   if (is.null(metadata)) return(NULL)
   if (!is.data.frame(metadata)) stop("`metadata` must be a data.frame.")
-  if (is.null(group.col) || !group.col %in% names(metadata))
-    stop("`group.col` must be a column name in `metadata`.")
+  if (is.null(group.col)) return(NULL)
+  if (!is.character(group.col) || length(group.col) != 1L || !group.col %in% names(metadata))
+    stop(sprintf("`%s` must be a column name in `metadata`.", arg))
   id_candidates <- intersect(c("sample", "Sample", "ID", "SampleID", "sample_id",
                                "Sample_ID"), names(metadata))
   id_col <- if (length(id_candidates)) id_candidates[1] else names(metadata)[1]
@@ -238,17 +241,42 @@
   grid::grid.grab(wrap.grobs = TRUE)
 }
 
-#' Save a ggplot or an assembled grob to PNG/PDF
+#' Check that an output file has a supported image extension
+#'
+#' @keywords internal
+#' @noRd
+.madc_check_ext <- function(file) {
+  ext <- tolower(tools::file_ext(file))
+  if (!ext %in% c("png", "pdf", "jpg", "jpeg", "tif", "tiff", "svg"))
+    stop("`output.file` must end in .png, .pdf, .jpg/.jpeg, .tif/.tiff, or .svg.")
+  ext
+}
+
+#' Open a graphics device matching the output file extension
+#'
+#' @keywords internal
+#' @noRd
+.madc_open_device <- function(file, width = 8, height = 6, dpi = 300) {
+  ext <- .madc_check_ext(file)
+  switch(ext,
+    pdf  = grDevices::pdf(file, width = width, height = height),
+    png  = grDevices::png(file, width = width, height = height, units = "in", res = dpi),
+    jpg  = ,
+    jpeg = grDevices::jpeg(file, width = width, height = height, units = "in", res = dpi,
+                           quality = 95),
+    tif  = ,
+    tiff = grDevices::tiff(file, width = width, height = height, units = "in", res = dpi,
+                           compression = "lzw"),
+    svg  = grDevices::svg(file, width = width, height = height))
+  invisible(file)
+}
+
+#' Save a ggplot or an assembled grob to an image file
 #'
 #' @keywords internal
 #' @noRd
 .madc_save <- function(x, file, width = 8, height = 6, dpi = 300) {
-  ext <- tolower(tools::file_ext(file))
-  if (ext == "pdf") {
-    grDevices::pdf(file, width = width, height = height)
-  } else {
-    grDevices::png(file, width = width, height = height, units = "in", res = dpi)
-  }
+  .madc_open_device(file, width, height, dpi)
   on.exit(grDevices::dev.off(), add = TRUE)
   if (inherits(x, "ggplot")) print(x) else { grid::grid.newpage(); grid::grid.draw(x) }
   invisible(file)

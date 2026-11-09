@@ -39,8 +39,8 @@
 #'   `sample_id`/`Sample_ID`) or taken as the first column; ids are matched to
 #'   the MADC sample column names.
 #' @param group.col Name of the category column in `metadata` (e.g. species or
-#'   population). Must be supplied whenever `metadata` is given; used to produce
-#'   the `by_category` table.
+#'   population), used to produce the `by_category` table. If `NULL` (default),
+#'   no `by_category` table is returned.
 #' @param markers_info Optional marker lookup table with an id column
 #'   (`CloneID`/`Marker_ID`/`BI_markerID`) plus `Chr` and `Pos`, used when the
 #'   CloneIDs are not in `Chr_Pos` format.

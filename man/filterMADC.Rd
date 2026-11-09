@@ -30,10 +30,10 @@ filterMADC(
 
 \item{target.only}{Logical indicating whether to retain only the target \code{|Ref} and \code{|Alt} alleles (dropping \code{|RefMatch}, \code{|AltMatch}, and \code{|Other})}
 
-\item{output.file}{Path to save the filtered data (if NULL, data will not be saved)}
+\item{output.file}{Path to save the filtered data; \code{.csv} is appended to the name (if NULL, data will not be saved)}
 }
 \value{
-data.frame or saved csv file
+A data.frame of the filtered MADC when \code{output.file} is NULL. Otherwise the filtered data is saved to \code{paste0(output.file, ".csv")} and NULL is returned.
 }
 \description{
 Filter and process MADC files to remove low quality microhaplotypes

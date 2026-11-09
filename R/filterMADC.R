@@ -26,9 +26,9 @@
 #'@param min.ind.with.reads Minimum number of individuals with \code{min.reads.per.site} reads required to retain a mhap. Target \code{|Ref}/\code{|Alt} alleles are always retained; only non-target (\code{|RefMatch}/\code{|AltMatch}/\code{|Other}) mhaps are removed by this filter.
 #'@param target.only Logical indicating whether to retain only the target \code{|Ref} and \code{|Alt} alleles (dropping \code{|RefMatch}, \code{|AltMatch}, and \code{|Other})
 #@param plot.summary Logical indicating whether to plot summary statistics
-#'@param output.file Path to save the filtered data (if NULL, data will not be saved)
+#'@param output.file Path to save the filtered data; \code{.csv} is appended to the name (if NULL, data will not be saved)
 #'
-#'@return data.frame or saved csv file
+#'@return A data.frame of the filtered MADC when \code{output.file} is NULL. Otherwise the filtered data is saved to \code{paste0(output.file, ".csv")} and NULL is returned.
 #'
 #'@examples
 #' #Example

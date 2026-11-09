@@ -41,8 +41,8 @@ The sample-id column is auto-detected (\code{sample}/\code{Sample}/\code{ID}/\co
 the MADC sample column names.}
 
 \item{group.col}{Name of the category column in \code{metadata} (e.g. species or
-population). Must be supplied whenever \code{metadata} is given; used to produce
-the \code{by_category} table.}
+population), used to produce the \code{by_category} table. If \code{NULL} (default),
+no \code{by_category} table is returned.}
 
 \item{markers_info}{Optional marker lookup table with an id column
 (\code{CloneID}/\code{Marker_ID}/\code{BI_markerID}) plus \code{Chr} and \code{Pos}, used when the

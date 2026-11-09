@@ -203,3 +203,27 @@ test_that("raw MADC is rejected", {
   raw <- system.file("iris_DArT_MADC.csv", package = "BIGr")
   expect_error(suppressMessages(madc_plot(raw, plot.type = "pca")), "HapApp")
 })
+
+test_that("metadata without group.col is accepted; bad columns name the argument", {
+  meta <- data.frame(sample = paste0("Sample_", 1:10),
+                     plate  = rep(c("P1", "P2"), each = 5),
+                     stringsAsFactors = FALSE)
+  p <- suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = "pca", metadata = meta, shape.col = "plate")))
+  expect_s3_class(p, "ggplot")
+  expect_error(suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = "pca", metadata = meta, shape.col = "nope"))),
+    "shape.col", fixed = TRUE)
+})
+
+test_that("pc.x/pc.y outside the available components give a clear error", {
+  expect_error(suppressWarnings(suppressMessages(
+    madc_plot(madc_file(), plot.type = "pca", pc.y = 99))),
+    "`pc.x` and `pc.y`", fixed = TRUE)
+})
+
+test_that("unsupported output.file extensions are rejected", {
+  expect_error(madc_plot(madc_file(), plot.type = "missing",
+                         output.file = tempfile(fileext = ".bmp")),
+               "output.file", fixed = TRUE)
+})

@@ -1,7 +1,7 @@
 Package: BIGr
 Title: Breeding Insight Genomics Functions for Polyploid and Diploid
     Species
-Version: 0.9.0
+Version: 0.10.0
 Authors@R: c(
     person("Alexander M.", "Sandercock", , "sandercock.alex@gmail.com", role = c("cre", "aut")),
     person("Cristiane", "Taniguti", role = "aut"),
@@ -10,7 +10,7 @@ Authors@R: c(
     person("Manoj", "Sapkota", role = "ctb"),
     person("Meng", "Lin", role = "ctb"),
     person("Dongyan", "Zhao", role = "ctb"),
-    person("University", "of Florida", role = "cph",
+    person(family = "University of Florida", role = "cph",
            comment = "Breeding Insight")
   )
 Maintainer: Alexander M. Sandercock <sandercock.alex@gmail.com>
@@ -31,13 +31,15 @@ URL: https://github.com/Breeding-Insight/BIGr
 BugReports: https://github.com/Breeding-Insight/BIGr/issues
 Depends: 
     R (>= 4.4.0)
-Imports: 
+Imports:
     Biostrings,
     dplyr,
     ggplot2,
+    grDevices,
+    graphics,
+    grid,
     parallel,
     pwalign,
-    Rdpack (>= 0.7),
     readr (>= 2.1.5),
     reshape2 (>= 1.4.4),
     rlang,
@@ -46,18 +48,20 @@ Imports:
     stringr,
     tibble,
     tidyr (>= 1.3.1),
+    tools,
     utils,
     vcfR (>= 1.15.0)
-Suggests: 
+Suggests:
     testthat (>= 3.0.0),
+    circlize,
     covr,
     spelling,
     polyRAD,
     rmdformats,
     knitr,
-    rmarkdown
-RdMacros: 
-    Rdpack
+    rmarkdown,
+    readxl,
+    writexl
 biocViews:
 Config/roxygen2/version: 8.0.0
 Encoding: UTF-8

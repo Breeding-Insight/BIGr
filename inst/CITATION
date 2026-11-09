@@ -48,10 +48,10 @@ bibentry(
              person(given='Dongyan',
                     family='Zhao',
                     role='ctb'),
-             person('Cornell', 'University',
+             person(family='University of Florida',
                     role=c('cph'),
                     comment = "Breeding Insight")),
   year     = "2025",
-  note     = "R package version 0.6.2",
+  note     = paste("R package version", meta$Version),
   url      = "https://github.com/Breeding-Insight/BIGr"
 )

@@ -3,23 +3,30 @@
 #' Computes read-only summary tables for a fixed allele ID MADC file (one
 #' processed through HapApp): a per-marker microhaplotype frequency
 #' distribution, per-sample and per-marker metric tables (read depth, missing
-#' rate, number of mHaps, off-target read fraction), a missingness threshold
-#' sweep, an overall summary, and - when a sample metadata table is supplied -
-#' the per-sample metrics aggregated by category.
+#' rate, number of mHaps, off-target read fraction), missingness and read-depth
+#' threshold sweeps, an advisory per-marker QC table, an overall summary, and -
+#' when a sample metadata table is supplied - the per-sample metrics aggregated
+#' by category.
 #'
 #' @details
 #' The input is validated with [check_madc_sanity()]; raw DArT MADC files (or
-#' any file without fixed AlleleIDs) are rejected with an error. A locus x sample
-#' cell is treated as missing when its total read depth is below `min.depth`.
-#' When `target.only = TRUE`, every metric is restricted to the target
-#' `|Ref`/`|Alt` alleles (`|RefMatch`/`|AltMatch`/`|Other` are ignored).
+#' any file without fixed AlleleIDs) are rejected with an error. The first three
+#' columns are taken as the ID columns (`AlleleID`, `CloneID`, `AlleleSequence`)
+#' and all remaining columns as samples. A locus x sample cell is treated as
+#' missing when its total read depth is below `min.depth`.
 #'
 #' The per-sample, per-marker, and by-category tables report both `depth` (total
 #' reads at the locus - how well the region amplifies) and `target_depth` (reads
 #' on the designed `|Ref`/`|Alt` alleles - how well the target markers work),
 #' together with `offtarget_fraction`, the share of reads coming from the
-#' `|RefMatch`/`|AltMatch`/`|Other` match alleles (i.e. the additional
-#' information contributed by non-target haplotypes).
+#' `|RefMatch`/`|AltMatch`/`|Other` alleles (i.e. the additional information
+#' contributed by non-target haplotypes). Per-sample values are averaged over
+#' all markers, including markers that are missing in that sample.
+#'
+#' When `target.only = TRUE`, every metric is restricted to the target
+#' `|Ref`/`|Alt` alleles (`|RefMatch`/`|AltMatch`/`|Other` are ignored), so
+#' `depth` and `target_depth` are the same, the off-target columns are 0, and no
+#' marker has more than two mHaps.
 #'
 #' @param madc Path to a fixed allele ID MADC file, or an already-read
 #'   data.frame.
@@ -28,26 +35,33 @@
 #' @param min.depth Minimum total read depth for a locus x sample cell to be
 #'   considered present (below this it is missing). Default `10`.
 #' @param metadata Optional data.frame mapping samples to a grouping category.
-#'   The sample-id column is auto-detected (`sample`/`Sample`/`ID`/`SampleID`) or
-#'   taken as the first column; ids are matched to the MADC sample column names.
+#'   The sample-id column is auto-detected (`sample`/`Sample`/`ID`/`SampleID`/
+#'   `sample_id`/`Sample_ID`) or taken as the first column; ids are matched to
+#'   the MADC sample column names.
 #' @param group.col Name of the category column in `metadata` (e.g. species or
-#'   population). Required to produce the `by_category` table.
+#'   population). Must be supplied whenever `metadata` is given; used to produce
+#'   the `by_category` table.
 #' @param markers_info Optional marker lookup table with an id column
 #'   (`CloneID`/`Marker_ID`/`BI_markerID`) plus `Chr` and `Pos`, used when the
 #'   CloneIDs are not in `Chr_Pos` format.
 #' @param mhap.cap Largest explicit row in the microhaplotype-frequency table;
-#'   markers with more mHaps are pooled into a `">mhap.cap"` bucket. Default `10`.
+#'   markers with more mHaps are pooled into a `">mhap.cap"` bucket. Markers with
+#'   fewer than two mHaps are not included in the table. Default `10`.
 #' @param miss.thresholds Numeric vector of missingness fractions for the
-#'   threshold sweep. Default `c(0,5,...,100)/100`.
+#'   threshold sweep. Default `c(0, 5, 10, 20, ..., 100) / 100`.
 #' @param depth.thresholds Numeric vector of read-depth cutoffs for the
 #'   `depth_sweep` table. Default `c(1, 5, 10, 20, 50, 100)`.
-#' @param mhap.min.reads Minimum reads for a mHap to count as present in a sample
-#'   when tallying per-sample mHap counts. Default `1`.
+#' @param mhap.min.reads Minimum reads for a mHap to count as present in a
+#'   sample. Used for the per-sample `n_mhaps_observed` (mean mHaps present per
+#'   marker) and the per-marker `n_mhaps_observed` (mHaps present in at least one
+#'   sample). Default `1`.
 #' @param min.locus.depth,max.locus.depth Marker-QC read-depth window (mean reads
 #'   per sample at the locus). A marker below `min.locus.depth` is `FAIL`ed (low
 #'   depth); one above `max.locus.depth` is `FLAG`ged (over-amplified). Names/units
-#'   match [filterMADC()], so a `FAIL` on `min.locus.depth` is the marker
-#'   `filterMADC` would drop at the same value. `min.locus.depth` defaults to
+#'   match [filterMADC()]: with `target.only = FALSE` the locus depth is computed
+#'   over all mHaps, as in `filterMADC`, so a `FAIL` on `min.locus.depth` is the
+#'   marker `filterMADC` would drop at the same value. With `target.only = TRUE`
+#'   only the `|Ref`/`|Alt` reads are counted. `min.locus.depth` defaults to
 #'   `min.depth`; `max.locus.depth` is off (`NULL`) by default. Set either to
 #'   `NULL` to disable that criterion.
 #' @param max.missing Marker-QC maximum per-marker missing rate; markers above it
@@ -60,18 +74,51 @@
 #' @param output.file If not `NULL`, the tables are written here: as
 #'   `paste0(output.file, "_<table>.csv")` when `output.format = "csv"`, or as a
 #'   single `.xlsx` workbook (one sheet per table) when `output.format = "xlsx"`.
+#'   The `.xlsx` extension is added if it is not already present.
 #' @param output.format One of `"csv"` (default; one CSV per table) or `"xlsx"`
 #'   (a single multi-sheet workbook, requires the `writexl` package).
 #' @param verbose Logical; print progress/validation messages. Default `TRUE`.
 #'
-#' @return A named list of data.frames: `mhap_freq`, `per_sample`, `per_marker`,
-#'   `missingness`, `depth_sweep`, `marker_qc`, `overall`, and (when
-#'   `metadata`/`group.col` are given) `by_category`. Depth is summarized by both
-#'   the mean and robust statistics (`median_depth`, `depth_mad`, `depth_q10`,
-#'   `depth_q90`); off-target is reported both as the mean per-locus ratio
-#'   (`offtarget_fraction`) and read-weighted (`offtarget_fraction_weighted`); and
-#'   mHap counts are split into `n_mhaps_defined` (allele rows in the panel) and
-#'   `n_mhaps_observed` (alleles actually supported by reads).
+#' @return A named list of data.frames:
+#' \describe{
+#'   \item{`mhap_freq`}{Number of markers (`n_markers`) with 2, 3, ...,
+#'     `mhap.cap`, and more than `mhap.cap` defined mHaps (`n_mhaps`). Markers
+#'     with fewer than two allele rows are not counted, so the total can be lower
+#'     than the number of markers in the file.}
+#'   \item{`per_sample`}{One row per sample: mean locus read depth (`depth`),
+#'     `median_depth`, `depth_mad`, `depth_q10`, `depth_q90`, `target_depth`,
+#'     `total_reads`, `target_reads`, `missing_rate`, `call_rate`,
+#'     `n_mhaps_observed` (mean number of mHaps with at least `mhap.min.reads`
+#'     reads per marker, over all markers), `offtarget_fraction` (mean of the
+#'     per-locus ratios), and `offtarget_fraction_weighted`
+#'     (`sum(offtarget) / sum(total)`).}
+#'   \item{`per_marker`}{One row per marker (`CloneID`, `Chr`, `Pos`): mean
+#'     read depth across samples (`depth`), `median_depth`, `depth_mad`,
+#'     `depth_q10`, `depth_q90`, `target_depth`, `missing_rate`, `call_rate`,
+#'     `n_mhaps_defined` (allele rows for the marker in the MADC),
+#'     `n_mhaps_observed` (alleles with at least `mhap.min.reads` reads in at
+#'     least one sample), `offtarget_fraction`, and
+#'     `offtarget_fraction_weighted`. `Chr` and `Pos` are dropped when they cannot be
+#'     obtained from the CloneIDs or `markers_info`.}
+#'   \item{`missingness`}{For each value in `miss.thresholds`, the number of loci
+#'     and samples removed (missing rate above the threshold) and retained.}
+#'   \item{`depth_sweep`}{For each value in `depth.thresholds`, the fraction of
+#'     locus x sample cells at or above it (`cells_passing`), the number of loci
+#'     passing in at least 90% and 95% of samples, and the number of samples
+#'     passing in at least 90% of loci.}
+#'   \item{`marker_qc`}{Advisory per-marker `qc_status` (`PASS`, `FLAG`, or
+#'     `FAIL`; `FAIL` takes precedence) with a `qc_reason` string listing every
+#'     criterion that was triggered. Markers are not removed.}
+#'   \item{`overall`}{A one-row summary: number of samples, markers and mHaps,
+#'     mean and median depth, overall missing and call rate, mean and
+#'     read-weighted off-target fraction, and the median number of mHaps per
+#'     marker.}
+#'   \item{`by_category`}{Only when `metadata`/`group.col` are given and at
+#'     least one sample matches: per-category number of samples and the means of
+#'     the per-sample `depth`, `target_depth`, `missing_rate`,
+#'     `n_mhaps_observed` (`n_mhaps_mean`), and `offtarget_fraction`. Samples
+#'     not found in `metadata` are left out.}
+#' }
 #'
 #' @examples
 #' madc_file <- system.file("example_MADC_FixedAlleleID.csv", package = "BIGr")

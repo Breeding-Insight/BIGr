@@ -5,41 +5,60 @@
 #' linear marker-distribution genome plot, a markers x samples read-depth/#mHaps
 #' heatmap, a per-sample missing-data boxplot, an allele read-ratio balance
 #' diagnostic, a marker mean-depth (uniformity) distribution, and a `circos`
-#' circular plot with concentric marker-position, #mHaps, and read-depth tracks.
-#' Requesting one type returns that plot; requesting several (non-circos) returns
-#' a multi-panel figure.
+#' circular plot with concentric marker-position, marker-density, #mHaps, and
+#' read-depth QC tracks. Requesting one type returns that plot; requesting
+#' several (non-circos) returns a multi-panel figure.
 #'
 #' @details
 #' The input is validated with [check_madc_sanity()]; raw DArT MADC files are
-#' rejected with an error. All plots honor `target.only` (restrict to `|Ref`/
-#' `|Alt`) and `min.depth` (locus x sample cells below this depth are treated as
-#' missing). Plotting uses only `ggplot2` and base `grid`; the `circos` plot
-#' additionally requires the suggested `circlize` package and, being a base
-#' graphics figure, must be requested on its own (it cannot be embedded in a
-#' multi-panel). The `"pca"` plot is a sample/data-interpretation diagnostic
-#' (missing ratios are mean-imputed and the PCA is unscaled), so strong biological
-#' structure can dominate it - read it for sample swaps / population separation,
-#' not as evidence the sequencing run itself was good or bad. The `"balance"` plot
-#' is the direct read-out of whether the assay yields interpretable dosage signal;
-#' it shows every cell with a defined ratio (including below `min.depth`, marked by
-#' a dotted line) and, with `ploidy`, a depth-dependent binomial expectation band.
+#' rejected with an error. With `target.only = TRUE`, only the target
+#' `|Ref`/`|Alt` alleles are used. With `target.only = FALSE` (default), read
+#' depth and mHap counts include all alleles, while the alternative read ratios
+#' used by the `"pca"` and `"balance"` plots add the `|RefMatch`/`|AltMatch`
+#' reads to their `|Ref`/`|Alt` alleles (as in [get_countsMADC()] with
+#' `collapse_matches_counts = TRUE`) and do not use the `|Other` reads.
+#'
+#' `min.depth` (locus x sample cells below this depth are treated as missing) is
+#' applied in the `"missing"` plot and the `circos` "Depth" ring, and is drawn as
+#' a reference line in the `"balance"` and `"depth"` plots. It is not applied to
+#' the `"pca"`, `"marker"`, or `"heatmap"` plots.
+#'
+#' Plotting uses `ggplot2` and base `grid`; the `circos` plot additionally
+#' requires the suggested `circlize` package and, being a base graphics figure,
+#' must be requested on its own (it cannot be embedded in a multi-panel). The
+#' `"pca"` plot is a sample/data-interpretation diagnostic (a ratio is missing
+#' only when the marker has no `|Ref`/`|Alt` reads in the sample, missing ratios
+#' are mean-imputed, loci with no variation are dropped, and the PCA is
+#' unscaled), so strong biological structure can dominate it - read it for
+#' sample swaps / population separation, not as evidence the sequencing run
+#' itself was good or bad. The `"balance"` plot is the direct read-out of whether
+#' the assay yields interpretable dosage signal; it shows every cell with a
+#' defined ratio (including below `min.depth`, marked by a dotted line) and, with
+#' `ploidy`, a depth-dependent binomial expectation band.
 #'
 #' @param madc Path to a fixed allele ID MADC file, or an already-read data.frame.
 #' @param plot.type One or more of `"pca"`, `"marker"`, `"heatmap"`, `"missing"`,
 #'   `"balance"`, `"depth"`, `"circos"`. A single value returns that plot; several
 #'   (excluding `"circos"`) return a multi-panel figure. `"circos"` must be
-#'   requested on its own.
-#' @param target.only Logical; restrict to target `|Ref`/`|Alt` alleles. Default `FALSE`.
-#' @param min.depth Minimum locus x sample read depth to be considered present. Default `10`.
+#'   requested on its own. Default `c("pca", "marker", "heatmap", "missing")`.
+#' @param target.only Logical; use only the target `|Ref`/`|Alt` alleles (see
+#'   Details). Default `FALSE`.
+#' @param min.depth Minimum locus x sample read depth for a cell to be counted as
+#'   present (see Details for the plots that use it). Default `10`.
 #' @param metadata Optional sample-metadata data.frame (see [madc_summary()]) used
-#'   to color the PCA / group the missing-data boxplot.
-#' @param group.col Category column in `metadata` (e.g. species/population) used
-#'   to color the PCA and group the missing-data boxplot / heatmap.
+#'   to color the PCA, group the missing-data boxplot, and sort the heatmap
+#'   samples by category.
+#' @param group.col Category column in `metadata` (e.g. species/population). Must
+#'   be supplied whenever `metadata` is given. In the heatmap, samples are sorted
+#'   by category, with one x-axis label per category and white lines between
+#'   categories. Samples not found in `metadata` are left out of the heatmap and
+#'   the missing-data boxplot.
 #' @param shape.col Optional second `metadata` column mapped to point shape in
 #'   the PCA (e.g. plate or location), so two variables can be shown at once.
+#'   Only used when `metadata` and `group.col` are supplied.
 #' @param palette Optional vector of colors for the categorical scales (PCA
 #'   point color, missing-boxplot fill); interpolated to the number of
-#'   categories. `NULL` uses the ggplot2 defaults.
+#'   categories. `NULL` uses the ggplot2 defaults. Not used by the other plots.
 #' @param ploidy Optional integer species ploidy for the `"balance"` plot. When
 #'   supplied, dashed guides are drawn at the expected alt-read ratios
 #'   `(0:ploidy)/ploidy` (e.g. 0, 0.5, 1 for a diploid) and a depth-dependent 95%
@@ -48,13 +67,16 @@
 #'   wider than sampling noise stands out. `NULL` (default) draws the ratio x
 #'   depth density with no guides/band, which also suits mixed/unknown ploidy.
 #' @param balance.density Logical; for a lone `plot.type = "balance"`, stack a
-#'   marginal frequency-polygon of the alt-read ratio above the heatmap (aligned
-#'   x-axis). This returns a composite grob instead of a `ggplot`, so it is
-#'   ignored when `"balance"` is combined with other plot types. Default `FALSE`.
-#' @param markers_info Optional marker lookup (id + `Chr` + `Pos`) for the marker/circos plot.
+#'   histogram of the alt-read ratio above the heatmap (aligned x-axis). This
+#'   returns a composite grob instead of a `ggplot`, so it is ignored when
+#'   `"balance"` is combined with other plot types. Default `FALSE`.
+#' @param markers_info Optional marker lookup (id + `Chr` + `Pos`) used when the
+#'   CloneIDs are not in `Chr_Pos` format. It sets the marker positions in the
+#'   marker and circos plots and the marker order in the heatmap.
 #' @param pc.x,pc.y Principal components to plot (PCA). Defaults `1`, `2`.
-#' @param loci.miss.max,sample.miss.max Drop loci/samples with missingness above
-#'   these fractions before PCA. Defaults `0.5`.
+#' @param loci.miss.max,sample.miss.max Drop loci, then samples, whose fraction
+#'   of missing alternative read ratios (no `|Ref`/`|Alt` reads) is above these
+#'   values before PCA. Defaults `0.5`.
 #' @param miss.sort Ordering of the category boxes in the `"missing"` plot by their
 #'   median missing rate: `"none"` (default, keeps category order), `"desc"`
 #'   (highest to lowest), or `"asc"` (lowest to highest). Only applies when a
@@ -62,58 +84,69 @@
 #' @param horizontal Logical; draw the `"missing"` boxplots horizontally
 #'   (`coord_flip`). Default `FALSE`. With `miss.sort`, the order then reads
 #'   top-to-bottom.
-#' @param fill Heatmap fill metric: `"depth"` (default) or `"mhaps"`.
+#' @param fill Heatmap fill metric: `"depth"` (default; total read depth per
+#'   locus x sample) or `"mhaps"` (number of mHaps with at least
+#'   `mhap.min.reads` reads). Cells with a value of 0 are drawn black.
 #' @param facet.chrom Logical; facet the heatmap by chromosome. Default `FALSE`.
-#'   When `metadata`/`group.col` are supplied, the heatmap also sorts samples by
-#'   category and labels each category (a facet column per group).
-#' @param max.loci,max.samples Optional caps; larger heatmaps are subsampled (with a note).
+#' @param max.loci,max.samples Optional caps; larger heatmaps are subsampled to
+#'   evenly spaced loci/samples (with a message when `verbose = TRUE`).
 #' @param density.window Window size in bp for the circos marker-density track.
 #'   Default `1e6` (1 Mb).
 #' @param density.col Gradient colors (low -> high) for the circos marker-density
-#'   heatmap ring; interpolated across the range. Default a grey-to-blue gradient.
-#' @param depth.col Length-3 vector of colors for the circos "Depth QC" ribbon:
-#'   markers that are `low depth` (mean depth below `min.depth`), `normal`, or a
-#'   high-depth `outlier`. Only low-depth and outlier markers are highlighted;
+#'   heatmap ring; interpolated across the range. Default `c("grey92", "#9e9ac8", "#3f007d")`.
+#' @param depth.col Length-3 vector of colors for the circos "Depth" ribbon:
+#'   markers that are problematic (mean depth below `min.depth` or missing rate
+#'   above `depth.qc.maxmiss`), `normal`, or a high-depth `outlier` (see
+#'   `depth.outlier`). Only problematic and outlier markers are highlighted;
 #'   normal markers take the neutral middle color. Default
 #'   `c("#2166ac","#e0e0e0","#b2182b")`.
 #' @param depth.outlier Multiplier `k` for the robust high-depth outlier cutoff
-#'   `median + k * MAD` (not mean +/- SD, which a few extreme loci would drag up).
-#'   Default `3`.
+#'   `median + k * MAD` of the marker mean depths (not mean +/- SD, which a few
+#'   extreme loci would drag up). Default `3`.
 #' @param depth.qc.maxmiss Circos "Depth" ring: a marker is flagged problematic
 #'   when its mean depth is below `min.depth` OR its missing rate exceeds this
 #'   fraction - catching high-dropout markers (e.g. 50% zeros / 50% deep) that a
 #'   mean-depth cut alone reads as normal. Default `0.5`.
 #' @param mhap.col Fill color for the circos "mHaps" log-scaled radial bars.
 #'   Default `"#35978f"`.
-#' @param paralog.flag Microhaplotype count above which a circos "mHaps" locus is
-#'   flagged as paralog-suspect: its bar's over-threshold excess is drawn as a red
-#'   segment above a dashed reference ring. Default `10`.
+#' @param paralog.flag Number of mHaps (allele rows for the marker) above which a
+#'   circos "mHaps" locus is flagged as paralog-suspect: its bar's over-threshold
+#'   excess is drawn as a red segment above a dashed reference ring. Default `10`.
 #' @param tick.height,density.height,mhap.height Circos track heights (fraction of
 #'   the radius) for the per-marker locus tick rug, the density heatmap ring, and
 #'   the mHap bar track. Defaults `0.03`, `0.08`, and `0.18`.
 #' @param label.gap Width in degrees of the label corridor opened at 12 o'clock
-#'   for the circos track titles. Default `12`.
-#' @param mhap.min.reads Minimum reads for a mHap to count as present. Default `1`.
+#'   for the circos track titles. Default `12`. With a single chromosome, at least
+#'   `30` is used.
+#' @param mhap.min.reads Minimum reads for a mHap to count as present in a
+#'   locus x sample cell (heatmap with `fill = "mhaps"`). Default `1`.
 #' @param titles Logical; draw the plot titles and subtitles. Default `TRUE`.
 #'   `FALSE` drops both from every requested plot (including the `"circos"`
 #'   figure and the multi-panel), leaving the axis labels, legends and the
 #'   `"balance"` caption - useful when the figure is captioned externally
 #'   (manuscript, report, slide).
-#' @param output.file If not `NULL`, the figure is also saved here (`.png`/`.pdf`).
-#' @param width,height,dpi Saved-figure dimensions (inches) and resolution.
+#' @param output.file If not `NULL`, the figure is also saved here: as a PDF when
+#'   the extension is `.pdf`, otherwise as a PNG.
+#' @param width,height,dpi Saved-figure dimensions (inches) and resolution (`dpi`
+#'   applies to PNG only).
 #' @param verbose Logical; print progress/validation messages. Default `TRUE`.
 #'
-#' @return For a single `plot.type`, a `ggplot` (a composite grob when
-#'   `plot.type = "balance"` and `balance.density = TRUE`); for several, an
-#'   (invisible) list with `plots` (named list) and `panel` (the assembled
-#'   multi-panel grob). `"circos"` draws to the active device and returns `NULL`
-#'   invisibly.
+#' @return For a single `plot.type`, a `ggplot`, returned invisibly when
+#'   `output.file` is given. With `plot.type = "balance"` and
+#'   `balance.density = TRUE` this is a composite grob; use
+#'   `grid::grid.draw()` to display it. For several types, an invisible list with
+#'   `plots` (named list) and `panel` (the assembled multi-panel grob); the panel
+#'   is not drawn, use `grid::grid.draw(res$panel)` to display it. `"circos"`
+#'   returns invisibly the path of the saved figure (`output.file`, or a
+#'   temporary PNG when no `output.file` is given and no graphics device is open),
+#'   or `NULL` when it is drawn to an already open device.
 #'
 #' @examples
 #' madc_file <- system.file("example_MADC_FixedAlleleID.csv", package = "BIGr")
 #' p <- madc_plot(madc_file, plot.type = "missing")
 #' \donttest{
-#' madc_plot(madc_file, plot.type = c("pca", "heatmap"))
+#' res <- madc_plot(madc_file, plot.type = c("pca", "heatmap"))
+#' grid::grid.draw(res$panel)
 #' madc_plot(madc_file, plot.type = "balance", ploidy = 2)
 #' }
 #'
@@ -141,7 +174,7 @@ madc_plot <- function(madc,
                       max.loci       = NULL,
                       max.samples    = NULL,
                       density.window = 1e6,
-                      density.col    = c("grey92", "#4292c6", "#08306b"),
+                      density.col    = c("grey92", "#9e9ac8", "#3f007d"),
                       depth.col      = c("#2166ac", "#e0e0e0", "#b2182b"),
                       depth.outlier  = 3,
                       depth.qc.maxmiss = 0.5,
@@ -326,7 +359,7 @@ madc_plot <- function(madc,
 #' @keywords internal
 #' @noRd
 .madc_plot_circos <- function(m, paralog.flag = 10, density.window = 1e6,
-                              density.col = c("grey92", "#4292c6", "#08306b"),
+                              density.col = c("grey92", "#9e9ac8", "#3f007d"),
                               depth.col = c("#2166ac", "#e0e0e0", "#b2182b"),
                               depth.outlier = 3, depth.qc.maxmiss = 0.5,
                               mhap.col = "#35978f",

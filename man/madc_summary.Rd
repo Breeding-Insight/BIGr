@@ -36,33 +36,40 @@ alleles. Default \code{FALSE}.}
 considered present (below this it is missing). Default \code{10}.}
 
 \item{metadata}{Optional data.frame mapping samples to a grouping category.
-The sample-id column is auto-detected (\code{sample}/\code{Sample}/\code{ID}/\code{SampleID}) or
-taken as the first column; ids are matched to the MADC sample column names.}
+The sample-id column is auto-detected (\code{sample}/\code{Sample}/\code{ID}/\code{SampleID}/
+\code{sample_id}/\code{Sample_ID}) or taken as the first column; ids are matched to
+the MADC sample column names.}
 
 \item{group.col}{Name of the category column in \code{metadata} (e.g. species or
-population). Required to produce the \code{by_category} table.}
+population). Must be supplied whenever \code{metadata} is given; used to produce
+the \code{by_category} table.}
 
 \item{markers_info}{Optional marker lookup table with an id column
 (\code{CloneID}/\code{Marker_ID}/\code{BI_markerID}) plus \code{Chr} and \code{Pos}, used when the
 CloneIDs are not in \code{Chr_Pos} format.}
 
 \item{mhap.cap}{Largest explicit row in the microhaplotype-frequency table;
-markers with more mHaps are pooled into a \code{">mhap.cap"} bucket. Default \code{10}.}
+markers with more mHaps are pooled into a \code{">mhap.cap"} bucket. Markers with
+fewer than two mHaps are not included in the table. Default \code{10}.}
 
 \item{miss.thresholds}{Numeric vector of missingness fractions for the
-threshold sweep. Default \code{c(0,5,...,100)/100}.}
+threshold sweep. Default \code{c(0, 5, 10, 20, ..., 100) / 100}.}
 
 \item{depth.thresholds}{Numeric vector of read-depth cutoffs for the
 \code{depth_sweep} table. Default \code{c(1, 5, 10, 20, 50, 100)}.}
 
-\item{mhap.min.reads}{Minimum reads for a mHap to count as present in a sample
-when tallying per-sample mHap counts. Default \code{1}.}
+\item{mhap.min.reads}{Minimum reads for a mHap to count as present in a
+sample. Used for the per-sample \code{n_mhaps_observed} (mean mHaps present per
+marker) and the per-marker \code{n_mhaps_observed} (mHaps present in at least one
+sample). Default \code{1}.}
 
 \item{min.locus.depth, max.locus.depth}{Marker-QC read-depth window (mean reads
 per sample at the locus). A marker below \code{min.locus.depth} is \code{FAIL}ed (low
 depth); one above \code{max.locus.depth} is \code{FLAG}ged (over-amplified). Names/units
-match \code{\link[=filterMADC]{filterMADC()}}, so a \code{FAIL} on \code{min.locus.depth} is the marker
-\code{filterMADC} would drop at the same value. \code{min.locus.depth} defaults to
+match \code{\link[=filterMADC]{filterMADC()}}: with \code{target.only = FALSE} the locus depth is computed
+over all mHaps, as in \code{filterMADC}, so a \code{FAIL} on \code{min.locus.depth} is the
+marker \code{filterMADC} would drop at the same value. With \code{target.only = TRUE}
+only the \verb{|Ref}/\verb{|Alt} reads are counted. \code{min.locus.depth} defaults to
 \code{min.depth}; \code{max.locus.depth} is off (\code{NULL}) by default. Set either to
 \code{NULL} to disable that criterion.}
 
@@ -78,7 +85,8 @@ above it are \code{FLAG}ged (paralog-suspect). \code{NULL} (default) disables it
 
 \item{output.file}{If not \code{NULL}, the tables are written here: as
 \code{paste0(output.file, "_<table>.csv")} when \code{output.format = "csv"}, or as a
-single \code{.xlsx} workbook (one sheet per table) when \code{output.format = "xlsx"}.}
+single \code{.xlsx} workbook (one sheet per table) when \code{output.format = "xlsx"}.
+The \code{.xlsx} extension is added if it is not already present.}
 
 \item{output.format}{One of \code{"csv"} (default; one CSV per table) or \code{"xlsx"}
 (a single multi-sheet workbook, requires the \code{writexl} package).}
@@ -86,36 +94,75 @@ single \code{.xlsx} workbook (one sheet per table) when \code{output.format = "x
 \item{verbose}{Logical; print progress/validation messages. Default \code{TRUE}.}
 }
 \value{
-A named list of data.frames: \code{mhap_freq}, \code{per_sample}, \code{per_marker},
-\code{missingness}, \code{depth_sweep}, \code{marker_qc}, \code{overall}, and (when
-\code{metadata}/\code{group.col} are given) \code{by_category}. Depth is summarized by both
-the mean and robust statistics (\code{median_depth}, \code{depth_mad}, \code{depth_q10},
-\code{depth_q90}); off-target is reported both as the mean per-locus ratio
-(\code{offtarget_fraction}) and read-weighted (\code{offtarget_fraction_weighted}); and
-mHap counts are split into \code{n_mhaps_defined} (allele rows in the panel) and
-\code{n_mhaps_observed} (alleles actually supported by reads).
+A named list of data.frames:
+\describe{
+\item{\code{mhap_freq}}{Number of markers (\code{n_markers}) with 2, 3, ...,
+\code{mhap.cap}, and more than \code{mhap.cap} defined mHaps (\code{n_mhaps}). Markers
+with fewer than two allele rows are not counted, so the total can be lower
+than the number of markers in the file.}
+\item{\code{per_sample}}{One row per sample: mean locus read depth (\code{depth}),
+\code{median_depth}, \code{depth_mad}, \code{depth_q10}, \code{depth_q90}, \code{target_depth},
+\code{total_reads}, \code{target_reads}, \code{missing_rate}, \code{call_rate},
+\code{n_mhaps_observed} (mean number of mHaps with at least \code{mhap.min.reads}
+reads per marker, over all markers), \code{offtarget_fraction} (mean of the
+per-locus ratios), and \code{offtarget_fraction_weighted}
+(\code{sum(offtarget) / sum(total)}).}
+\item{\code{per_marker}}{One row per marker (\code{CloneID}, \code{Chr}, \code{Pos}): mean
+read depth across samples (\code{depth}), \code{median_depth}, \code{depth_mad},
+\code{depth_q10}, \code{depth_q90}, \code{target_depth}, \code{missing_rate}, \code{call_rate},
+\code{n_mhaps_defined} (allele rows for the marker in the MADC),
+\code{n_mhaps_observed} (alleles with at least \code{mhap.min.reads} reads in at
+least one sample), \code{offtarget_fraction}, and
+\code{offtarget_fraction_weighted}. \code{Chr} and \code{Pos} are dropped when they cannot be
+obtained from the CloneIDs or \code{markers_info}.}
+\item{\code{missingness}}{For each value in \code{miss.thresholds}, the number of loci
+and samples removed (missing rate above the threshold) and retained.}
+\item{\code{depth_sweep}}{For each value in \code{depth.thresholds}, the fraction of
+locus x sample cells at or above it (\code{cells_passing}), the number of loci
+passing in at least 90\% and 95\% of samples, and the number of samples
+passing in at least 90\% of loci.}
+\item{\code{marker_qc}}{Advisory per-marker \code{qc_status} (\code{PASS}, \code{FLAG}, or
+\code{FAIL}; \code{FAIL} takes precedence) with a \code{qc_reason} string listing every
+criterion that was triggered. Markers are not removed.}
+\item{\code{overall}}{A one-row summary: number of samples, markers and mHaps,
+mean and median depth, overall missing and call rate, mean and
+read-weighted off-target fraction, and the median number of mHaps per
+marker.}
+\item{\code{by_category}}{Only when \code{metadata}/\code{group.col} are given and at
+least one sample matches: per-category number of samples and the means of
+the per-sample \code{depth}, \code{target_depth}, \code{missing_rate},
+\code{n_mhaps_observed} (\code{n_mhaps_mean}), and \code{offtarget_fraction}. Samples
+not found in \code{metadata} are left out.}
+}
 }
 \description{
 Computes read-only summary tables for a fixed allele ID MADC file (one
 processed through HapApp): a per-marker microhaplotype frequency
 distribution, per-sample and per-marker metric tables (read depth, missing
-rate, number of mHaps, off-target read fraction), a missingness threshold
-sweep, an overall summary, and - when a sample metadata table is supplied -
-the per-sample metrics aggregated by category.
+rate, number of mHaps, off-target read fraction), missingness and read-depth
+threshold sweeps, an advisory per-marker QC table, an overall summary, and -
+when a sample metadata table is supplied - the per-sample metrics aggregated
+by category.
 }
 \details{
 The input is validated with \code{\link[=check_madc_sanity]{check_madc_sanity()}}; raw DArT MADC files (or
-any file without fixed AlleleIDs) are rejected with an error. A locus x sample
-cell is treated as missing when its total read depth is below \code{min.depth}.
-When \code{target.only = TRUE}, every metric is restricted to the target
-\verb{|Ref}/\verb{|Alt} alleles (\verb{|RefMatch}/\verb{|AltMatch}/\verb{|Other} are ignored).
+any file without fixed AlleleIDs) are rejected with an error. The first three
+columns are taken as the ID columns (\code{AlleleID}, \code{CloneID}, \code{AlleleSequence})
+and all remaining columns as samples. A locus x sample cell is treated as
+missing when its total read depth is below \code{min.depth}.
 
 The per-sample, per-marker, and by-category tables report both \code{depth} (total
 reads at the locus - how well the region amplifies) and \code{target_depth} (reads
 on the designed \verb{|Ref}/\verb{|Alt} alleles - how well the target markers work),
 together with \code{offtarget_fraction}, the share of reads coming from the
-\verb{|RefMatch}/\verb{|AltMatch}/\verb{|Other} match alleles (i.e. the additional
-information contributed by non-target haplotypes).
+\verb{|RefMatch}/\verb{|AltMatch}/\verb{|Other} alleles (i.e. the additional information
+contributed by non-target haplotypes). Per-sample values are averaged over
+all markers, including markers that are missing in that sample.
+
+When \code{target.only = TRUE}, every metric is restricted to the target
+\verb{|Ref}/\verb{|Alt} alleles (\verb{|RefMatch}/\verb{|AltMatch}/\verb{|Other} are ignored), so
+\code{depth} and \code{target_depth} are the same, the off-target columns are 0, and no
+marker has more than two mHaps.
 }
 \examples{
 madc_file <- system.file("example_MADC_FixedAlleleID.csv", package = "BIGr")

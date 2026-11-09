@@ -27,7 +27,7 @@ madc_plot(
   max.loci = NULL,
   max.samples = NULL,
   density.window = 1e+06,
-  density.col = c("grey92", "#4292c6", "#08306b"),
+  density.col = c("grey92", "#9e9ac8", "#3f007d"),
   depth.col = c("#2166ac", "#e0e0e0", "#b2182b"),
   depth.outlier = 3,
   depth.qc.maxmiss = 0.5,
@@ -52,24 +52,31 @@ madc_plot(
 \item{plot.type}{One or more of \code{"pca"}, \code{"marker"}, \code{"heatmap"}, \code{"missing"},
 \code{"balance"}, \code{"depth"}, \code{"circos"}. A single value returns that plot; several
 (excluding \code{"circos"}) return a multi-panel figure. \code{"circos"} must be
-requested on its own.}
+requested on its own. Default \code{c("pca", "marker", "heatmap", "missing")}.}
 
-\item{target.only}{Logical; restrict to target \verb{|Ref}/\verb{|Alt} alleles. Default \code{FALSE}.}
+\item{target.only}{Logical; use only the target \verb{|Ref}/\verb{|Alt} alleles (see
+Details). Default \code{FALSE}.}
 
-\item{min.depth}{Minimum locus x sample read depth to be considered present. Default \code{10}.}
+\item{min.depth}{Minimum locus x sample read depth for a cell to be counted as
+present (see Details for the plots that use it). Default \code{10}.}
 
 \item{metadata}{Optional sample-metadata data.frame (see \code{\link[=madc_summary]{madc_summary()}}) used
-to color the PCA / group the missing-data boxplot.}
+to color the PCA, group the missing-data boxplot, and sort the heatmap
+samples by category.}
 
-\item{group.col}{Category column in \code{metadata} (e.g. species/population) used
-to color the PCA and group the missing-data boxplot / heatmap.}
+\item{group.col}{Category column in \code{metadata} (e.g. species/population). Must
+be supplied whenever \code{metadata} is given. In the heatmap, samples are sorted
+by category, with one x-axis label per category and white lines between
+categories. Samples not found in \code{metadata} are left out of the heatmap and
+the missing-data boxplot.}
 
 \item{shape.col}{Optional second \code{metadata} column mapped to point shape in
-the PCA (e.g. plate or location), so two variables can be shown at once.}
+the PCA (e.g. plate or location), so two variables can be shown at once.
+Only used when \code{metadata} and \code{group.col} are supplied.}
 
 \item{palette}{Optional vector of colors for the categorical scales (PCA
 point color, missing-boxplot fill); interpolated to the number of
-categories. \code{NULL} uses the ggplot2 defaults.}
+categories. \code{NULL} uses the ggplot2 defaults. Not used by the other plots.}
 
 \item{ploidy}{Optional integer species ploidy for the \code{"balance"} plot. When
 supplied, dashed guides are drawn at the expected alt-read ratios
@@ -80,16 +87,19 @@ wider than sampling noise stands out. \code{NULL} (default) draws the ratio x
 depth density with no guides/band, which also suits mixed/unknown ploidy.}
 
 \item{balance.density}{Logical; for a lone \code{plot.type = "balance"}, stack a
-marginal frequency-polygon of the alt-read ratio above the heatmap (aligned
-x-axis). This returns a composite grob instead of a \code{ggplot}, so it is
-ignored when \code{"balance"} is combined with other plot types. Default \code{FALSE}.}
+histogram of the alt-read ratio above the heatmap (aligned x-axis). This
+returns a composite grob instead of a \code{ggplot}, so it is ignored when
+\code{"balance"} is combined with other plot types. Default \code{FALSE}.}
 
-\item{markers_info}{Optional marker lookup (id + \code{Chr} + \code{Pos}) for the marker/circos plot.}
+\item{markers_info}{Optional marker lookup (id + \code{Chr} + \code{Pos}) used when the
+CloneIDs are not in \code{Chr_Pos} format. It sets the marker positions in the
+marker and circos plots and the marker order in the heatmap.}
 
 \item{pc.x, pc.y}{Principal components to plot (PCA). Defaults \code{1}, \code{2}.}
 
-\item{loci.miss.max, sample.miss.max}{Drop loci/samples with missingness above
-these fractions before PCA. Defaults \code{0.5}.}
+\item{loci.miss.max, sample.miss.max}{Drop loci, then samples, whose fraction
+of missing alternative read ratios (no \verb{|Ref}/\verb{|Alt} reads) is above these
+values before PCA. Defaults \code{0.5}.}
 
 \item{miss.sort}{Ordering of the category boxes in the \code{"missing"} plot by their
 median missing rate: \code{"none"} (default, keeps category order), \code{"desc"}
@@ -100,29 +110,31 @@ grouping category is supplied.}
 (\code{coord_flip}). Default \code{FALSE}. With \code{miss.sort}, the order then reads
 top-to-bottom.}
 
-\item{fill}{Heatmap fill metric: \code{"depth"} (default) or \code{"mhaps"}.}
+\item{fill}{Heatmap fill metric: \code{"depth"} (default; total read depth per
+locus x sample) or \code{"mhaps"} (number of mHaps with at least
+\code{mhap.min.reads} reads). Cells with a value of 0 are drawn black.}
 
-\item{facet.chrom}{Logical; facet the heatmap by chromosome. Default \code{FALSE}.
-When \code{metadata}/\code{group.col} are supplied, the heatmap also sorts samples by
-category and labels each category (a facet column per group).}
+\item{facet.chrom}{Logical; facet the heatmap by chromosome. Default \code{FALSE}.}
 
-\item{max.loci, max.samples}{Optional caps; larger heatmaps are subsampled (with a note).}
+\item{max.loci, max.samples}{Optional caps; larger heatmaps are subsampled to
+evenly spaced loci/samples (with a message when \code{verbose = TRUE}).}
 
 \item{density.window}{Window size in bp for the circos marker-density track.
 Default \code{1e6} (1 Mb).}
 
 \item{density.col}{Gradient colors (low -> high) for the circos marker-density
-heatmap ring; interpolated across the range. Default a grey-to-blue gradient.}
+heatmap ring; interpolated across the range. Default \code{c("grey92", "#9e9ac8", "#3f007d")}.}
 
-\item{depth.col}{Length-3 vector of colors for the circos "Depth QC" ribbon:
-markers that are \verb{low depth} (mean depth below \code{min.depth}), \code{normal}, or a
-high-depth \code{outlier}. Only low-depth and outlier markers are highlighted;
+\item{depth.col}{Length-3 vector of colors for the circos "Depth" ribbon:
+markers that are problematic (mean depth below \code{min.depth} or missing rate
+above \code{depth.qc.maxmiss}), \code{normal}, or a high-depth \code{outlier} (see
+\code{depth.outlier}). Only problematic and outlier markers are highlighted;
 normal markers take the neutral middle color. Default
 \code{c("#2166ac","#e0e0e0","#b2182b")}.}
 
 \item{depth.outlier}{Multiplier \code{k} for the robust high-depth outlier cutoff
-\code{median + k * MAD} (not mean +/- SD, which a few extreme loci would drag up).
-Default \code{3}.}
+\code{median + k * MAD} of the marker mean depths (not mean +/- SD, which a few
+extreme loci would drag up). Default \code{3}.}
 
 \item{depth.qc.maxmiss}{Circos "Depth" ring: a marker is flagged problematic
 when its mean depth is below \code{min.depth} OR its missing rate exceeds this
@@ -132,18 +144,20 @@ mean-depth cut alone reads as normal. Default \code{0.5}.}
 \item{mhap.col}{Fill color for the circos "mHaps" log-scaled radial bars.
 Default \code{"#35978f"}.}
 
-\item{paralog.flag}{Microhaplotype count above which a circos "mHaps" locus is
-flagged as paralog-suspect: its bar's over-threshold excess is drawn as a red
-segment above a dashed reference ring. Default \code{10}.}
+\item{paralog.flag}{Number of mHaps (allele rows for the marker) above which a
+circos "mHaps" locus is flagged as paralog-suspect: its bar's over-threshold
+excess is drawn as a red segment above a dashed reference ring. Default \code{10}.}
 
 \item{tick.height, density.height, mhap.height}{Circos track heights (fraction of
 the radius) for the per-marker locus tick rug, the density heatmap ring, and
 the mHap bar track. Defaults \code{0.03}, \code{0.08}, and \code{0.18}.}
 
 \item{label.gap}{Width in degrees of the label corridor opened at 12 o'clock
-for the circos track titles. Default \code{12}.}
+for the circos track titles. Default \code{12}. With a single chromosome, at least
+\code{30} is used.}
 
-\item{mhap.min.reads}{Minimum reads for a mHap to count as present. Default \code{1}.}
+\item{mhap.min.reads}{Minimum reads for a mHap to count as present in a
+locus x sample cell (heatmap with \code{fill = "mhaps"}). Default \code{1}.}
 
 \item{titles}{Logical; draw the plot titles and subtitles. Default \code{TRUE}.
 \code{FALSE} drops both from every requested plot (including the \code{"circos"}
@@ -151,18 +165,24 @@ figure and the multi-panel), leaving the axis labels, legends and the
 \code{"balance"} caption - useful when the figure is captioned externally
 (manuscript, report, slide).}
 
-\item{output.file}{If not \code{NULL}, the figure is also saved here (\code{.png}/\code{.pdf}).}
+\item{output.file}{If not \code{NULL}, the figure is also saved here: as a PDF when
+the extension is \code{.pdf}, otherwise as a PNG.}
 
-\item{width, height, dpi}{Saved-figure dimensions (inches) and resolution.}
+\item{width, height, dpi}{Saved-figure dimensions (inches) and resolution (\code{dpi}
+applies to PNG only).}
 
 \item{verbose}{Logical; print progress/validation messages. Default \code{TRUE}.}
 }
 \value{
-For a single \code{plot.type}, a \code{ggplot} (a composite grob when
-\code{plot.type = "balance"} and \code{balance.density = TRUE}); for several, an
-(invisible) list with \code{plots} (named list) and \code{panel} (the assembled
-multi-panel grob). \code{"circos"} draws to the active device and returns \code{NULL}
-invisibly.
+For a single \code{plot.type}, a \code{ggplot}, returned invisibly when
+\code{output.file} is given. With \code{plot.type = "balance"} and
+\code{balance.density = TRUE} this is a composite grob; use
+\code{grid::grid.draw()} to display it. For several types, an invisible list with
+\code{plots} (named list) and \code{panel} (the assembled multi-panel grob); the panel
+is not drawn, use \code{grid::grid.draw(res$panel)} to display it. \code{"circos"}
+returns invisibly the path of the saved figure (\code{output.file}, or a
+temporary PNG when no \code{output.file} is given and no graphics device is open),
+or \code{NULL} when it is drawn to an already open device.
 }
 \description{
 Visualize a fixed allele ID MADC file (one processed through HapApp) with a
@@ -170,30 +190,43 @@ choice of plots selected via \code{plot.type}: a PCA of alternative read ratios,
 linear marker-distribution genome plot, a markers x samples read-depth/#mHaps
 heatmap, a per-sample missing-data boxplot, an allele read-ratio balance
 diagnostic, a marker mean-depth (uniformity) distribution, and a \code{circos}
-circular plot with concentric marker-position, #mHaps, and read-depth tracks.
-Requesting one type returns that plot; requesting several (non-circos) returns
-a multi-panel figure.
+circular plot with concentric marker-position, marker-density, #mHaps, and
+read-depth QC tracks. Requesting one type returns that plot; requesting
+several (non-circos) returns a multi-panel figure.
 }
 \details{
 The input is validated with \code{\link[=check_madc_sanity]{check_madc_sanity()}}; raw DArT MADC files are
-rejected with an error. All plots honor \code{target.only} (restrict to \verb{|Ref}/
-\verb{|Alt}) and \code{min.depth} (locus x sample cells below this depth are treated as
-missing). Plotting uses only \code{ggplot2} and base \code{grid}; the \code{circos} plot
-additionally requires the suggested \code{circlize} package and, being a base
-graphics figure, must be requested on its own (it cannot be embedded in a
-multi-panel). The \code{"pca"} plot is a sample/data-interpretation diagnostic
-(missing ratios are mean-imputed and the PCA is unscaled), so strong biological
-structure can dominate it - read it for sample swaps / population separation,
-not as evidence the sequencing run itself was good or bad. The \code{"balance"} plot
-is the direct read-out of whether the assay yields interpretable dosage signal;
-it shows every cell with a defined ratio (including below \code{min.depth}, marked by
-a dotted line) and, with \code{ploidy}, a depth-dependent binomial expectation band.
+rejected with an error. With \code{target.only = TRUE}, only the target
+\verb{|Ref}/\verb{|Alt} alleles are used. With \code{target.only = FALSE} (default), read
+depth and mHap counts include all alleles, while the alternative read ratios
+used by the \code{"pca"} and \code{"balance"} plots add the \verb{|RefMatch}/\verb{|AltMatch}
+reads to their \verb{|Ref}/\verb{|Alt} alleles (as in \code{\link[=get_countsMADC]{get_countsMADC()}} with
+\code{collapse_matches_counts = TRUE}) and do not use the \verb{|Other} reads.
+
+\code{min.depth} (locus x sample cells below this depth are treated as missing) is
+applied in the \code{"missing"} plot and the \code{circos} "Depth" ring, and is drawn as
+a reference line in the \code{"balance"} and \code{"depth"} plots. It is not applied to
+the \code{"pca"}, \code{"marker"}, or \code{"heatmap"} plots.
+
+Plotting uses \code{ggplot2} and base \code{grid}; the \code{circos} plot additionally
+requires the suggested \code{circlize} package and, being a base graphics figure,
+must be requested on its own (it cannot be embedded in a multi-panel). The
+\code{"pca"} plot is a sample/data-interpretation diagnostic (a ratio is missing
+only when the marker has no \verb{|Ref}/\verb{|Alt} reads in the sample, missing ratios
+are mean-imputed, loci with no variation are dropped, and the PCA is
+unscaled), so strong biological structure can dominate it - read it for
+sample swaps / population separation, not as evidence the sequencing run
+itself was good or bad. The \code{"balance"} plot is the direct read-out of whether
+the assay yields interpretable dosage signal; it shows every cell with a
+defined ratio (including below \code{min.depth}, marked by a dotted line) and, with
+\code{ploidy}, a depth-dependent binomial expectation band.
 }
 \examples{
 madc_file <- system.file("example_MADC_FixedAlleleID.csv", package = "BIGr")
 p <- madc_plot(madc_file, plot.type = "missing")
 \donttest{
-madc_plot(madc_file, plot.type = c("pca", "heatmap"))
+res <- madc_plot(madc_file, plot.type = c("pca", "heatmap"))
+grid::grid.draw(res$panel)
 madc_plot(madc_file, plot.type = "balance", ploidy = 2)
 }
 

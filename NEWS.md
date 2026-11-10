@@ -1,166 +1,169 @@
 # BIGr 0.10.0
 
-* New `madc_summary()`: read-only summary tables for a fixed allele ID MADC - a per-marker microhaplotype frequency distribution, per-sample and per-marker total read depth (`depth`) and on-target `|Ref`/`|Alt` depth (`target_depth`) alongside missing rate, number of mHaps, and off-target read fraction, a missingness threshold sweep, an overall summary, and optional aggregation by a sample-metadata category (e.g. species).
-* New `madc_plot()`: visualize a fixed allele ID MADC via a `plot.type` selector - a PCA of alternative read ratios (color by a metadata category, optional second variable by point `shape.col`, custom `palette`), a linear marker-distribution genome plot, a markers x samples read-depth/#mHaps heatmap (failed cells black; depth on a colorblind-safe diverging scale; samples sorted/labeled by category and optionally faceted by chromosome), a per-sample missing-data boxplot (optionally ordered by median missing rate via `miss.sort` and drawn horizontally via `horizontal`), and a publication-oriented `circos` circular plot. The `circos` figure carries four concentric tracks - dominant per-marker locus ticks with a distinct Mb coordinate axis ("Loci"), a marker-density heatmap ring ("Density", window set by `density.window`), log-scaled #mHaps two-tone bars - a neutral base with a red over-threshold segment above a dashed reference ring - flagging paralog-suspect loci ("mHaps", threshold `paralog.flag`), and a gapless depth ribbon flagging problematic and high-depth-outlier loci ("Depth") - identified by horizontal track titles in a 12 o'clock corridor (`label.gap`) with a single compact legend in the center; track colors are customizable (`mhap.col`, `depth.col`, `density.col`). The "Depth" ribbon flags a marker as problematic when its mean depth is below `min.depth` OR its missing rate exceeds `depth.qc.maxmiss` (default 0.5), so high-dropout markers (e.g. 50% zeros / 50% deep) that a mean-depth cut alone reads as normal are caught. Requesting several (non-circos) types returns a multi-panel figure; figures can be saved via `output.file`. Plotting uses `ggplot2` + base `grid`; the `circos` plot uses the suggested `circlize` package.
-* `madc_plot()` also provides two QC-focused `plot.type`s: `"balance"`, a ploidy-aware allele read-ratio diagnostic (alt read ratio vs target depth as a 2D density), and `"depth"`, a log-scaled marker mean-depth (uniformity) distribution with a `min.depth` reference line and median/IQR. The `"balance"` plot shows every cell with a defined ratio (including below `min.depth`, marked by a dotted reference line) and, when `ploidy` is given, dashed guides at the expected `(0:ploidy)/ploidy` ratios plus a depth-dependent 95% binomial expectation band around each interior expected ratio (the spread of `A/D` under `Binomial(D, ratio)`), so allele-balance dispersion wider than sequencing-depth sampling noise stands out directly. `balance.density = TRUE` stacks a marginal histogram of the alt-read ratio above the heatmap (returning a composite grob). Heatmap sub-sampling (`max.loci`/`max.samples`) is now deterministic (evenly spaced) so repeated calls give identical figures.
-* `madc_plot(titles = FALSE)` drops the title and subtitle from every requested plot (including the `circos` figure, the multi-panel, and the `balance.density` composite), leaving axis labels, legends, and the `"balance"` caption - for figures captioned externally (manuscript, report, slide). Default `TRUE` keeps the current behavior.
-* `madc_summary()` additions: per-sample/per-marker depth is summarized with robust statistics (`median_depth`, `depth_mad`, `depth_q10`, `depth_q90`) alongside the mean, plus `total_reads`/`target_reads` and `call_rate`; off-target is reported both as the mean per-locus ratio (`offtarget_fraction`) and read-weighted `sum(offtarget)/sum(total)` (`offtarget_fraction_weighted`, the "% of reads off target" number); the ambiguous mHap count is split into `n_mhaps_defined` (allele rows in the panel) and `n_mhaps_observed` (alleles actually supported by reads). Two new tables: `depth_sweep` (a read-depth threshold sweep mirroring the missingness sweep) and `marker_qc` (advisory per-marker `PASS`/`FLAG`/`FAIL` status with a reason string, thresholds `min.locus.depth`/`max.locus.depth`/`max.missing`/`max.offtarget`/`max.mhaps.per.loci` reusing `filterMADC`'s vocabulary; it classifies without removing). Tables can be written as per-table CSVs or, with `output.format = "xlsx"`, a single workbook with one sheet per table (requires the suggested `writexl` package).
-* `filterMADC` updates:
-    * Now only accepts fixed allele ID MADC files (processed through HapApp). The input is validated with `check_madc_sanity` and raw DArT MADC files (or any file without fixed AlleleIDs) are rejected with an error. This also fixes a crash on raw MADC files caused by non-unique AlleleIDs.
-    * Removed the `n.summary.columns` argument (breaking change). Fixed allele ID MADC has a fixed column layout, so summary columns no longer need to be specified or detected.
-    * Replaced the per-mhap `min.mean.reads`/`max.mean.reads` arguments with a per-locus depth window `min.locus.depth`/`max.locus.depth` (breaking change). Depth is the mean reads per sample at a locus (sum of all mhap reads at the locus divided by the number of samples), and loci outside the window are removed whole (Ref and Alt together) - e.g. `max.locus.depth` to exclude paralogous over-amplification.
-    * `max.mhaps.per.loci` and `target.only` now retain strictly the target `|Ref`/`|Alt` alleles at affected loci, also removing `|Other` alleles (previously only `|RefMatch`/`|AltMatch` were removed).
-    * The `min.ind.with.reads` presence filter now protects the target `|Ref`/`|Alt` alleles, only pruning non-target (`|RefMatch`/`|AltMatch`/`|Other`) mhaps, so a locus never loses its Ref/Alt pair.
-* Fixed `madc2vcf_targets()` removing markers with no match in `markers_info` as invalid POS values, without the warning "markers removed: no matching entry found in markers_info". The POS correction now runs after these markers are removed and reported.
-* Fixed `filterVCF()` deciding whether to apply `filter.DP` and `filter.MPP` from the FORMAT column of the first record only. The FORMAT fields are now read from every record, and the missing call written for a filtered genotype matches the FORMAT of its own record. Calls without a DP or MPP value are left unchanged.
-* `filterVCF()` now gives an error when `filter.SAMPLE.miss` or `filter.SNP.miss` is outside 0 to 1, so a percentage such as `20` is no longer accepted as a threshold that keeps every sample or variant.
-* `madc2vcf_all()` now records `markers_info`, `add_others`, `others_max_snps`, `others_rm_with_indels`, `others_min_dist`, and `others_max_close_snps` in the `##BIGrCommandLine` header line of the VCF.
-* `updog2vcf()` now removes SNPs whose position cannot be read from the SNP ID as a positive integer (expected format CHR_POS), with a warning, instead of writing a POS of `0` or `NA` to the VCF.
-
+-   New `madc_summary()`: read-only summary tables for a fixed allele ID MADC - a per-marker microhaplotype frequency distribution, per-sample and per-marker total read depth (`depth`) and on-target `|Ref`/`|Alt` depth (`target_depth`) alongside missing rate, number of mHaps, and off-target read fraction, a missingness threshold sweep, an overall summary, and optional aggregation by a sample-metadata category (e.g. species).
+-   New `madc_plot()`: visualize a fixed allele ID MADC via a `plot.type` selector - a PCA of alternative read ratios (color by a metadata category, optional second variable by point `shape.col`, custom `palette`), a linear marker-distribution genome plot, a markers x samples read-depth/#mHaps heatmap (failed cells black; depth on a colorblind-safe diverging scale; samples sorted/labeled by category and optionally faceted by chromosome), a per-sample missing-data boxplot (optionally ordered by median missing rate via `miss.sort` and drawn horizontally via `horizontal`), and a publication-oriented `circos` circular plot. The `circos` figure carries four concentric tracks - dominant per-marker locus ticks with a distinct Mb coordinate axis ("Loci"), a marker-density heatmap ring ("Density", window set by `density.window`), log-scaled #mHaps two-tone bars - a neutral base with a red over-threshold segment above a dashed reference ring - flagging paralog-suspect loci ("mHaps", threshold `paralog.flag`), and a gapless depth ribbon flagging problematic and high-depth-outlier loci ("Depth") - identified by horizontal track titles in a 12 o'clock corridor (`label.gap`) with a single compact legend in the center; track colors are customizable (`mhap.col`, `depth.col`, `density.col`). The "Depth" ribbon flags a marker as problematic when its mean depth is below `min.depth` OR its missing rate exceeds `depth.qc.maxmiss` (default 0.5), so high-dropout markers (e.g. 50% zeros / 50% deep) that a mean-depth cut alone reads as normal are caught. Requesting several (non-circos) types returns a multi-panel figure; figures can be saved via `output.file`. Plotting uses `ggplot2` + base `grid`; the `circos` plot uses the suggested `circlize` package.
+-   `madc_plot()` also provides two QC-focused `plot.type`s: `"balance"`, a ploidy-aware allele read-ratio diagnostic (alt read ratio vs target depth as a 2D density), and `"depth"`, a log-scaled marker mean-depth (uniformity) distribution with a `min.depth` reference line and median/IQR. The `"balance"` plot shows every cell with a defined ratio (including below `min.depth`, marked by a dotted reference line) and, when `ploidy` is given, dashed guides at the expected `(0:ploidy)/ploidy` ratios plus a depth-dependent 95% binomial expectation band around each interior expected ratio (the spread of `A/D` under `Binomial(D, ratio)`), so allele-balance dispersion wider than sequencing-depth sampling noise stands out directly. `balance.density = TRUE` stacks a marginal histogram of the alt-read ratio above the heatmap (returning a composite grob). Heatmap sub-sampling (`max.loci`/`max.samples`) is now deterministic (evenly spaced) so repeated calls give identical figures.
+-   `madc_plot(titles = FALSE)` drops the title and subtitle from every requested plot (including the `circos` figure, the multi-panel, and the `balance.density` composite), leaving axis labels, legends, and the `"balance"` caption - for figures captioned externally (manuscript, report, slide). Default `TRUE` keeps the current behavior.
+-   `madc_summary()` additions: per-sample/per-marker depth is summarized with robust statistics (`median_depth`, `depth_mad`, `depth_q10`, `depth_q90`) alongside the mean, plus `total_reads`/`target_reads` and `call_rate`; off-target is reported both as the mean per-locus ratio (`offtarget_fraction`) and read-weighted `sum(offtarget)/sum(total)` (`offtarget_fraction_weighted`, the "% of reads off target" number); the ambiguous mHap count is split into `n_mhaps_defined` (allele rows in the panel) and `n_mhaps_observed` (alleles actually supported by reads). Two new tables: `depth_sweep` (a read-depth threshold sweep mirroring the missingness sweep) and `marker_qc` (advisory per-marker `PASS`/`FLAG`/`FAIL` status with a reason string, thresholds `min.locus.depth`/`max.locus.depth`/`max.missing`/`max.offtarget`/`max.mhaps.per.loci` reusing `filterMADC`'s vocabulary; it classifies without removing). Tables can be written as per-table CSVs or, with `output.format = "xlsx"`, a single workbook with one sheet per table (requires the suggested `writexl` package).
+-   `filterMADC` updates:
+    -   Now only accepts fixed allele ID MADC files (processed through HapApp). The input is validated with `check_madc_sanity` and raw DArT MADC files (or any file without fixed AlleleIDs) are rejected with an error. This also fixes a crash on raw MADC files caused by non-unique AlleleIDs.
+    -   Removed the `n.summary.columns` argument (breaking change). Fixed allele ID MADC has a fixed column layout, so summary columns no longer need to be specified or detected.
+    -   Replaced the per-mhap `min.mean.reads`/`max.mean.reads` arguments with a per-locus depth window `min.locus.depth`/`max.locus.depth` (breaking change). Depth is the mean reads per sample at a locus (sum of all mhap reads at the locus divided by the number of samples), and loci outside the window are removed whole (Ref and Alt together) - e.g. `max.locus.depth` to exclude paralogous over-amplification.
+    -   `max.mhaps.per.loci` and `target.only` now retain strictly the target `|Ref`/`|Alt` alleles at affected loci, also removing `|Other` alleles (previously only `|RefMatch`/`|AltMatch` were removed).
+    -   The `min.ind.with.reads` presence filter now protects the target `|Ref`/`|Alt` alleles, only pruning non-target (`|RefMatch`/`|AltMatch`/`|Other`) mhaps, so a locus never loses its Ref/Alt pair.
+-   Fixed `madc2vcf_targets()` removing markers with no match in `markers_info` as invalid POS values, without the warning "markers removed: no matching entry found in markers_info". The POS correction now runs after these markers are removed and reported.
+-   Fixed `filterVCF()` deciding whether to apply `filter.DP` and `filter.MPP` from the FORMAT column of the first record only. The FORMAT fields are now read from every record, and the missing call written for a filtered genotype matches the FORMAT of its own record. Calls without a DP or MPP value are left unchanged.
+-   `filterVCF()` now gives an error when `filter.SAMPLE.miss` or `filter.SNP.miss` is outside 0 to 1, so a percentage such as `20` is no longer accepted as a threshold that keeps every sample or variant.
+-   Fixed the `##BIGrCommandLine` header lines of `madc2vcf_targets()`, `madc2vcf_all()`, `madc2vcf_multi()`, and `updog2vcf()` not following the VCF format when an argument was given as a quoted string (e.g. a file path): double quotes and backslashes in the `CommandLine` value are now escaped, and the space before the `CommandLine` key is removed.
+-   `madc2vcf_all()` now records `markers_info`, `add_others`, `others_max_snps`, `others_rm_with_indels`, `others_min_dist`, and `others_max_close_snps` in the `##BIGrCommandLine` header line of the VCF.
+-   New `vcf_header` and `reference` arguments in `madc2vcf_targets()`, `madc2vcf_all()`, `madc2vcf_multi()`, `dosage2vcf()`, `updog2vcf()`, and `filterVCF()` to add the reference genome information to the VCF header:
+    -   `vcf_header`: path or URL to a VCF header file, such as the VCF header files provided with the microhaplotype databases. Its `##reference` and `##contig` lines (reference genome and scaffold lengths) are written to the output VCF. The other lines of the file are not used, since each function writes its own `##fileformat`, `##INFO`, and `##FORMAT` lines. A warning is given if a chromosome in the VCF is not listed in the `##contig` lines.
+    -   `reference`: the reference genome ID, written as the `##reference` line. Used when no header file is available, or to replace the `##reference` line of `vcf_header`.
+    -   When neither is given, the `##reference` and `##contig` lines are left out of the header with a warning. The `##reference=NA` and `##contig=<ID=NA,length=NA>` placeholder lines are no longer written, since they break tools that read the header, such as GIGWA. `filterVCF()` removes these placeholder lines from VCFs written by earlier versions of BIGr and otherwise keeps the reference genome lines of the input VCF.
+    -   The `##BIGrCommandLine` lines are always added to the header. `madc2vcf_multi()` now also adds a `##BIGrCommandLine` line to the header written by polyRAD.
+-   `updog2vcf()` now writes SNPs whose position cannot be read from the SNP ID as a positive integer (expected format CHR_POS) with the SNP ID as CHROM and `1` as POS, with a warning, instead of writing a POS of `0` or `NA` to the VCF.
 
 # BIGr 0.9.0
 
-* `check_madc_sanity` updates: distinguish presence of IUPAC codes on REF/ALT (return logical variable IUPACcodes) from RefMatch/AltMatch/Others (returned logical variable IUPACcodes_MatchAlleles) and from Identical IUPAC code in identical positions in REF/ALT (returned logical variable IUPACcodes_IdenticalRefAlt)
-* Two new arguments to the `madc2vcf_all` function:
-    * `others_min_dist` (default 5bp)
-    * `others_max_close_snps` (default 3 SNPs)
-
-* By default, `Other` tags will be discarded if they have more than 3 SNPs with less than 5bp distance between them   
-* Adapt `madc2vcf_all` code to let pass identical IUPAC code in identical position in REF/ALT but ignore polymorphisms in Match or Other alleles at the same position
-* `madc2vcf_targets` and `madc2vcf_multi` will only throw an error if different IUPAC are present in REF/ALT sequences (IUPACcodes = TRUE)
-
+-   `check_madc_sanity` updates: distinguish presence of IUPAC codes on REF/ALT (return logical variable IUPACcodes) from RefMatch/AltMatch/Others (returned logical variable IUPACcodes_MatchAlleles) and from Identical IUPAC code in identical positions in REF/ALT (returned logical variable IUPACcodes_IdenticalRefAlt)
+-   Two new arguments to the `madc2vcf_all` function:
+    -   `others_min_dist` (default 5bp)
+    -   `others_max_close_snps` (default 3 SNPs)
+-   By default, `Other` tags will be discarded if they have more than 3 SNPs with less than 5bp distance between them\
+-   Adapt `madc2vcf_all` code to let pass identical IUPAC code in identical position in REF/ALT but ignore polymorphisms in Match or Other alleles at the same position
+-   `madc2vcf_targets` and `madc2vcf_multi` will only throw an error if different IUPAC are present in REF/ALT sequences (IUPACcodes = TRUE)
 
 # BIGr 0.8.1
 
-- Fixed `filterVCF()` discarding SNPs whose INFO values are written in scientific notation. The `OD`, `BIAS`, and `PMC` filters read INFO values with a pattern that accepted only digits and decimal points, so a value such as `PMC=4.78e-07` was read as `4.78` and failed a `filter.PMC = 0.05` threshold that it actually passed by five orders of magnitude. `updog2vcf()` writes these values with `paste0()`, so R's default formatting produces scientific notation for small numbers, and updog's `od` and `prop_mis` are routinely small for good markers - meaning the SNPs most likely to be dropped were the cleanest ones. INFO values are now parsed with `as.numeric()` on the whole field, accepting any valid numeric representation. Field names are also matched against a complete INFO entry rather than as a substring, so a field such as `XOD` is no longer mistaken for `OD`.
-- Fixed `filterVCF()` writing corrupt all-`NA` variants when a filter value could not be read. A logical index containing `NA` does not drop a row in R, it inserts a row of `NA`s, so any variant with an unreadable `OD`, `BIAS` or `PMC` value, or an `NA` minor allele frequency, was written into the output with an empty `CHROM`, `POS`, `REF` and `ALT`. The `NA` frequency case was reachable through normal use, because `vcfR::maf()` returns `NA` for a variant left with no called genotypes and the `filter.DP` and `filter.MPP` masking can produce exactly that. These variants are now removed, and the number removed is reported in a warning so that they are never discarded silently.
-- `filterVCF()` now removes variants when none of them have a readable value for a requested filter, instead of returning the data unfiltered. Previously the `OD`, `BIAS` and `PMC` filters skipped filtering entirely in that situation and reported only "No valid values found", so a run that filtered nothing could look like a run that succeeded. All of the filters now behave the same way, and the warning names the likely cause so it can be diagnosed.
-- Fixed `filterVCF()` skipping a requested `OD`, `BIAS` or `PMC` filter when the first variant in the file did not carry that INFO field. The available INFO fields were read from the first record only, so a field that was absent from that one record disabled its filter for the entire file, with no warning and no indication in the output that filtering had not happened. A field may legally be absent from any individual record, so requested filters are now applied to every record, and records without a usable value are removed and reported. This also removes the last case where the order of records in the file could change the result of filtering.
-- Corrected and expanded the documentation for `filterVCF()`. `filter.DP` was described as a total read depth filter applied to each SNP; it is applied to each genotype call using the `DP` value in the FORMAT column, setting calls below the threshold to missing rather than removing variants. `filter.MPP` works the same way and was previously undescribed. The remaining filters now state which field they read and which direction the comparison runs, `filter.SAMPLE.miss` and `filter.SNP.miss` state that they take a proportion rather than a percentage, and `filter.BIAS.min` and `filter.BIAS.max` state that neither has any effect unless both are supplied. The return value is documented as a vcfR object when `output.file` is omitted, rather than always a gzipped file.
-- Updated madc2vcf_all and madc2vcf_targets. Before, it was possible for POS to be exported as scientific notation instead of integers, and for negative POS values to be present for off target SNPs. POS are corrected to be integers, and SNPs with a negative POS value are removed.
-- Removed the breed composition and pedigree functions `allele_freq_poly()`, `solve_composition_poly()`, `check_ped()`, `find_parentage()`, and `validate_pedigree()` (breaking change). They are now part of the independent BIGpopA package: https://github.com/Breeding-Insight/BIGpopA
-- Fixed `madc2vcf_all()` error "invalid substring arguments" that occurred with `add_others = TRUE` when an off-target ("Other") allele aligned to the reference with no mismatch positions remaining after the target SNP position was removed. The reference/alternate base lookups for off-target alleles are now guarded by the existing non-empty check, matching how the off-target Match alleles are already handled.
+-   Fixed `filterVCF()` discarding SNPs whose INFO values are written in scientific notation. The `OD`, `BIAS`, and `PMC` filters read INFO values with a pattern that accepted only digits and decimal points, so a value such as `PMC=4.78e-07` was read as `4.78` and failed a `filter.PMC = 0.05` threshold that it actually passed by five orders of magnitude. `updog2vcf()` writes these values with `paste0()`, so R's default formatting produces scientific notation for small numbers, and updog's `od` and `prop_mis` are routinely small for good markers - meaning the SNPs most likely to be dropped were the cleanest ones. INFO values are now parsed with `as.numeric()` on the whole field, accepting any valid numeric representation. Field names are also matched against a complete INFO entry rather than as a substring, so a field such as `XOD` is no longer mistaken for `OD`.
+-   Fixed `filterVCF()` writing corrupt all-`NA` variants when a filter value could not be read. A logical index containing `NA` does not drop a row in R, it inserts a row of `NA`s, so any variant with an unreadable `OD`, `BIAS` or `PMC` value, or an `NA` minor allele frequency, was written into the output with an empty `CHROM`, `POS`, `REF` and `ALT`. The `NA` frequency case was reachable through normal use, because `vcfR::maf()` returns `NA` for a variant left with no called genotypes and the `filter.DP` and `filter.MPP` masking can produce exactly that. These variants are now removed, and the number removed is reported in a warning so that they are never discarded silently.
+-   `filterVCF()` now removes variants when none of them have a readable value for a requested filter, instead of returning the data unfiltered. Previously the `OD`, `BIAS` and `PMC` filters skipped filtering entirely in that situation and reported only "No valid values found", so a run that filtered nothing could look like a run that succeeded. All of the filters now behave the same way, and the warning names the likely cause so it can be diagnosed.
+-   Fixed `filterVCF()` skipping a requested `OD`, `BIAS` or `PMC` filter when the first variant in the file did not carry that INFO field. The available INFO fields were read from the first record only, so a field that was absent from that one record disabled its filter for the entire file, with no warning and no indication in the output that filtering had not happened. A field may legally be absent from any individual record, so requested filters are now applied to every record, and records without a usable value are removed and reported. This also removes the last case where the order of records in the file could change the result of filtering.
+-   Corrected and expanded the documentation for `filterVCF()`. `filter.DP` was described as a total read depth filter applied to each SNP; it is applied to each genotype call using the `DP` value in the FORMAT column, setting calls below the threshold to missing rather than removing variants. `filter.MPP` works the same way and was previously undescribed. The remaining filters now state which field they read and which direction the comparison runs, `filter.SAMPLE.miss` and `filter.SNP.miss` state that they take a proportion rather than a percentage, and `filter.BIAS.min` and `filter.BIAS.max` state that neither has any effect unless both are supplied. The return value is documented as a vcfR object when `output.file` is omitted, rather than always a gzipped file.
+-   Updated madc2vcf_all and madc2vcf_targets. Before, it was possible for POS to be exported as scientific notation instead of integers, and for negative POS values to be present for off target SNPs. POS are corrected to be integers, and SNPs with a negative POS value are removed.
+-   Removed the breed composition and pedigree functions `allele_freq_poly()`, `solve_composition_poly()`, `check_ped()`, `find_parentage()`, and `validate_pedigree()` (breaking change). They are now part of the independent BIGpopA package: <https://github.com/Breeding-Insight/BIGpopA>
+-   Fixed `madc2vcf_all()` error "invalid substring arguments" that occurred with `add_others = TRUE` when an off-target ("Other") allele aligned to the reference with no mismatch positions remaining after the target SNP position was removed. The reference/alternate base lookups for off-target alleles are now guarded by the existing non-empty check, matching how the off-target Match alleles are already handled.
 
 # BIGr 0.7.2
 
-- Fixed manual text errors
+-   Fixed manual text errors
 
 # BIGr 0.7.1
 
-- Updated `check_ped()` to return corrected pedigree data in the result list instead of assigning objects to the global environment
-- Skipped long remote `madc2vcf_all` integration tests on CRAN while keeping them enabled in GitHub Actions
+-   Updated `check_ped()` to return corrected pedigree data in the result list instead of assigning objects to the global environment
+-   Skipped long remote `madc2vcf_all` integration tests on CRAN while keeping them enabled in GitHub Actions
 
 # BIGr 0.7.0
 
 ## Updates on `dosage2vcf`
 
-- Added support for DArT SNP/INDEL 1-row and 2-row report formats
-- `dosage2vcf` now validates marker and sample sets between report and counts files, then aligns counts to the report order before writing VCF genotypes
-- VCF `CHROM` and `POS` are derived from `Chrom`/`ChromPos` when present, otherwise from `MarkerName`; `MarkerName` is retained in the VCF `ID` field
-- Missing SNP/INDEL genotype calls (`-`/`NA`) are written as diploid missing genotypes (`./.`)
+-   Added support for DArT SNP/INDEL 1-row and 2-row report formats
+-   `dosage2vcf` now validates marker and sample sets between report and counts files, then aligns counts to the report order before writing VCF genotypes
+-   VCF `CHROM` and `POS` are derived from `Chrom`/`ChromPos` when present, otherwise from `MarkerName`; `MarkerName` is retained in the VCF `ID` field
+-   Missing SNP/INDEL genotype calls (`-`/`NA`) are written as diploid missing genotypes (`./.`)
 
 ## New function `madc2vcf_multi`
 
-- New function `madc2vcf_multi` to convert a DArTag MADC file to a VCF using the polyRAD pipeline for multiallelic genotyping
-- Runs `check_madc_sanity` before loading the data and stops with informative errors if:
-    - Required columns are missing
-    - IUPAC (non-ATCG) codes are present in AlleleSequence
-    - Ref/Alt sequences are unpaired (`RefAltSeqs = FALSE`)
-    - Allele IDs have not been fixed by HapApp (`FixAlleleIDs = FALSE`)
-    - CloneIDs do not follow `Chr_Pos` format and no `markers_info` is provided
-- New argument `markers_info`: optional path or URL to a CSV with `CloneID`/`BI_markerID`, `Chr`, and `Pos` columns; required when CloneIDs do not follow the `Chr_Pos` format
-- Runs `check_botloci` to validate and reconcile CloneIDs between the MADC and botloci file, automatically fixing padding mismatches
-- A corrected temp file is written and passed to `readDArTag` only when needed (all-NA rows/columns detected, CloneIDs remapped by `check_botloci`, or botloci IDs remapped)
-- Accepts paths or URLs for `madc_file`, `botloci_file`, and `markers_info`
-- Estimates overdispersion with `polyRAD::TestOverdispersion`, iterates priors with `polyRAD::IterateHWE`, and exports the result with `polyRAD::RADdata2VCF`
-- `polyRAD` is a soft dependency (listed under `Suggests`); an informative error is raised if it is not installed
+-   New function `madc2vcf_multi` to convert a DArTag MADC file to a VCF using the polyRAD pipeline for multiallelic genotyping
+-   Runs `check_madc_sanity` before loading the data and stops with informative errors if:
+    -   Required columns are missing
+    -   IUPAC (non-ATCG) codes are present in AlleleSequence
+    -   Ref/Alt sequences are unpaired (`RefAltSeqs = FALSE`)
+    -   Allele IDs have not been fixed by HapApp (`FixAlleleIDs = FALSE`)
+    -   CloneIDs do not follow `Chr_Pos` format and no `markers_info` is provided
+-   New argument `markers_info`: optional path or URL to a CSV with `CloneID`/`BI_markerID`, `Chr`, and `Pos` columns; required when CloneIDs do not follow the `Chr_Pos` format
+-   Runs `check_botloci` to validate and reconcile CloneIDs between the MADC and botloci file, automatically fixing padding mismatches
+-   A corrected temp file is written and passed to `readDArTag` only when needed (all-NA rows/columns detected, CloneIDs remapped by `check_botloci`, or botloci IDs remapped)
+-   Accepts paths or URLs for `madc_file`, `botloci_file`, and `markers_info`
+-   Estimates overdispersion with `polyRAD::TestOverdispersion`, iterates priors with `polyRAD::IterateHWE`, and exports the result with `polyRAD::RADdata2VCF`
+-   `polyRAD` is a soft dependency (listed under `Suggests`); an informative error is raised if it is not installed
 
 # BIGr 0.6.6
 
 ## Updates on `madc2vcf_all`
 
-- New arguments for controlling processing of `Other` alleles:
-    - `add_others`: if `TRUE` (default), alleles labeled "Other" in the MADC are included in off-target SNP extraction
-    - `others_max_snps`: discards Other alleles with more than this many SNP differences relative to the Ref sequence (default: 5)
-    - `others_rm_with_indels`: discards Other alleles containing insertions or deletions relative to the Ref sequence (default: `TRUE`)
-- Others alleles that carry a different base at the target SNP position are now reported as a 3rd allele in the VCF instead of being silently dropped
-- Target position is now correctly removed from Others alignments, preventing duplicate VCF positions and marker IDs
-- Fixed a bug where Others alleles with "Ref_" or "Alt_" in their AlleleID would corrupt the target SNP REF/ALT fields and read depth counts in `merge_counts`
-- Improved verbose messages throughout: counts of Other alleles found, kept, and discarded (by indel filter and by max SNP filter) are now reported; multiallelic target SNPs with a 3rd allele from Others are counted and reported
-- Debug-level message (level 3) listing each Other allele added and its genomic position
+-   New arguments for controlling processing of `Other` alleles:
+    -   `add_others`: if `TRUE` (default), alleles labeled "Other" in the MADC are included in off-target SNP extraction
+    -   `others_max_snps`: discards Other alleles with more than this many SNP differences relative to the Ref sequence (default: 5)
+    -   `others_rm_with_indels`: discards Other alleles containing insertions or deletions relative to the Ref sequence (default: `TRUE`)
+-   Others alleles that carry a different base at the target SNP position are now reported as a 3rd allele in the VCF instead of being silently dropped
+-   Target position is now correctly removed from Others alignments, preventing duplicate VCF positions and marker IDs
+-   Fixed a bug where Others alleles with "Ref\_" or "Alt\_" in their AlleleID would corrupt the target SNP REF/ALT fields and read depth counts in `merge_counts`
+-   Improved verbose messages throughout: counts of Other alleles found, kept, and discarded (by indel filter and by max SNP filter) are now reported; multiallelic target SNPs with a 3rd allele from Others are counted and reported
+-   Debug-level message (level 3) listing each Other allele added and its genomic position
 
 # BIGr 0.6.5
 
 ## Updates on madc2vcf functions
+
 Details:
 
-- both functions targets and all (targets + off-targets) markers now have `check_madc_sanity` function implemented. It tests:
-    - [Columns] If MADC has the expected columns
-    - [allNArow | allNAcol] Presence of columns and rows with all NA (happens often when people open the MADC in excel before loading in R)
-    - [IUPACcodes] Presence of IUPAC codes on AlleleSequence
-    - [LowerCase] Presence of lower case bases on AlleleSequence
-    - [Indels] Presence of Indels
-    - [ChromPos] If CloneID follows the format Chr_Pos
-    - [RefAltSeqs] If all Ref Allele has corresponding Alt and vice-versa
-    - [OtherAlleles] If "Other" exists in the MADC AlleleID
+-   both functions targets and all (targets + off-targets) markers now have `check_madc_sanity` function implemented. It tests:
+    -   [Columns] If MADC has the expected columns
+    -   [allNArow \| allNAcol] Presence of columns and rows with all NA (happens often when people open the MADC in excel before loading in R)
+    -   [IUPACcodes] Presence of IUPAC codes on AlleleSequence
+    -   [LowerCase] Presence of lower case bases on AlleleSequence
+    -   [Indels] Presence of Indels
+    -   [ChromPos] If CloneID follows the format Chr_Pos
+    -   [RefAltSeqs] If all Ref Allele has corresponding Alt and vice-versa
+    -   [OtherAlleles] If "Other" exists in the MADC AlleleID
+-   Better messages if `verbose = TRUE` in `madc2vcf_all`
+-   `madc2vcf_all` support for Indels - markers_info with Indels position is required; only the target indel is extracted, off-targets are ignored for the tag
+-   `madc2vcf_targets` doesn’t run if:
+    -   MADC Column names are not correct
+    -   Ignore Other alleles - but inform the user if they exist or not and direct them to `madc2vcf_all` in case they want to extract them as well
+-   See the table for madc2vcf_targets requirements accordingly to MADC content:
 
-- Better messages if `verbose = TRUE` in `madc2vcf_all`
-- `madc2vcf_all` support for Indels - markers_info with Indels position is required; only the target indel is extracted, off-targets are ignored for the tag
-- `madc2vcf_targets` doesn’t run if: 
-    - MADC Column names are not correct
-    - Ignore Other alleles - but inform the user if they exist or not and direct them to `madc2vcf_all` in case they want to extract them as well
-- See the table for madc2vcf_targets requirements accordingly to MADC content:
-
-  | check status | get_REF_ALT | Requires
--- | -- | -- | --
-IUPAC | TRUE | TRUE | markers_info REF/ALT
-  | TRUE | FALSE | -
-  | FALSE | TRUE | botloci or markers_info REF/ALT
-  | FALSE | FALSE | -
-Indels | TRUE | TRUE | markers_info REF/ALT
-  | TRUE | FALSE | -
-  | FALSE | TRUE | botloci or markers_info REF/ALT
-  | FALSE | FALSE | -
-ChromPos | TRUE | TRUE | botloci or markers_info REF/ALT
-  | TRUE | FALSE | -
-  | FALSE | TRUE | markers_info CHR/POS/REF/ALT or markers_info CHR/POS/ + botloci
-  | FALSE | FALSE | markers_info CHR/POS
-FixAlleleIDs | TRUE | TRUE | botloci or markers_info REF/ALT
-  | TRUE | FALSE | -
-  | FALSE | TRUE | markers_info REF/ALT
-  | FALSE | FALSE | -
+|   | check status | get_REF_ALT | Requires |
+|----|----|----|----|
+| IUPAC | TRUE | TRUE | markers_info REF/ALT |
+|   | TRUE | FALSE | \- |
+|   | FALSE | TRUE | botloci or markers_info REF/ALT |
+|   | FALSE | FALSE | \- |
+| Indels | TRUE | TRUE | markers_info REF/ALT |
+|   | TRUE | FALSE | \- |
+|   | FALSE | TRUE | botloci or markers_info REF/ALT |
+|   | FALSE | FALSE | \- |
+| ChromPos | TRUE | TRUE | botloci or markers_info REF/ALT |
+|   | TRUE | FALSE | \- |
+|   | FALSE | TRUE | markers_info CHR/POS/REF/ALT or markers_info CHR/POS/ + botloci |
+|   | FALSE | FALSE | markers_info CHR/POS |
+| FixAlleleIDs | TRUE | TRUE | botloci or markers_info REF/ALT |
+|   | TRUE | FALSE | \- |
+|   | FALSE | TRUE | markers_info REF/ALT |
+|   | FALSE | FALSE | \- |
 
 # BIGr 0.6.4
 
-- Add function `vmsg` to organize messages printed on the console
-- Add metadata to VCF header from madc2vcf_targets
-- Add argument `madc_object` to `get_countsMADC` to avoid reading the MADC file twice and to get directly the MADC fixed padding output from `check_botloci`
-- Organize messages from `madc2vcf_targets` checks
-- Add argument `collapse_matches_counts` and `verbose` to `madc2vcf_targets` function
+-   Add function `vmsg` to organize messages printed on the console
+-   Add metadata to VCF header from madc2vcf_targets
+-   Add argument `madc_object` to `get_countsMADC` to avoid reading the MADC file twice and to get directly the MADC fixed padding output from `check_botloci`
+-   Organize messages from `madc2vcf_targets` checks
+-   Add argument `collapse_matches_counts` and `verbose` to `madc2vcf_targets` function
 
 # BIGr 0.6.3
 
-- New function to check MADC files: `check_madc_sanity`. Currently, it checks for the presence of required columns, whether fixed allele IDs were assigned, the presence of IUPAC codes, lowercase sequence bases, indels, and chromosome and position information.
-- Added new argument `markers_info`, which allows users to provide a CSV file with marker information such as CHROM, POS, marker type, and position of indels. For BI species, this information is available from [PanelHub](https://github.com/Breeding-Insight/BIGapp-PanelHub).
-- Checked inputs for `madc2vcf_all`.
-- Updated affiliation in `DESCRIPTION`.
+-   New function to check MADC files: `check_madc_sanity`. Currently, it checks for the presence of required columns, whether fixed allele IDs were assigned, the presence of IUPAC codes, lowercase sequence bases, indels, and chromosome and position information.
+-   Added new argument `markers_info`, which allows users to provide a CSV file with marker information such as CHROM, POS, marker type, and position of indels. For BI species, this information is available from [PanelHub](https://github.com/Breeding-Insight/BIGapp-PanelHub).
+-   Checked inputs for `madc2vcf_all`.
+-   Updated affiliation in `DESCRIPTION`.
 
 # BIGr 0.6.2
 
-- Fixed the doi and name list in the CITATION file
+-   Fixed the doi and name list in the CITATION file
 
 # BIGr 0.6.1
 
-- Added new functions for filtering MADC files and converting to relationship matrices
-- Added function thinSNPs to thin SNPs based on physical distance
-- Added bug fixes and improvements to existing functions
+-   Added new functions for filtering MADC files and converting to relationship matrices
+-   Added function thinSNPs to thin SNPs based on physical distance
+-   Added bug fixes and improvements to existing functions
 
 # BIGr 0.5.5
 
-- Updated DESCRIPTION
-- Added return value for merge_MADCs
-- Added optional seed for check_ped
-- Added verbose option
+-   Updated DESCRIPTION
+-   Added return value for merge_MADCs
+-   Added optional seed for check_ped
+-   Added verbose option
 
 # BIGr 0.5.4
 

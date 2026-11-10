@@ -15,6 +15,19 @@
 #'   \code{BI_markerID}), \code{Chr}, and \code{Pos} columns.
 #' @param ploidy integer. Ploidy level of the samples passed to \code{taxaPloidy}.
 #'   Default is 2.
+#' @param vcf_header character or NULL. Optional path or URL to a VCF header file
+#'   with the \code{##reference} and \code{##contig} lines of the reference
+#'   genome, such as the VCF header files provided with the microhaplotype
+#'   databases. Its \code{##contig} lines replace the ones written by polyRAD,
+#'   which have no contig lengths. The other lines of the file are not used. A
+#'   warning is given if a chromosome in the output is not listed in the
+#'   \code{##contig} lines.
+#' @param reference character or NULL. Optional reference genome ID written to
+#'   the \code{##reference} line (e.g. \code{"GCF_020283565.1"}). Use it when no
+#'   \code{vcf_header} file is available, or to replace the \code{##reference}
+#'   line of \code{vcf_header}. If neither \code{vcf_header} nor
+#'   \code{reference} is given, a warning is given and the header has no
+#'   \code{##reference} line and only the \code{##contig} lines written by polyRAD.
 #' @param verbose logical. Whether to print progress messages. Default is TRUE.
 #'
 #' @return Invisible NULL. Writes a VCF file to \code{outfile}.
@@ -32,6 +45,8 @@
 #'   \item Estimates overdispersion with \code{polyRAD::TestOverdispersion} and
 #'         calls \code{polyRAD::IterateHWE}, then exports the result with
 #'         \code{polyRAD::RADdata2VCF}.
+#'   \item Adds the reference genome lines from \code{vcf_header} and/or
+#'         \code{reference} and a \code{##BIGrCommandLine} line to the VCF header.
 #' }
 #'
 #' **Sanity check behaviour and requirements**
@@ -55,6 +70,8 @@ madc2vcf_multi <- function(madc_file,
                            outfile,
                            markers_info = NULL,
                            ploidy = 2L,
+                           vcf_header = NULL,
+                           reference = NULL,
                            verbose = TRUE) {
 
   vmsg("Running BIGr madc2vcf_multi", verbose = verbose, level = 0, type = ">>")
@@ -63,6 +80,8 @@ madc2vcf_multi <- function(madc_file,
   vmsg("markers_info : %s", verbose = verbose, level = 1, type = ">>", if (is.null(markers_info)) "NULL" else markers_info)
   vmsg("outfile      : %s", verbose = verbose, level = 1, type = ">>", outfile)
   vmsg("ploidy       : %s", verbose = verbose, level = 1, type = ">>", ploidy)
+  vmsg("vcf_header   : %s", verbose = verbose, level = 1, type = ">>", if (is.null(vcf_header)) "NULL" else vcf_header)
+  vmsg("reference    : %s", verbose = verbose, level = 1, type = ">>", if (is.null(reference)) "NULL" else reference)
 
   vmsg("Checking inputs", verbose = verbose, level = 0, type = ">>")
 
@@ -70,6 +89,21 @@ madc2vcf_multi <- function(madc_file,
   if (!(file.exists(botloci_file) | url_exists(botloci_file))) stop("Botloci file not found. Please provide a valid path or URL.")
   if (!is.null(markers_info) && !(file.exists(markers_info) | url_exists(markers_info))) stop("markers_info file not found. Please provide a valid path or URL.")
   if (!is.numeric(ploidy) || ploidy < 1) stop("ploidy must be a positive integer.")
+
+  # Create a VCF header line with metadata about the command and its parameters
+  bigr_meta <- paste0('##BIGrCommandLine.madc2vcf_multi=<ID=madc2vcf_multi,Version="',
+                      packageVersion("BIGr"), '",Data="',
+                      Sys.time(),'",CommandLine="', vcf_quote_escape(paste0('> madc2vcf_multi(',deparse1(substitute(madc_file)),', ',
+                      "botloci_file= ", botloci_file, ', ',
+                      "outfile= ", outfile, ', ',
+                      "markers_info= ", markers_info, ', ',
+                      "ploidy= ", ploidy, ', ',
+                      "vcf_header= ", vcf_header, ', ',
+                      "reference= ", reference, ', ',
+                      "verbose= ", verbose,')')), '">')
+
+  # Reference genome lines for the VCF header
+  ref_lines <- vcf_reference_lines(vcf_header, reference)
 
   # ---- Load markers_info if provided ----
   mi_df <- if (!is.null(markers_info)) read.csv(markers_info) else NULL
@@ -187,7 +221,59 @@ madc2vcf_multi <- function(madc_file,
 
   polyRAD::RADdata2VCF(raddat_hwe, file = outfile, asSNPs = FALSE, hindhe = FALSE)
 
+  # Add the reference genome lines and the BIGr command line to the header
+  # written by polyRAD
+  meta <- update_vcf_reference_lines(read_vcf_meta(outfile), ref_lines)
+  replace_vcf_meta(outfile, c(meta, bigr_meta))
+  check_vcf_contigs(raddat_hwe$locTable$Chr, ref_lines$contigs)
+
   vmsg("Done!", verbose = verbose, level = 0, type = ">>")
 
   invisible(NULL)
+}
+
+#' Read the meta lines (starting with ##) of a VCF file
+#'
+#' @param file Path to an uncompressed VCF file.
+#' @return Character vector with the meta lines.
+#' @noRd
+read_vcf_meta <- function(file) {
+  con <- file(file, "r")
+  on.exit(close(con))
+  meta <- character(0)
+  repeat {
+    lines <- readLines(con, n = 1000L)
+    if (length(lines) == 0) break
+    is_meta <- startsWith(lines, "##")
+    meta <- c(meta, lines[is_meta])
+    if (!all(is_meta)) break
+  }
+  meta
+}
+
+#' Replace the meta lines (starting with ##) of a VCF file
+#'
+#' The #CHROM line and the records are copied unchanged, in chunks, so the file
+#' is not read into memory at once.
+#'
+#' @param file Path to an uncompressed VCF file.
+#' @param meta Character vector with the new meta lines.
+#' @return No return value, called for side effects.
+#' @noRd
+replace_vcf_meta <- function(file, meta) {
+  tmp <- tempfile(fileext = ".vcf")
+  con_in <- file(file, "r")
+  con_out <- file(tmp, "w")
+  writeLines(meta, con_out)
+  repeat {
+    lines <- readLines(con_in, n = 10000L)
+    if (length(lines) == 0) break
+    lines <- lines[!startsWith(lines, "##")]
+    if (length(lines) > 0) writeLines(lines, con_out)
+  }
+  close(con_in)
+  close(con_out)
+  file.copy(tmp, file, overwrite = TRUE)
+  unlink(tmp)
+  invisible()
 }

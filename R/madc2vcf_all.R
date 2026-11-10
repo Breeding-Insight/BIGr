@@ -17,6 +17,8 @@
 #' @param others_rm_with_indels A logical value. If TRUE, Other alleles that contain insertions or deletions relative to the Ref sequence (as detected by pairwise alignment) are discarded. Default is TRUE.
 #' @param others_min_dist An integer or NULL. Distance in base pairs below which two SNPs in an Other allele are considered close to each other. Used together with `others_max_close_snps`. Default is 5.
 #' @param others_max_close_snps An integer or NULL. If not NULL, Other alleles with more than this many SNPs that are closer than `others_min_dist` base pairs to each other are discarded. The SNPs are counted before the target position and positions with N or IUPAC codes are removed. The filter is not applied if either `others_min_dist` or `others_max_close_snps` is NULL. Default is 3.
+#' @param vcf_header A string specifying the path or URL to a VCF header file with the `##reference` and `##contig` lines of the reference genome, such as the VCF header files provided with the microhaplotype databases. Only the `##reference` and `##contig` lines are used; the `##fileformat`, `##INFO` and `##FORMAT` lines are written by the function. A warning is given if a `CHROM` in the output is not listed in the `##contig` lines. Default is NULL.
+#' @param reference A string with the reference genome ID written to the `##reference` line (e.g. `"GCF_020283565.1"`). Use it when no `vcf_header` file is available, or to replace the `##reference` line of `vcf_header`. If neither `vcf_header` nor `reference` is given, the `##reference` and `##contig` lines are left out of the header with a warning. Default is NULL.
 #' @param verbose A logical value indicating whether to print metrics and progress to the console. Default is TRUE.
 #'
 #' @return This function does not return an R object. It writes the processed VCF file v4.3 to the specified `out_vcf` path.
@@ -59,6 +61,7 @@
 #'   multiallelic_SNP_sample_thr = 5,
 #'   alignment_score_thr = 40,
 #'   out_vcf = output_file,
+#'   reference = "example_genome_v1",
 #'   verbose = TRUE
 #' )
 #'
@@ -84,6 +87,8 @@ madc2vcf_all <- function(madc,
                          others_rm_with_indels = TRUE,
                          others_min_dist = 5,
                          others_max_close_snps = 3,
+                         vcf_header = NULL,
+                         reference = NULL,
                          verbose = TRUE){
 
 
@@ -108,6 +113,8 @@ madc2vcf_all <- function(madc,
   vmsg("others_min_dist   : %s", verbose = verbose, level = 1, type = ">>", if (is.null(others_min_dist)) "NULL" else others_min_dist)
   vmsg("others_max_close_snps      : %s", verbose = verbose, level = 1, type = ">>", if (is.null(others_max_close_snps)) "NULL" else others_max_close_snps)
   vmsg("out_vcf           : %s", verbose = verbose, level = 1, type = ">>", if (is.null(out_vcf)) "NULL" else out_vcf)
+  vmsg("vcf_header        : %s", verbose = verbose, level = 1, type = ">>", if (is.null(vcf_header)) "NULL" else vcf_header)
+  vmsg("reference         : %s", verbose = verbose, level = 1, type = ">>", if (is.null(reference)) "NULL" else reference)
   vmsg("Checking inputs", verbose = verbose, level = 0, type = ">>")
 
   # Input checks
@@ -137,7 +144,7 @@ madc2vcf_all <- function(madc,
 
   bigr_meta <- paste0('##BIGrCommandLine.madc2vcf_all=<ID=madc2vcf_all,Version="',
                       packageVersion("BIGr"), '",Data="',
-                      Sys.time(),'", CommandLine="> madc2vcf_all(',deparse(substitute(madc)),', ',
+                      Sys.time(),'",CommandLine="', vcf_quote_escape(paste0('> madc2vcf_all(',deparse1(substitute(madc)),', ',
                       "botloci_file= ", botloci_file, ', ',
                       "hap_seq_file= ", hap_seq_file, ', ',
                       "n.cores= ", n.cores, ', ',
@@ -152,7 +159,12 @@ madc2vcf_all <- function(madc,
                       "others_min_dist= ", others_min_dist, ', ',
                       "others_max_close_snps= ", others_max_close_snps, ', ',
                       "out_vcf= ", out_vcf, ', ',
-                      "verbose= ", verbose,')">')
+                      "vcf_header= ", vcf_header, ', ',
+                      "reference= ", reference, ', ',
+                      "verbose= ", verbose,')')), '">')
+
+  # Reference genome lines for the VCF header
+  ref_lines <- vcf_reference_lines(vcf_header, reference)
 
   report <- read.csv(madc, check.names = FALSE)
   checks <- check_madc_sanity(report)
@@ -294,8 +306,7 @@ madc2vcf_all <- function(madc,
   #Make a header separate from the dataframe
   vcf_header <- c(
     "##fileformat=VCFv4.3",
-    "##reference=NA",
-    "##contig=<ID=NA,length=NA>",
+    ref_lines$lines,
     '##INFO=<ID=DP,Number=1,Type=Integer,Description="Total Depth">',
     '##INFO=<ID=ADS,Number=R,Type=Integer,Description="Depths for the ref and each alt allele in the order listed">',
     '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read depth">',
@@ -303,6 +314,8 @@ madc2vcf_all <- function(madc,
     '##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">',
     bigr_meta
   )
+
+  check_vcf_contigs(vcf_body[[1]], ref_lines$contigs)
 
   vcf_term <- sapply(strsplit(out_vcf, "[.]"), function(x) x[length(x)])
   if(length(vcf_term) != 0) if(vcf_term != "vcf") out_vcf <- paste0(out_vcf,".vcf")

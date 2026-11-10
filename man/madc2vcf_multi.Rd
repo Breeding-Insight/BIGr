@@ -10,6 +10,8 @@ madc2vcf_multi(
   outfile,
   markers_info = NULL,
   ploidy = 2L,
+  vcf_header = NULL,
+  reference = NULL,
   verbose = TRUE
 )
 }
@@ -28,6 +30,21 @@ with marker metadata. Required when CloneIDs do not follow the
 
 \item{ploidy}{integer. Ploidy level of the samples passed to \code{taxaPloidy}.
 Default is 2.}
+
+\item{vcf_header}{character or NULL. Optional path or URL to a VCF header file
+with the \code{##reference} and \code{##contig} lines of the reference
+genome, such as the VCF header files provided with the microhaplotype
+databases. Its \code{##contig} lines replace the ones written by polyRAD,
+which have no contig lengths. The other lines of the file are not used. A
+warning is given if a chromosome in the output is not listed in the
+\code{##contig} lines.}
+
+\item{reference}{character or NULL. Optional reference genome ID written to
+the \code{##reference} line (e.g. \code{"GCF_020283565.1"}). Use it when no
+\code{vcf_header} file is available, or to replace the \code{##reference}
+line of \code{vcf_header}. If neither \code{vcf_header} nor
+\code{reference} is given, a warning is given and the header has no
+\code{##reference} line and only the \code{##contig} lines written by polyRAD.}
 
 \item{verbose}{logical. Whether to print progress messages. Default is TRUE.}
 }
@@ -53,6 +70,8 @@ The function performs the following steps:
 \item Estimates overdispersion with \code{polyRAD::TestOverdispersion} and
 calls \code{polyRAD::IterateHWE}, then exports the result with
 \code{polyRAD::RADdata2VCF}.
+\item Adds the reference genome lines from \code{vcf_header} and/or
+\code{reference} and a \code{##BIGrCommandLine} line to the VCF header.
 }
 
 \strong{Sanity check behaviour and requirements}

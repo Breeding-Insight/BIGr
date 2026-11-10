@@ -42,7 +42,8 @@ test_that("madc2vcf_multi — alfalfa (BIGapp-PanelHub)", {
       botloci_file = alfalfa_botloci,
       outfile      = out,
       ploidy       = 4L,
-      verbose      = TRUE
+      verbose      = TRUE,
+      reference    = "test"
     )
   )
 
@@ -60,7 +61,8 @@ test_that("madc2vcf_multi — alfalfa (BIGapp-PanelHub)", {
       botloci_file = alfalfa_botloci,
       outfile      = out,
       ploidy       = 4L,
-      verbose      = FALSE
+      verbose      = FALSE,
+      reference    = "test"
     ), regexp = "The MADC file does not have fixed AlleleIDs. Please process the MADC file through HapApp before using this function."
   )
 
@@ -71,7 +73,8 @@ test_that("madc2vcf_multi — alfalfa (BIGapp-PanelHub)", {
       botloci_file = alfalfa_botloci,
       outfile      = out,
       ploidy       = 4L,
-      verbose      = TRUE
+      verbose      = TRUE,
+      reference    = "test"
     )
   )
 
@@ -83,7 +86,8 @@ test_that("madc2vcf_multi — alfalfa (BIGapp-PanelHub)", {
       botloci_file = alfalfa_botloci,
       outfile      = out,
       ploidy       = 4L,
-      verbose      = TRUE
+      verbose      = TRUE,
+      reference    = "test"
     ), regexp = "Check marker IDs in both MADC and botloci files. They should be the same."
   )
 
@@ -95,7 +99,8 @@ test_that("madc2vcf_multi — alfalfa (BIGapp-PanelHub)", {
       outfile      = out,
       markers_info = alfalfa_markers_info_ChromPos,
       ploidy       = 4L,
-      verbose      = TRUE
+      verbose      = TRUE,
+      reference    = "test"
     )
   )
 
@@ -113,7 +118,8 @@ test_that("madc2vcf_multi — alfalfa (BIGapp-PanelHub)", {
       botloci_file = alfalfa_botloci,
       outfile      = out,
       ploidy       = 4L,
-      verbose      = TRUE
+      verbose      = TRUE,
+      reference    = "test"
     ), regexp = "MADC Allele Sequences contain different IUPAC \\(non-ATCG\\) codes in REF and ALT sequences. Please run HapApp to clean MADC file before using this function."
   )
 
@@ -124,7 +130,8 @@ test_that("madc2vcf_multi — alfalfa (BIGapp-PanelHub)", {
       botloci_file = alfalfa_botloci,
       outfile      = out,
       ploidy       = 4L,
-      verbose      = TRUE
+      verbose      = TRUE,
+      reference    = "test"
     ), regexp = "Not all Ref sequences have a corresponding Alt or vice versa. Please provide a complete MADC file before using this function."
   )
 
@@ -136,7 +143,8 @@ test_that("madc2vcf_multi — alfalfa (BIGapp-PanelHub)", {
       outfile      = out,
       markers_info = potato_markers_info_ChromPos,
       ploidy       = 4L,
-      verbose      = TRUE
+      verbose      = TRUE,
+      reference    = "test"
     )
   )
 

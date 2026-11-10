@@ -16,7 +16,9 @@ filterVCF(
   filter.SAMPLE.miss = NULL,
   filter.SNP.miss = NULL,
   ploidy,
-  output.file = NULL
+  output.file = NULL,
+  vcf_header = NULL,
+  reference = NULL
 )
 }
 \arguments{
@@ -69,6 +71,20 @@ supplied, the filtered VCF is written as a gzipped file and nothing is
 returned. \code{.vcf.gz} is appended when \code{vcf.file} is a path, and
 \verb{_filtered.vcf.gz} when \code{vcf.file} is a vcfR object. When not supplied, a
 vcfR object is returned instead and no file is written.}
+
+\item{vcf_header}{Path or URL to a VCF header file with the \verb{##reference} and
+\verb{##contig} lines of the reference genome (optional), such as the VCF header
+files provided with the microhaplotype databases. Its \verb{##contig} lines
+replace those of the input VCF, and so does its \verb{##reference} line unless
+\code{reference} is given. The other lines of the file are not used. A warning is
+given if a \code{CHROM} in the output is not listed in the \verb{##contig} lines.}
+
+\item{reference}{Reference genome ID written to the \verb{##reference} line,
+replacing the one of the input VCF (optional), e.g. \code{"GCF_020283565.1"}.
+When neither \code{vcf_header} nor \code{reference} is given, the reference genome lines
+of the input VCF are kept, except the \verb{##reference=NA} and
+\verb{##contig=<ID=NA,length=NA>} lines written by earlier versions of BIGr, which
+are removed.}
 }
 \value{
 A vcfR object when \code{output.file} is not supplied. Otherwise the

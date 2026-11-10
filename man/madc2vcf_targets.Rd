@@ -11,6 +11,8 @@ madc2vcf_targets(
   markers_info = NULL,
   get_REF_ALT = FALSE,
   collapse_matches_counts = FALSE,
+  vcf_header = NULL,
+  reference = NULL,
   verbose = TRUE
 )
 }
@@ -50,6 +52,20 @@ are set to \code{"."} in the output VCF.}
 \verb{|AltMatch} and \verb{|RefMatch} rows are summed into their corresponding \verb{|Ref}
 and \verb{|Alt} rows before building the matrices. Useful when the MADC contains
 multiple allele rows per target that should be aggregated.}
+
+\item{vcf_header}{character or \code{NULL} (default \code{NULL}). Path or URL to a VCF
+header file with the \verb{##reference} and \verb{##contig} lines of the reference
+genome, such as the VCF header files provided with the microhaplotype
+databases. Only the \verb{##reference} and \verb{##contig} lines are used; the
+\verb{##fileformat}, \verb{##INFO} and \verb{##FORMAT} lines are written by the function.
+A warning is given if a \code{CHROM} in the output is not listed in the
+\verb{##contig} lines.}
+
+\item{reference}{character or \code{NULL} (default \code{NULL}). Reference genome ID
+written to the \verb{##reference} line (e.g. \code{"GCF_020283565.1"}). Use it when no
+\code{vcf_header} file is available, or to replace the \verb{##reference} line of
+\code{vcf_header}. If neither \code{vcf_header} nor \code{reference} is given, the
+\verb{##reference} and \verb{##contig} lines are left out of the header with a warning.}
 
 \item{verbose}{logical (default \code{TRUE}). If \code{TRUE}, prints detailed progress
 messages about each processing step.}
@@ -93,6 +109,11 @@ Targets with >1 polymorphism between sequences are discarded.
 \itemize{
 \item \code{DP}   - total reads (ref + alt)
 \item \code{RA}   - reads supporting the reference allele
+}
+\item Header: the \verb{##reference} and \verb{##contig} lines come from \code{vcf_header} and/or
+\code{reference}. A \verb{##BIGrCommandLine} line with the function call is always
+added.
+\itemize{
 \item \code{AD}   - \code{"ref,alt"} counts
 }
 }
@@ -148,7 +169,8 @@ madc2vcf_targets(
   madc_file    = madc_file,
   output.file  = out_vcf,
   botloci_file = bot_file,
-  get_REF_ALT  = TRUE
+  get_REF_ALT  = TRUE,
+  reference    = "example_genome_v1"
 )
 }
 

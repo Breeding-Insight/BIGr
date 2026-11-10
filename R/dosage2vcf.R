@@ -15,6 +15,8 @@
 #' @param dart.counts Path to the DArT counts .csv file. Typically contains "Counts" in the file name.
 #' @param ploidy The ploidy of the species being analyzed
 #' @param output.file output file name and path
+#' @param vcf_header optional path or URL to a VCF header file. Only its ##reference and ##contig lines are added to the output VCF header
+#' @param reference optional reference genome ID for the ##reference line (e.g. "GCF_020283565.1"). Replaces the ##reference line of vcf_header if both are given. Without vcf_header or reference, the ##reference and ##contig lines are left out with a warning
 #' @return A vcf file
 #' @import dplyr
 #' @importFrom readr read_csv
@@ -30,10 +32,12 @@
 #' #Temp location (only for example)
 #' output_file <- tempfile()
 #'
+#' #The reference genome ID is written to the ##reference line of the VCF header
 #' dosage2vcf(dart.report = system.file("iris_DArT_Allele_Dose_Report_small.csv", package = "BIGr"),
 #'            dart.counts = system.file("iris_DArT_Counts_small.csv", package = "BIGr"),
 #'            ploidy = 2,
-#'            output.file = output_file)
+#'            output.file = output_file,
+#'            reference = "example_genome_v1")
 #'
 #' # Removing the output for the example
 #' rm(output_file)
@@ -41,7 +45,7 @@
 #' ##The function will output the converted VCF using information from the DArT files
 #'
 #' @export
-dosage2vcf <- function(dart.report, dart.counts, ploidy, output.file) {
+dosage2vcf <- function(dart.report, dart.counts, ploidy, output.file, vcf_header = NULL, reference = NULL) {
 
   dosage_report <- dart.report
   counts_file <- dart.counts
@@ -50,12 +54,14 @@ dosage2vcf <- function(dart.report, dart.counts, ploidy, output.file) {
 
   message("Reading input files\n")
 
+  #Reference genome lines for the header
+  ref_lines <- vcf_reference_lines(vcf_header, reference)
+
   #Make a header separate from the dataframe
   vcf_header <- c(
     "##fileformat=VCFv4.3",
     paste0("##BIGr_Dosage2VCF=",packageVersion("BIGr")),
-    "##reference=NA",
-    "##contig=<ID=NA,length=NA>",
+    ref_lines$lines,
     '##INFO=<ID=DP,Number=1,Type=Integer,Description="Total Depth">',
     '##INFO=<ID=ADS,Number=R,Type=Integer,Description="Depths for the ref and each alt allele in the order listed">',
     '##INFO=<ID=BIAS,Number=1,Type=Float,Description="The estimated allele bias of the SNP from updog">',
@@ -525,6 +531,8 @@ dosage2vcf <- function(dart.report, dart.counts, ploidy, output.file) {
 
   # Add # to the CHROM column name
   colnames(vcf_df)[1] <- "#CHROM"
+
+  check_vcf_contigs(vcf_df[[1]], ref_lines$contigs)
 
   # Write the header to the file
   writeLines(vcf_header, con = output.file)

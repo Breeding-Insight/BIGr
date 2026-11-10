@@ -57,6 +57,18 @@
 #'   returned. `.vcf.gz` is appended when `vcf.file` is a path, and
 #'   `_filtered.vcf.gz` when `vcf.file` is a vcfR object. When not supplied, a
 #'   vcfR object is returned instead and no file is written.
+#' @param vcf_header Path or URL to a VCF header file with the `##reference` and
+#'   `##contig` lines of the reference genome (optional), such as the VCF header
+#'   files provided with the microhaplotype databases. Its `##contig` lines
+#'   replace those of the input VCF, and so does its `##reference` line unless
+#'   `reference` is given. The other lines of the file are not used. A warning is
+#'   given if a `CHROM` in the output is not listed in the `##contig` lines.
+#' @param reference Reference genome ID written to the `##reference` line,
+#'   replacing the one of the input VCF (optional), e.g. `"GCF_020283565.1"`.
+#'   When neither `vcf_header` nor `reference` is given, the reference genome lines
+#'   of the input VCF are kept, except the `##reference=NA` and
+#'   `##contig=<ID=NA,length=NA>` lines written by earlier versions of BIGr, which
+#'   are removed.
 #' @return A vcfR object when `output.file` is not supplied. Otherwise the
 #'   filtered VCF is written to disk and nothing is returned.
 #' @importFrom vcfR read.vcfR
@@ -92,7 +104,9 @@ filterVCF <- function(vcf.file,
                        filter.SAMPLE.miss = NULL,
                        filter.SNP.miss = NULL,
                        ploidy,
-                       output.file = NULL) {
+                       output.file = NULL,
+                       vcf_header = NULL,
+                       reference = NULL) {
 
   #Should allow for any INFO field to be entered to be filtered
 
@@ -127,6 +141,9 @@ filterVCF <- function(vcf.file,
   filter.SAMPLE.miss <- validate_filter_number(filter.SAMPLE.miss, "filter.SAMPLE.miss", proportion = TRUE)
   filter.SNP.miss    <- validate_filter_number(filter.SNP.miss, "filter.SNP.miss", proportion = TRUE)
 
+  #Reference genome lines for the header (checked before reading the VCF)
+  ref_lines <- vcf_reference_lines(vcf_header, reference, warn = FALSE)
+
   # Import VCF (can be .vcf or .vcf.gz)
   if (!inherits(vcf.file, "vcfR")) {
     vcf <- read.vcfR(vcf.file, verbose = FALSE)
@@ -146,7 +163,9 @@ filterVCF <- function(vcf.file,
     filter.MAF = filter.MAF,
     filter.SAMPLE.miss = filter.SAMPLE.miss,
     filter.SNP.miss = filter.SNP.miss,
-    ploidy = ploidy
+    ploidy = ploidy,
+    vcf_header = vcf_header,
+    reference = reference
   )
 
   # Filter out NULL values
@@ -325,6 +344,15 @@ filterVCF <- function(vcf.file,
                                "This happens when no variant has any called genotypes, which the filter.DP and filter.MPP masking can cause."), ]
   }
   ### Export the modified VCF file (this exports as a .vcf.gz, so make sure to have the name end in .vcf.gz)
+  #Update the reference genome lines of the header. Placeholder lines from earlier
+  #versions of BIGr are removed, since they break tools that read the header (e.g., GIGWA)
+  placeholder <- vcf@meta == "##reference=NA" | grepl("^##contig=<ID=NA[,>]", vcf@meta)
+  if (any(placeholder)) {
+    message("Removing ##reference=NA and ##contig=<ID=NA,length=NA> lines from the header\n")
+  }
+  vcf@meta <- update_vcf_reference_lines(vcf@meta[!placeholder], ref_lines)
+  check_vcf_contigs(vcf@fix[, "CHROM"], ref_lines$contigs)
+
   message("Exporting VCF\n")
   if (!inherits(vcf.file, "vcfR")) {
     if (!is.null(output.file)) {

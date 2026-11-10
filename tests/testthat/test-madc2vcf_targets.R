@@ -10,7 +10,7 @@ test_that("test madc conversion",{
 
   #Convert the dart files to vcf
   suppressWarnings(
-    madc2vcf_targets(madc_file = madc_file, output.file = temp, get_REF_ALT = FALSE)
+    madc2vcf_targets(madc_file = madc_file, output.file = temp, get_REF_ALT = FALSE, reference = "test")
   )
 
   #Test validity of VCF
@@ -33,7 +33,7 @@ test_that("test madc conversion",{
   temp <- tempfile(fileext = ".vcf")
 
   suppressWarnings(
-    madc2vcf_targets(madc_file = madc_file, output.file = temp, get_REF_ALT = TRUE, botloci_file = bot_file)
+    madc2vcf_targets(madc_file = madc_file, output.file = temp, get_REF_ALT = TRUE, botloci_file = bot_file, reference = "test")
   )
 
   #Test validity of VCF
@@ -69,7 +69,8 @@ test_that("bottom strand markers have correct REF/ALT", {
   # Get results from both functions
   suppressWarnings(
     madc2vcf_targets(madc_file = madc_file, output.file = temp_targets,
-                     get_REF_ALT = TRUE, botloci_file = bot_file)
+                     get_REF_ALT = TRUE, botloci_file = bot_file,
+                     reference = "test")
   )
 
   vcf_targets <- read.vcfR(temp_targets, verbose = FALSE)
@@ -97,7 +98,7 @@ test_that("madc2vcf_targets preserves original sample names", {
   write.csv(report, temp_madc, row.names = FALSE, quote = TRUE)
 
   suppressWarnings(
-    madc2vcf_targets(madc_file = temp_madc, output.file = temp_vcf, get_REF_ALT = FALSE)
+    madc2vcf_targets(madc_file = temp_madc, output.file = temp_vcf, get_REF_ALT = FALSE, reference = "test")
   )
 
   vcf <- read.vcfR(temp_vcf, verbose = FALSE)
@@ -117,7 +118,8 @@ test_that("madc2vcf_targets surfaces missing-column validation error without cra
     madc2vcf_targets(madc_file = temp_madc,
                      output.file = tempfile(fileext = ".vcf"),
                      get_REF_ALT = FALSE,
-                     verbose = FALSE),
+                     verbose = FALSE,
+                     reference = "test"),
     "One or more required columns missing"
   )
 })
@@ -159,7 +161,8 @@ test_that("simu alfalfa",{
       madc2vcf_targets(madc_file = alfalfa_madc,
                        output.file = out,
                        get_REF_ALT = FALSE,
-                       verbose = FALSE)
+                       verbose = FALSE,
+                       reference = "test")
     )
     vcf <- read.vcfR(out, verbose = FALSE)
     expect_s4_class(vcf, "vcfR")
@@ -175,7 +178,8 @@ test_that("simu alfalfa",{
                        output.file = out,
                        get_REF_ALT = FALSE,
                        collapse_matches_counts = TRUE,
-                       verbose = TRUE)
+                       verbose = TRUE,
+                       reference = "test")
     )
     vcf <- read.vcfR(out, verbose = FALSE)
     expect_s4_class(vcf, "vcfR")
@@ -190,7 +194,8 @@ test_that("simu alfalfa",{
       madc2vcf_targets(madc_file = alfalfa_madc,
                        output.file = out,
                        get_REF_ALT = TRUE,
-                       verbose = FALSE),
+                       verbose = FALSE,
+                       reference = "test"),
       regexp = "get_REF_ALT = TRUE but no markers_info file with Ref and Alt columns was provided neither a botloci_file to extrat REF/ALT from probe sequences. Please provide one of the these files or set get_REF_ALT to FALSE."
     )
 
@@ -199,7 +204,8 @@ test_that("simu alfalfa",{
                      output.file = out,
                      get_REF_ALT = TRUE,
                      botloci_file = alfalfa_botloci,
-                     verbose = FALSE)
+                     verbose = FALSE,
+                     reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(alfalfa_markers_info)
@@ -218,7 +224,8 @@ test_that("simu alfalfa",{
                      get_REF_ALT = TRUE,
                      botloci_file = alfalfa_botloci,
                      markers_info = alfalfa_markers_info,
-                     verbose = FALSE)
+                     verbose = FALSE,
+                     reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(alfalfa_markers_info)
@@ -241,7 +248,8 @@ test_that("simu alfalfa",{
                        output.file = out,
                        get_REF_ALT = TRUE,
                        botloci_file = alfalfa_botloci,
-                       verbose = FALSE),
+                       verbose = FALSE,
+                       reference = "test"),
       regexp = "Check marker IDs in both MADC and botloci files. They should be the same."
     )
 
@@ -252,7 +260,8 @@ test_that("simu alfalfa",{
                        get_REF_ALT = TRUE,
                        botloci_file = alfalfa_botloci,
                        markers_info = alfalfa_markers_info,
-                       verbose = FALSE),
+                       verbose = FALSE,
+                       reference = "test"),
       "None of the MADC CloneID could be found in the markers_info CloneID, Marker_ID or BI_markerID. Please make sure they match."
     )
 
@@ -264,7 +273,8 @@ test_that("simu alfalfa",{
                      get_REF_ALT = TRUE,
                      botloci_file = alfalfa_botloci,
                      markers_info = alfalfa_markers_info_ChromPos,
-                     verbose = FALSE)
+                     verbose = FALSE,
+                     reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(alfalfa_markers_info)
@@ -285,7 +295,8 @@ test_that("simu alfalfa",{
                        output.file = out,
                        get_REF_ALT = TRUE,
                        botloci_file = alfalfa_botloci,
-                       verbose = FALSE)
+                       verbose = FALSE,
+                       reference = "test")
     )
 
     vcf <- read.vcfR(out, verbose = FALSE)
@@ -305,7 +316,8 @@ test_that("simu alfalfa",{
                        get_REF_ALT = TRUE,
                        botloci_file = alfalfa_botloci,
                        markers_info = alfalfa_markers_info,
-                       verbose = FALSE)
+                       verbose = FALSE,
+                       reference = "test")
     )
 
     vcf <- read.vcfR(out, verbose = FALSE)
@@ -325,7 +337,8 @@ test_that("simu alfalfa",{
                      get_REF_ALT = FALSE,
                      botloci_file = alfalfa_botloci,
                      markers_info = alfalfa_markers_info,
-                     verbose = FALSE)
+                     verbose = FALSE,
+                     reference = "test")
     )
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(alfalfa_markers_info)
@@ -344,14 +357,16 @@ test_that("simu alfalfa",{
                        output.file = out,
                        get_REF_ALT = TRUE,
                        botloci_file = alfalfa_botloci,
-                       verbose = FALSE)
+                       verbose = FALSE,
+                       reference = "test")
     )
 
     madc2vcf_targets(madc_file = alfalfa_iupac,
                      output.file = out,
                      get_REF_ALT = TRUE,
                      markers_info = alfalfa_markers_info,
-                     verbose = FALSE)
+                     verbose = FALSE,
+                     reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(alfalfa_markers_info)
@@ -369,7 +384,8 @@ test_that("simu alfalfa",{
                      get_REF_ALT = TRUE,
                      markers_info = alfalfa_markers_info,
                      collapse_matches_counts = TRUE,
-                     verbose = FALSE)
+                     verbose = FALSE,
+                     reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(alfalfa_markers_info)
@@ -387,7 +403,8 @@ test_that("simu alfalfa",{
                      output.file = out,
                      get_REF_ALT = FALSE,
                      botloci_file = alfalfa_botloci,
-                     verbose = FALSE)
+                     verbose = FALSE,
+                     reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(alfalfa_markers_info)
@@ -407,14 +424,16 @@ test_that("simu alfalfa",{
                        output.file = out,
                        get_REF_ALT = TRUE,
                        botloci_file = potato_botloci,
-                       verbose = FALSE)
+                       verbose = FALSE,
+                       reference = "test")
     )
 
     madc2vcf_targets(madc_file = potato_indel_madc,
                      output.file = out,
                      get_REF_ALT = TRUE,
                      markers_info = potato_markers_info,
-                     verbose = FALSE)
+                     verbose = FALSE,
+                     reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(potato_markers_info)
@@ -432,7 +451,8 @@ test_that("simu alfalfa",{
                      get_REF_ALT = TRUE,
                      markers_info = potato_markers_info,
                      collapse_matches_counts = TRUE,
-                     verbose = FALSE)
+                     verbose = FALSE,
+                     reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(potato_markers_info)
@@ -451,14 +471,16 @@ test_that("simu alfalfa",{
                        output.file = out,
                        get_REF_ALT = FALSE,
                        botloci_file = potato_botloci,
-                       verbose = FALSE)
+                       verbose = FALSE,
+                       reference = "test")
     )
 
     madc2vcf_targets(madc_file = potato_indel_madc,
                      output.file = out,
                      get_REF_ALT = FALSE,
                      markers_info = potato_markers_info,
-                     verbose = FALSE)
+                     verbose = FALSE,
+                     reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(potato_markers_info)
@@ -477,14 +499,16 @@ test_that("simu alfalfa",{
                        output.file = out,
                        get_REF_ALT = TRUE,
                        botloci_file = potato_botloci,
-                       verbose = FALSE)
+                       verbose = FALSE,
+                       reference = "test")
     )
 
     madc2vcf_targets(madc_file = potato_more_indels_chrompos_false,
                      output.file = out,
                      get_REF_ALT = TRUE,
                      markers_info = potato_markers_info,
-                     verbose = FALSE)
+                     verbose = FALSE,
+                     reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(potato_markers_info)
@@ -502,7 +526,8 @@ test_that("simu alfalfa",{
                      get_REF_ALT = TRUE,
                      markers_info = potato_markers_info,
                      collapse_matches_counts = TRUE,
-                     verbose = FALSE)
+                     verbose = FALSE,
+                     reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(potato_markers_info)
@@ -521,14 +546,16 @@ test_that("simu alfalfa",{
                        output.file = out,
                        get_REF_ALT = FALSE,
                        botloci_file = potato_botloci,
-                       verbose = FALSE)
+                       verbose = FALSE,
+                       reference = "test")
     )
 
     madc2vcf_targets(madc_file = potato_more_indels_chrompos_false,
                      output.file = out,
                      get_REF_ALT = FALSE,
                      markers_info = potato_markers_info,
-                     verbose = FALSE)
+                     verbose = FALSE,
+                     reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(potato_markers_info)
@@ -546,7 +573,8 @@ test_that("simu alfalfa",{
                      output.file = out,
                      get_REF_ALT = TRUE,
                      markers_info = potato_markers_info,
-                     verbose = FALSE)
+                     verbose = FALSE,
+                     reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(potato_markers_info)
@@ -565,7 +593,8 @@ test_that("simu alfalfa",{
                        get_REF_ALT = TRUE,
                        markers_info = potato_markers_info_ChromPos,
                        botloci_file = potato_botloci,
-                       verbose = FALSE)
+                       verbose = FALSE,
+                       reference = "test")
     )
 
     madc2vcf_targets(madc_file = potato_indel_lowercase,
@@ -573,7 +602,8 @@ test_that("simu alfalfa",{
                      get_REF_ALT = TRUE,
                      markers_info = potato_markers_info,
                      botloci_file = potato_botloci,
-                     verbose = FALSE)
+                     verbose = FALSE,
+                     reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(potato_markers_info)
@@ -591,7 +621,8 @@ test_that("simu alfalfa",{
                      get_REF_ALT = TRUE,
                      markers_info = potato_markers_info,
                      collapse_matches_counts = TRUE,
-                     verbose = FALSE)
+                     verbose = FALSE,
+                     reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(potato_markers_info)
@@ -609,7 +640,8 @@ test_that("simu alfalfa",{
                      output.file = out,
                      get_REF_ALT = FALSE,
                      markers_info = potato_markers_info,
-                     verbose = FALSE)
+                     verbose = FALSE,
+                     reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(potato_markers_info)
@@ -628,7 +660,8 @@ test_that("simu alfalfa",{
                      output.file = out,
                      get_REF_ALT = TRUE,
                      markers_info = potato_markers_info,
-                     verbose = FALSE)
+                     verbose = FALSE,
+                     reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(potato_markers_info)
@@ -646,7 +679,8 @@ test_that("simu alfalfa",{
                      get_REF_ALT = TRUE,
                      markers_info = potato_markers_info,
                      collapse_matches_counts = TRUE,
-                     verbose = FALSE)
+                     verbose = FALSE,
+                     reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(potato_markers_info)
@@ -664,7 +698,8 @@ test_that("simu alfalfa",{
                      output.file = out,
                      get_REF_ALT = FALSE,
                      markers_info = potato_markers_info,
-                     verbose = FALSE)
+                     verbose = FALSE,
+                     reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(potato_markers_info)
@@ -683,7 +718,8 @@ test_that("simu alfalfa",{
       madc2vcf_targets(madc_file = alfalfa_madc_raw,
                        output.file = out,
                        get_REF_ALT = TRUE,
-                       verbose = FALSE)
+                       verbose = FALSE,
+                       reference = "test")
     )
 
     expect_error(
@@ -691,13 +727,15 @@ test_that("simu alfalfa",{
                        output.file = out,
                        get_REF_ALT = TRUE,
                        botloci_file = alfalfa_botloci,
-                       verbose = FALSE)
+                       verbose = FALSE,
+                       reference = "test")
     )
 
     madc2vcf_targets(madc_file = alfalfa_madc_raw,
                      output.file = out,
                      get_REF_ALT = FALSE,
-                     verbose = FALSE)
+                     verbose = FALSE,
+                     reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(alfalfa_markers_info)
@@ -712,7 +750,8 @@ test_that("simu alfalfa",{
                      output.file = out,
                      get_REF_ALT = FALSE,
                      collapse_matches_counts = TRUE,
-                     verbose = TRUE)
+                     verbose = TRUE,
+                     reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     expect_s4_class(vcf, "vcfR")
@@ -727,7 +766,8 @@ test_that("simu alfalfa",{
                      get_REF_ALT = TRUE,
                      markers_info = alfalfa_markers_info,
                      collapse_matches_counts = FALSE,
-                     verbose = FALSE)
+                     verbose = FALSE,
+                     reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(alfalfa_markers_info)
@@ -745,7 +785,8 @@ test_that("simu alfalfa",{
                      get_REF_ALT = TRUE,
                      markers_info = alfalfa_markers_info,
                      collapse_matches_counts = TRUE,
-                     verbose = FALSE)
+                     verbose = FALSE,
+                     reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(alfalfa_markers_info)
@@ -777,7 +818,8 @@ test_that("markers missing from markers_info are reported before the POS correct
   warns <- character(0)
   withCallingHandlers(
     madc2vcf_targets(madc_file = madc_file, output.file = temp, markers_info = mi_file,
-                     get_REF_ALT = FALSE, verbose = FALSE),
+                     get_REF_ALT = FALSE, verbose = FALSE,
+                     reference = "test"),
     warning = function(w) {
       warns <<- c(warns, conditionMessage(w))
       invokeRestart("muffleWarning")
@@ -789,4 +831,55 @@ test_that("markers missing from markers_info are reported before the POS correct
   vcf <- read.vcfR(temp, verbose = FALSE)
   expect_equal(nrow(vcf), 19)
   expect_false("chr1.1_000194324" %in% vcf@fix[, "ID"])
+})
+
+test_that("vcf_header and reference set the reference genome lines of the header", {
+  madc_file <- system.file("example_MADC_FixedAlleleID.csv", package="BIGr")
+  header <- tempfile(fileext = ".txt")
+  writeLines(c("##fileformat=VCFv4.3",
+               "##reference=file:test_genome.fna",
+               "##contig=<ID=chr1.1,length=60000000>",
+               '##INFO=<ID=HH,Number=1,Type=Float,Description="Hind/He value calculated using polyRAD">'),
+             header)
+  read_meta <- function(f) grep("^##", readLines(f), value = TRUE)
+
+  # Header file: its ##reference and ##contig lines are used, its INFO lines are not
+  temp <- tempfile(fileext = ".vcf")
+  suppressWarnings(madc2vcf_targets(madc_file = madc_file, output.file = temp, vcf_header = header, verbose = FALSE))
+  meta <- read_meta(temp)
+  expect_equal(sum(meta == "##reference=file:test_genome.fna"), 1)
+  expect_equal(sum(meta == "##contig=<ID=chr1.1,length=60000000>"), 1)
+  expect_false(any(grepl("=NA", meta)))
+  expect_false(any(grepl("ID=HH", meta)))
+  expect_true(any(grepl("^##BIGrCommandLine.madc2vcf_targets", meta)))
+  expect_equal(meta[1], "##fileformat=VCFv4.3")
+
+  # Reference ID only
+  temp <- tempfile(fileext = ".vcf")
+  suppressWarnings(madc2vcf_targets(madc_file = madc_file, output.file = temp, reference = "GCF_test.1", verbose = FALSE))
+  meta <- read_meta(temp)
+  expect_equal(sum(meta == "##reference=GCF_test.1"), 1)
+  expect_false(any(grepl("^##contig=", meta)))
+
+  # Nothing provided: no reference genome lines and a warning
+  temp <- tempfile(fileext = ".vcf")
+  expect_warning(madc2vcf_targets(madc_file = madc_file, output.file = temp, verbose = FALSE),
+                 "No reference genome information")
+  meta <- read_meta(temp)
+  expect_false(any(grepl("^##(reference|contig)=", meta)))
+  expect_true(any(grepl("^##BIGrCommandLine.madc2vcf_targets", meta)))
+
+  # A path given as a quoted string is escaped in the ##BIGrCommandLine line
+  temp <- tempfile(fileext = ".vcf")
+  suppressWarnings(madc2vcf_targets(madc_file = system.file("example_MADC_FixedAlleleID.csv", package="BIGr"),
+                                    output.file = temp, reference = "GCF_test.1", verbose = FALSE))
+  cmd <- grep("^##BIGrCommandLine", readLines(temp), value = TRUE)
+  expect_true(grepl('",CommandLine="> madc2vcf_targets(system.file(\\"example_MADC_FixedAlleleID.csv\\"', cmd, fixed = TRUE))
+  expect_true(endsWith(cmd, ')">'))
+
+  # Header for another genome
+  writeLines(c("##reference=file:other_genome.fna", "##contig=<ID=Chr01,length=100>"), header)
+  expect_warning(madc2vcf_targets(madc_file = madc_file, output.file = tempfile(fileext = ".vcf"),
+                                  vcf_header = header, verbose = FALSE),
+                 "not listed in the ##contig lines")
 })

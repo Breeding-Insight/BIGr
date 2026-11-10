@@ -9,7 +9,9 @@ updog2vcf(
   output.file,
   updog_version = NULL,
   RefAlt = NULL,
-  compress = TRUE
+  compress = TRUE,
+  vcf_header = NULL,
+  reference = NULL
 )
 }
 \arguments{
@@ -22,6 +24,10 @@ updog2vcf(
 \item{RefAlt}{optional data frame with four columns named "Chr", "Pos", "Ref", and "Alt" containing the reference and alternate alleles for each SNP in the same order as in the multidog object}
 
 \item{compress}{logical. If TRUE returns a vcf.gz file}
+
+\item{vcf_header}{optional path or URL to a VCF header file. Only its ##reference and ##contig lines are added to the output VCF header}
+
+\item{reference}{optional reference genome ID for the ##reference line (e.g. "GCF_020283565.1"). Replaces the ##reference line of vcf_header if both are given. Without vcf_header or reference, the ##reference and ##contig lines are left out with a warning}
 }
 \value{
 A vcf file
@@ -33,6 +39,10 @@ This function will convert an Updog output to a VCF file
 When performing dosage calling for multiple SNPs using Updog, the output file contains information for all loci and all samples.
 This function will convert the updog output file to a VCF file, while retaining the information for the values that are commonly
 used to filter low quality and low confident dosage calls.
+
+The CHROM and POS columns are read from the SNP IDs, which are expected in the CHR_POS format.
+SNPs whose ID does not end in a positive integer position are written with the SNP ID as CHROM
+and 1 as POS, with a warning.
 }
 \examples{
 
@@ -46,7 +56,8 @@ updog2vcf(
   multidog.object = mout,
   output.file = temp_file,
   updog_version = "0.0.0",
-  compress = TRUE
+  compress = TRUE,
+  reference = "example_genome_v1"
 )
 
 #Removing the example vcf

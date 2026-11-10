@@ -4,7 +4,14 @@
 \alias{dosage2vcf}
 \title{Convert DArTag genotype reports and counts to VCF}
 \usage{
-dosage2vcf(dart.report, dart.counts, ploidy, output.file)
+dosage2vcf(
+  dart.report,
+  dart.counts,
+  ploidy,
+  output.file,
+  vcf_header = NULL,
+  reference = NULL
+)
 }
 \arguments{
 \item{dart.report}{Path to the DArT Allele Dose Report or SNP/INDEL report .csv file.}
@@ -14,6 +21,10 @@ dosage2vcf(dart.report, dart.counts, ploidy, output.file)
 \item{ploidy}{The ploidy of the species being analyzed}
 
 \item{output.file}{output file name and path}
+
+\item{vcf_header}{optional path or URL to a VCF header file. Only its ##reference and ##contig lines are added to the output VCF header}
+
+\item{reference}{optional reference genome ID for the ##reference line (e.g. "GCF_020283565.1"). Replaces the ##reference line of vcf_header if both are given. Without vcf_header or reference, the ##reference and ##contig lines are left out with a warning}
 }
 \value{
 A vcf file
@@ -40,10 +51,12 @@ The VCF format is v4.3
 #Temp location (only for example)
 output_file <- tempfile()
 
+#The reference genome ID is written to the ##reference line of the VCF header
 dosage2vcf(dart.report = system.file("iris_DArT_Allele_Dose_Report_small.csv", package = "BIGr"),
            dart.counts = system.file("iris_DArT_Counts_small.csv", package = "BIGr"),
            ploidy = 2,
-           output.file = output_file)
+           output.file = output_file,
+           reference = "example_genome_v1")
 
 # Removing the output for the example
 rm(output_file)

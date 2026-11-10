@@ -79,7 +79,7 @@ test_that("test dosage report conversion",{
   output_file <- tempfile()
 
   #Convert the dart files to vcf
-  dosage2vcf(dart.report = report, dart.counts = counts, ploidy = ploidy, output.file = output_file)
+  dosage2vcf(dart.report = report, dart.counts = counts, ploidy = ploidy, output.file = output_file, reference = "test")
 
   #Test validity of VCF
   vcf <- read.vcfR(paste0(output_file,".vcf"), verbose = FALSE)
@@ -102,7 +102,7 @@ test_that("SNP/INDEL 1 row reports use diploid genotype codes and align counts b
   write_snp_1row_fixture(report)
   write_dart_counts_fixture(counts)
 
-  dosage2vcf(dart.report = report, dart.counts = counts, ploidy = 2, output.file = output_file)
+  dosage2vcf(dart.report = report, dart.counts = counts, ploidy = 2, output.file = output_file, reference = "test")
   vcf <- read_dosage2vcf_body(output_file)
 
   expect_equal(colnames(vcf)[10:12], c("S1", "S2", "S3"))
@@ -127,8 +127,8 @@ test_that("SNP/INDEL 2 row reports collapse to the same genotype codes as 1 row 
   write_snp_2row_fixture(snp_2row)
   write_dart_counts_fixture(counts)
 
-  dosage2vcf(dart.report = snp_1row, dart.counts = counts, ploidy = 2, output.file = output_1row)
-  dosage2vcf(dart.report = snp_2row, dart.counts = counts, ploidy = 2, output.file = output_2row)
+  dosage2vcf(dart.report = snp_1row, dart.counts = counts, ploidy = 2, output.file = output_1row, reference = "test")
+  dosage2vcf(dart.report = snp_2row, dart.counts = counts, ploidy = 2, output.file = output_2row, reference = "test")
 
   expect_equal(read_dosage2vcf_body(output_2row), read_dosage2vcf_body(output_1row))
 })
@@ -140,7 +140,32 @@ test_that("SNP/INDEL reports require diploid ploidy", {
   write_dart_counts_fixture(counts)
 
   expect_error(
-    dosage2vcf(dart.report = report, dart.counts = counts, ploidy = 4, output.file = tempfile()),
+    dosage2vcf(dart.report = report, dart.counts = counts, ploidy = 4, output.file = tempfile(), reference = "test"),
     "diploid genotype reports"
   )
+})
+
+test_that("vcf_header and reference set the reference genome lines of the header", {
+  report <- tempfile(fileext = ".csv")
+  counts <- tempfile(fileext = ".csv")
+  write_snp_1row_fixture(report)
+  write_dart_counts_fixture(counts)
+  header <- tempfile(fileext = ".txt")
+  writeLines(c("##reference=file:test_genome.fna",
+               "##contig=<ID=Chr01,length=1000000>",
+               "##contig=<ID=Chr02,length=1000000>"), header)
+
+  output_file <- tempfile()
+  dosage2vcf(dart.report = report, dart.counts = counts, ploidy = 2, output.file = output_file,
+             vcf_header = header)
+  meta <- grep("^##", readLines(paste0(output_file, ".vcf")), value = TRUE)
+  expect_equal(sum(meta == "##reference=file:test_genome.fna"), 1)
+  expect_equal(sum(grepl("^##contig=", meta)), 2)
+  expect_false(any(grepl("=NA", meta)))
+
+  output_file <- tempfile()
+  expect_warning(dosage2vcf(dart.report = report, dart.counts = counts, ploidy = 2, output.file = output_file),
+                 "No reference genome information")
+  meta <- grep("^##", readLines(paste0(output_file, ".vcf")), value = TRUE)
+  expect_false(any(grepl("^##(reference|contig)=", meta)))
 })

@@ -246,3 +246,28 @@ test_that("DP and MPP filters run whatever the first record's FORMAT contains",{
   expect_equal(filtered@gt[1, -1], vcf@gt[1, -1])
 
 })
+
+test_that("Reference genome lines of the header can be updated",{
+
+  vcf <- read.vcfR(system.file("iris_DArT_VCF.vcf.gz", package = "BIGr"), verbose = FALSE)
+
+  #The ##reference=NA and ##contig=<ID=NA,length=NA> lines are removed.
+  filtered <- suppressMessages(filterVCF(vcf, ploidy = 2))
+  expect_false(any(grepl("^##(reference|contig)=", filtered@meta)))
+
+  #Reference genome lines from a header file, placed after ##fileformat.
+  chrom <- unique(vcf@fix[, "CHROM"])
+  header <- tempfile(fileext = ".txt")
+  writeLines(c("##reference=file:test_genome.fna",
+               paste0("##contig=<ID=", chrom, ",length=1000000>")), header)
+  filtered <- suppressMessages(filterVCF(vcf, ploidy = 2, vcf_header = header))
+  expect_equal(filtered@meta[2], "##reference=file:test_genome.fna")
+  expect_equal(sum(grepl("^##contig=", filtered@meta)), length(chrom))
+
+  #The reference argument replaces only the ##reference line.
+  refiltered <- suppressMessages(filterVCF(filtered, ploidy = 2, reference = "GCF_test.1"))
+  expect_equal(sum(grepl("^##reference=", refiltered@meta)), 1)
+  expect_true("##reference=GCF_test.1" %in% refiltered@meta)
+  expect_equal(sum(grepl("^##contig=", refiltered@meta)), length(chrom))
+
+})

@@ -6,11 +6,17 @@
 #' This function will convert the updog output file to a VCF file, while retaining the information for the values that are commonly
 #' used to filter low quality and low confident dosage calls.
 #'
+#' The CHROM and POS columns are read from the SNP IDs, which are expected in the CHR_POS format.
+#' SNPs whose ID does not end in a positive integer position are written with the SNP ID as CHROM
+#' and 1 as POS, with a warning.
+#'
 #' @param multidog.object updog output object with class "multidog" from dosage calling
 #' @param output.file output file name and path
 #' @param updog_version character defining updog package version used to generate the multidog object
 #' @param RefAlt optional data frame with four columns named "Chr", "Pos", "Ref", and "Alt" containing the reference and alternate alleles for each SNP in the same order as in the multidog object
 #' @param compress logical. If TRUE returns a vcf.gz file
+#' @param vcf_header optional path or URL to a VCF header file. Only its ##reference and ##contig lines are added to the output VCF header
+#' @param reference optional reference genome ID for the ##reference line (e.g. "GCF_020283565.1"). Replaces the ##reference line of vcf_header if both are given. Without vcf_header or reference, the ##reference and ##contig lines are left out with a warning
 #' @return A vcf file
 #' @import dplyr
 #' @import tidyr
@@ -30,14 +36,16 @@
 #'   multidog.object = mout,
 #'   output.file = temp_file,
 #'   updog_version = "0.0.0",
-#'   compress = TRUE
+#'   compress = TRUE,
+#'   reference = "example_genome_v1"
 #' )
 #'
 #' #Removing the example vcf
 #' rm(temp_file)
 #'
 #' @export
-updog2vcf <- function(multidog.object, output.file, updog_version = NULL, RefAlt = NULL, compress = TRUE) {
+updog2vcf <- function(multidog.object, output.file, updog_version = NULL, RefAlt = NULL, compress = TRUE,
+                      vcf_header = NULL, reference = NULL) {
   #Making the VCF (This is highly dependent on snps being in a format where the SNP IDs are the CHR_POS)
 
   mout <- multidog.object
@@ -51,15 +59,19 @@ updog2vcf <- function(multidog.object, output.file, updog_version = NULL, RefAlt
 
   bigr_meta <- paste0('##BIGrCommandLine.updog2vcf=<ID=updog2vcf,Version="',
                       packageVersion("BIGr"), '",Data="',
-                      Sys.time(),'", CommandLine="> updog2vcf(',deparse(substitute(multidog.object)),',',
+                      Sys.time(),'",CommandLine="', vcf_quote_escape(paste0('> updog2vcf(',deparse1(substitute(multidog.object)),',',
                       output.file, ',',
-                      updog_version,')">')
+                      updog_version, ',',
+                      "vcf_header= ", vcf_header, ',',
+                      "reference= ", reference,')')), '">')
+
+  #Reference genome lines for the header
+  ref_lines <- vcf_reference_lines(vcf_header, reference)
 
   #Make a header separate from the dataframe
   vcf_header <- c(
     "##fileformat=VCFv4.3",
-    "##reference=NA",
-    "##contig=<ID=NA,length=NA>",
+    ref_lines$lines,
     '##INFO=<ID=DP,Number=1,Type=Integer,Description="Total Depth">',
     '##INFO=<ID=ADS,Number=R,Type=Integer,Description="Depths for the ref and each alt allele in the order listed">',
     '##INFO=<ID=BIAS,Number=1,Type=Float,Description="The estimated allele bias of the SNP from updog">',
@@ -226,16 +238,21 @@ updog2vcf <- function(multidog.object, output.file, updog_version = NULL, RefAlt
   #Add samples to vcf df
   vcf_df <- cbind(vcf_df,format_wide[,-1])
 
-  #Remove SNPs without a valid position in the SNP ID (POS must be a positive integer)
+  #SNPs without a valid position in the SNP ID (POS must be a positive integer) are kept,
+  #using the SNP ID as CHROM and 1 as POS so that their positions don't collide
   bad_pos <- is.na(vcf_df$POS) | !grepl("^[1-9][0-9]*$", vcf_df$POS)
   if (any(bad_pos)) {
-    warning(sum(bad_pos), " SNPs removed because their position could not be read from the SNP ID. ",
-            "SNP IDs are expected in the CHR_POS format, with POS a positive integer.", call. = FALSE)
-    vcf_df <- vcf_df[!bad_pos, , drop = FALSE]
+    warning(sum(bad_pos), " SNPs have a position that could not be read from the SNP ID. ",
+            "SNP IDs are expected in the CHR_POS format, with POS a positive integer. ",
+            "These SNPs were written with the SNP ID as CHROM and 1 as POS.", call. = FALSE)
+    vcf_df$CHROM[bad_pos] <- vcf_df$ID[bad_pos]
+    vcf_df$POS[bad_pos] <- "1"
   }
 
   # Add # to the CHROM column name
   colnames(vcf_df)[1] <- "#CHROM"
+
+  check_vcf_contigs(vcf_df[[1]], ref_lines$contigs)
 
   if(!compress){
     # Write the header to the file

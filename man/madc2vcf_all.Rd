@@ -20,6 +20,8 @@ madc2vcf_all(
   others_rm_with_indels = TRUE,
   others_min_dist = 5,
   others_max_close_snps = 3,
+  vcf_header = NULL,
+  reference = NULL,
   verbose = TRUE
 )
 }
@@ -53,6 +55,10 @@ madc2vcf_all(
 \item{others_min_dist}{An integer or NULL. Distance in base pairs below which two SNPs in an Other allele are considered close to each other. Used together with \code{others_max_close_snps}. Default is 5.}
 
 \item{others_max_close_snps}{An integer or NULL. If not NULL, Other alleles with more than this many SNPs that are closer than \code{others_min_dist} base pairs to each other are discarded. The SNPs are counted before the target position and positions with N or IUPAC codes are removed. The filter is not applied if either \code{others_min_dist} or \code{others_max_close_snps} is NULL. Default is 3.}
+
+\item{vcf_header}{A string specifying the path or URL to a VCF header file with the \verb{##reference} and \verb{##contig} lines of the reference genome, such as the VCF header files provided with the microhaplotype databases. Only the \verb{##reference} and \verb{##contig} lines are used; the \verb{##fileformat}, \verb{##INFO} and \verb{##FORMAT} lines are written by the function. A warning is given if a \code{CHROM} in the output is not listed in the \verb{##contig} lines. Default is NULL.}
+
+\item{reference}{A string with the reference genome ID written to the \verb{##reference} line (e.g. \code{"GCF_020283565.1"}). Use it when no \code{vcf_header} file is available, or to replace the \verb{##reference} line of \code{vcf_header}. If neither \code{vcf_header} nor \code{reference} is given, the \verb{##reference} and \verb{##contig} lines are left out of the header with a warning. Default is NULL.}
 
 \item{verbose}{A logical value indicating whether to print metrics and progress to the console. Default is TRUE.}
 }
@@ -98,6 +104,7 @@ madc2vcf_all(
   multiallelic_SNP_sample_thr = 5,
   alignment_score_thr = 40,
   out_vcf = output_file,
+  reference = "example_genome_v1",
   verbose = TRUE
 )
 

@@ -89,7 +89,7 @@ madc2vcf_multi <- function(madc_file,
     stop("The MADC file is missing required columns (CloneID, AlleleID, AlleleSequence)")
 
   if (checks$checks["IUPACcodes"])
-    stop("MADC Allele Sequences contain IUPAC (non-ATCG) codes. Please run HapApp to clean MADC file before using this function.")
+    stop("MADC Allele Sequences contain different IUPAC (non-ATCG) codes in REF and ALT sequences. Please run HapApp to clean MADC file before using this function.")
 
   if (!isTRUE(checks$checks["RefAltSeqs"]))
     stop("Not all Ref sequences have a corresponding Alt or vice versa. Please provide a complete MADC file before using this function.")
@@ -100,7 +100,7 @@ madc2vcf_multi <- function(madc_file,
   if (!isTRUE(checks$checks["ChromPos"])) {
     if (is.null(markers_info))
       stop("CloneID column does not follow the 'Chr_Pos' format. ",
-           "Please provide a markers_info file with at least 'CloneID'/'BI_markerID', ",
+           "Please provide a markers_info file with at least 'CloneID'/'Marker_ID'/'BI_markerID', ",
            "'Chr', and 'Pos' columns.")
     if (!all(c("Chr", "Pos") %in% colnames(mi_df)))
       stop("CloneID column does not follow the 'Chr_Pos' format. ",

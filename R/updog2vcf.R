@@ -14,7 +14,6 @@
 #' @return A vcf file
 #' @import dplyr
 #' @import tidyr
-#' @importFrom Rdpack reprompt
 #' @importFrom utils write.table
 #' @importFrom Rsamtools bgzip
 #' @references
@@ -126,9 +125,16 @@ updog2vcf <- function(multidog.object, output.file, updog_version = NULL, RefAlt
 
   #CHROM and POS from SNP ID
   new_df <- mout$snpdf %>%
-    separate(snp, into = c("CHROM", "POS"), sep = "_") %>%
+    extract(
+      snp,
+      into = c("CHROM", "POS"),
+      regex = "^(.*)_([^_]*)$"
+    ) %>%
+    mutate(
+      POS = sub("^0+", "", POS),
+      POS = if_else(POS == "", "0", POS)
+    ) %>%
     select(CHROM, POS)
-  new_df$POS <- sub("^0+", "", new_df$POS)
 
   #Make the VCF df
   vcf_df <- data.frame(
@@ -219,6 +225,14 @@ updog2vcf <- function(multidog.object, output.file, updog_version = NULL, RefAlt
 
   #Add samples to vcf df
   vcf_df <- cbind(vcf_df,format_wide[,-1])
+
+  #Remove SNPs without a valid position in the SNP ID (POS must be a positive integer)
+  bad_pos <- is.na(vcf_df$POS) | !grepl("^[1-9][0-9]*$", vcf_df$POS)
+  if (any(bad_pos)) {
+    warning(sum(bad_pos), " SNPs removed because their position could not be read from the SNP ID. ",
+            "SNP IDs are expected in the CHR_POS format, with POS a positive integer.", call. = FALSE)
+    vcf_df <- vcf_df[!bad_pos, , drop = FALSE]
+  }
 
   # Add # to the CHROM column name
   colnames(vcf_df)[1] <- "#CHROM"

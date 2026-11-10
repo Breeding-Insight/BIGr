@@ -34,9 +34,9 @@ INFO column. Variants with a \code{BIAS} below this value are kept. Has no effec
 unless \code{filter.BIAS.min} is also supplied.}
 
 \item{filter.DP}{Minimum read depth for a genotype call. Calls whose FORMAT/DP
-is below this value are set to missing. This does not remove variants, though
-the calls it sets to missing then count towards \code{filter.SNP.miss},
-\code{filter.SAMPLE.miss} and \code{filter.MAF}.}
+is below this value are set to missing. Calls without a DP value are left
+unchanged. This does not remove variants, though the calls it sets to missing
+then count towards \code{filter.SNP.miss}, \code{filter.SAMPLE.miss} and \code{filter.MAF}.}
 
 \item{filter.MPP}{Minimum posterior probability for a genotype call, as
 reported by updog. Calls whose FORMAT/MPP is below this value are set to
@@ -52,11 +52,13 @@ it reflects only the samples that survive \code{filter.SAMPLE.miss}.}
 
 \item{filter.SAMPLE.miss}{Maximum proportion of missing genotype calls a sample
 may have, between 0 and 1. Samples missing a smaller proportion than this are
-kept. Note that this is a proportion and not a percentage.}
+kept. Note that this is a proportion and not a percentage; values outside 0
+to 1 give an error.}
 
 \item{filter.SNP.miss}{Maximum proportion of missing genotype calls a variant
 may have, between 0 and 1. Variants missing a smaller proportion than this are
-kept. Note that this is a proportion and not a percentage.}
+kept. Note that this is a proportion and not a percentage; values outside 0
+to 1 give an error.}
 
 \item{ploidy}{The ploidy of the species being analyzed. Required. Used to write
 the missing genotype, so a diploid is recorded as \code{./.} and a tetraploid as

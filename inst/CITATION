@@ -23,6 +23,10 @@ bibentry(
   year = "2025"
 )
 
+# Year of the CRAN release, or the current year for a development version
+year <- sub("-.*", "", meta$`Date/Publication`)
+if (!length(year)) year <- format(Sys.Date(), "%Y")
+
 bibentry(
   bibtype  = "Manual",
   title    = "BIGr: Breeding Insight Genomics functions for polyploid and diploid species",
@@ -51,7 +55,7 @@ bibentry(
              person(family='University of Florida',
                     role=c('cph'),
                     comment = "Breeding Insight")),
-  year     = "2025",
+  year     = year,
   note     = paste("R package version", meta$Version),
   url      = "https://github.com/Breeding-Insight/BIGr"
 )

@@ -3,12 +3,12 @@
 utils::globalVariables(c(
   "ALT", "AlleleID", "AlleleSequence", "CHROM", "Concordance", "Data", "ID",
   "MarkerName", "POS",
-  "QPseparate", "QPsolve_par", "REF", "Type", "Var1", "Variant", "geno",
+  "REF", "Type", "Var1", "Variant", "geno",
   "ind", "ref", "row_name", "size", "snp",
   "CloneID", "Count", "qualifying_sites_count",
   "MarkerID", "SampleID", "Dosage",
   "pos", "alt", "match_key",
-  ":=", ".SD", "Sex", "Male_Parent", "Female_Parent", "chr",
+  "chr",
   # madc_plot() aes symbols
   "n_mhaps", "depth", "len", "marker", "sample", "value",
   "missing_rate", "group", "PCx", "PCy", "Var2",

@@ -169,3 +169,27 @@ test_that("check_botloci keeps AlleleID synchronized after CloneID remap", {
   expect_equal(res[[2]]$CloneID, "1_0001")
   expect_equal(res[[2]]$AlleleID, "1_0001|Ref_0001")
 })
+
+test_that("identical IUPAC codes in Ref and Alt are reported separately", {
+
+  clone <- "Chr01_000000100"
+  ref <- "ACGTTGCAAGCTTGACCTGAAGTCCATGGATCCGTACGATCGGATNCAAGTTCGACTGAT"
+  alt <- "ACGTTGCAAGCTTGACCTGAAGTCCATGGGTCCGTACGATCGGATNCAAGTTCGACTGAT"
+  report <- data.frame(AlleleID = paste0(clone, c("|Ref_0001", "|Alt_0002")),
+                       CloneID = clone,
+                       AlleleSequence = c(ref, alt),
+                       S1 = c(10, 5), S2 = c(3, 8))
+
+  # Same IUPAC code at the same position in Ref and Alt
+  res <- check_madc_sanity(report)
+  expect_false(res$checks[["IUPACcodes"]])
+  expect_true(res$checks[["IUPACcodes_IdenticalRefAlt"]])
+  expect_equal(res$iupac_identical_clone_ids, clone)
+
+  # IUPAC code present in only one of them
+  report$AlleleSequence[2] <- sub("N", "C", alt)
+  res <- check_madc_sanity(report)
+  expect_true(res$checks[["IUPACcodes"]])
+  expect_false(res$checks[["IUPACcodes_IdenticalRefAlt"]])
+  expect_equal(res$iupac_identical_clone_ids, character(0))
+})

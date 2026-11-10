@@ -15,8 +15,8 @@
 #' @param add_others A logical value. If TRUE, alleles labeled "Other" in the MADC file are included in off-target SNP extraction. Default is TRUE.
 #' @param others_max_snps An integer or NULL. If not NULL, Other alleles with more than this many SNP differences versus the Ref sequence (as detected by pairwise alignment) are discarded. Default is 5.
 #' @param others_rm_with_indels A logical value. If TRUE, Other alleles that contain insertions or deletions relative to the Ref sequence (as detected by pairwise alignment) are discarded. Default is TRUE.
-#' @param others_min_dist An integer or NULL. If not NULL, Other alleles with SNPs that are closer than this many base pairs to each other are discarded. Default is 5.
-#' @param others_max_close_snps An integer or NULL. If not NULL, Other alleles with more than this many SNPs that are closer than `others_min_dist` base pairs to each other are discarded. Default is 3.
+#' @param others_min_dist An integer or NULL. Distance in base pairs below which two SNPs in an Other allele are considered close to each other. Used together with `others_max_close_snps`. Default is 5.
+#' @param others_max_close_snps An integer or NULL. If not NULL, Other alleles with more than this many SNPs that are closer than `others_min_dist` base pairs to each other are discarded. The SNPs are counted before the target position and positions with N or IUPAC codes are removed. The filter is not applied if either `others_min_dist` or `others_max_close_snps` is NULL. Default is 3.
 #' @param verbose A logical value indicating whether to print metrics and progress to the console. Default is TRUE.
 #'
 #' @return This function does not return an R object. It writes the processed VCF file v4.3 to the specified `out_vcf` path.
@@ -145,6 +145,12 @@ madc2vcf_all <- function(madc,
                       "multiallelic_SNP_dp_thr= ", multiallelic_SNP_dp_thr, ', ',
                       "multiallelic_SNP_sample_thr= ", multiallelic_SNP_sample_thr, ', ',
                       "alignment_score_thr= ", alignment_score_thr, ', ',
+                      "markers_info= ", markers_info, ', ',
+                      "add_others= ", add_others, ', ',
+                      "others_max_snps= ", others_max_snps, ', ',
+                      "others_rm_with_indels= ", others_rm_with_indels, ', ',
+                      "others_min_dist= ", others_min_dist, ', ',
+                      "others_max_close_snps= ", others_max_close_snps, ', ',
                       "out_vcf= ", out_vcf, ', ',
                       "verbose= ", verbose,')">')
 
@@ -601,7 +607,7 @@ compare <- function(one_tag,
                              type = "global")
 
   # The score is a bit different from the python script despite same weights
-  if(align@score > alignment_score_thr){ # if score for the target sequence is smaller than the threshold, the tag will be discarted
+  if(align@score > alignment_score_thr){ # if score for the target sequence is smaller than the threshold, the tag will be discarded
     pos_target_idx <- align@pattern@mismatch@unlistData
     if(length(align@pattern@mismatch@unlistData) == 0){
       #No polymorphisms found between ref and alt sequences - or just indels
@@ -656,7 +662,7 @@ compare <- function(one_tag,
               alt_base_match <- alt_base_match[-rm_pos]
             }
 
-            if(length(alt_base_match) >0){ # If the N is the only polymorphis found, the Match tag will be discarted
+            if(length(alt_base_match) >0){ # If the N is the only polymorphism found, the Match tag will be discarded
               # The reported position is always on reference
               pos <- pos_target - (pos_target_idx - pos_ref_idx)
 
@@ -722,7 +728,7 @@ compare <- function(one_tag,
               pos_alt_idx <- pos_alt_idx[-rm_target_other]
             }
           }
-          # Cases found where the AltMatch is another alternative for the target SNP - they are discarted
+          # Cases found where the AltMatch is another alternative for the target SNP - they are discarded
           if(length(pos_ref_idx) >0){
             # Compute bases only when mismatch positions remain; substring() errors on integer(0) indices
             other_ref_base <- substring(ref_seq, pos_ref_idx, pos_ref_idx)
@@ -739,7 +745,7 @@ compare <- function(one_tag,
               other_alt_base <- other_alt_base[-rm_pos]
             }
 
-            if(length(other_alt_base) >0){ # If the N or IUPAC code is the only polymorphis found, the Match tag will be discarted
+            if(length(other_alt_base) >0){ # If the N or IUPAC code is the only polymorphism found, the Other tag will be discarded
               # The reported position is always on reference
               pos <- pos_target - (pos_target_idx - pos_ref_idx)
 
@@ -759,7 +765,7 @@ compare <- function(one_tag,
         }
       }
 
-      return(list(update_tag = update_tag, # updated data.frame, NULL if discarted
+      return(list(update_tag = update_tag, # updated data.frame, NULL if discarded
                   rm_score = NULL,         # cloneID if removed because of low alignment score, NULL if kept
                   rm_N = NULL,
                   rm_indels = NULL,

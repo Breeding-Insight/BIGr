@@ -210,3 +210,39 @@ test_that("Filter thresholds must be a single finite number or NULL",{
   expect_error(filterVCF(vcf, filter.SAMPLE.miss = NA_real_, ploidy = 2), "single finite numeric value")
 
 })
+
+test_that("Missing data thresholds must be proportions",{
+
+  vcf <- read.vcfR(system.file("iris_DArT_VCF.vcf.gz", package = "BIGr"), verbose = FALSE)
+
+  #A percentage such as 20 would otherwise keep every sample or variant.
+  expect_error(filterVCF(vcf, filter.SAMPLE.miss = 20, ploidy = 2), "between 0 and 1")
+  expect_error(filterVCF(vcf, filter.SNP.miss = 20, ploidy = 2), "between 0 and 1")
+  expect_error(filterVCF(vcf, filter.SNP.miss = -0.1, ploidy = 2), "between 0 and 1")
+
+})
+
+test_that("DP and MPP filters run whatever the first record's FORMAT contains",{
+
+  #The FORMAT fields used to be read from the first record alone, so a DP field
+  #missing from that one record disabled filter.DP for the whole file.
+  vcf <- read.vcfR(system.file("iris_DArT_VCF.vcf.gz", package = "BIGr"), verbose = FALSE)
+  vcf <- vcf[1:4, ]
+
+  #Remove DP from the first record only.
+  vcf@gt[1, "FORMAT"] <- "GT:UD:RA:AD:MPP"
+  vcf@gt[1, -1] <- sub("^([^:]*:[^:]*):[^:]*", "\\1", vcf@gt[1, -1])
+
+  filtered <- suppressMessages(filterVCF(vcf, filter.DP = 1e6, ploidy = 2))
+  gt <- extract.gt(filtered, element = "GT")
+
+  #Every call with a DP value fails the threshold and is set to missing, while the
+  #first record has no DP value and keeps its calls.
+  expect_true(all(is.na(gt[2:4, ])))
+  expect_false(any(is.na(gt[1, ])))
+
+  #The missing call matches the FORMAT of its own record.
+  expect_true(all(filtered@gt[2:4, -1] == "./.:.:.:.:.:."))
+  expect_equal(filtered@gt[1, -1], vcf@gt[1, -1])
+
+})

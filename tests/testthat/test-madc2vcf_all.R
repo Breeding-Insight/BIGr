@@ -593,3 +593,71 @@ test_that("simu alfalfa",{
     )
   })
 })
+
+# =======================================================================
+# Other allele filters and IUPAC codes (internal compare function)
+# =======================================================================
+
+test_that("Other alleles with too many close SNPs are discarded", {
+
+  clone <- "Chr01_000000100"
+  make_tag <- function(seqs, ids) {
+    data.frame(AlleleID = paste0(clone, "|", ids), Chromosome = NA, SNP_position_in_Genome = NA,
+               Ref = NA, Alt = NA, CloneID = clone, AlleleSequence = seqs,
+               S1 = 10, S2 = 5, check.names = FALSE)
+  }
+  sub_bases <- function(seq, pos, bases) {
+    x <- strsplit(seq, "")[[1]]
+    x[pos] <- bases
+    paste(x, collapse = "")
+  }
+
+  # Target SNP at position 30 of the sequence (position 100 in the genome)
+  ref <- "ACGTTGCAAGCTTGACCTGAAGTCCATGGATCCGTACGATCGGATCCAAGTTCGACTGAT"
+  alt <- sub_bases(ref, 30, "G")
+  # Other_0003 has four SNPs 2bp apart, Other_0004 has three
+  other4 <- sub_bases(ref, c(10, 12, 14, 16), c("C", "A", "A", "T"))
+  other3 <- sub_bases(ref, c(10, 12, 14), c("C", "A", "A"))
+  tag <- make_tag(c(ref, alt, other4, other3), c("Ref_0001", "Alt_0002", "Other_0003", "Other_0004"))
+  botloci <- data.frame(V1 = "Chr02_000000500")
+
+  # Defaults (others_min_dist = 5, others_max_close_snps = 3): only Other_0003 is discarded
+  res <- compare(tag, botloci)
+  expect_equal(res$n_rm_others_close_snps, 1L)
+  expect_false(any(grepl("Other_0003", res$update_tag$AlleleID)))
+  expect_equal(sum(grepl("Other_0004", res$update_tag$AlleleID)), 3)
+  expect_equal(res$update_tag$SNP_position_in_Genome[grepl("Other_0004", res$update_tag$AlleleID)],
+               c("80", "82", "84"))
+
+  # The filter is not applied when others_max_close_snps is NULL
+  res <- compare(tag, botloci, others_max_close_snps = NULL)
+  expect_equal(res$n_rm_others_close_snps, 0L)
+  expect_equal(sum(grepl("Other_0003", res$update_tag$AlleleID)), 4)
+
+  # SNPs 2bp apart are not close when others_min_dist = 2
+  res <- compare(tag, botloci, others_min_dist = 2)
+  expect_equal(res$n_rm_others_close_snps, 0L)
+  expect_equal(sum(grepl("Other_0003", res$update_tag$AlleleID)), 4)
+})
+
+test_that("identical IUPAC codes in Ref and Alt are not reported as SNPs", {
+
+  clone <- "Chr01_000000100"
+  ref <- "ACGTTGCAAGCTTGACCTGAAGTCCATGGATCCGTACGATCGGATNCAAGTTCGACTGAT"
+  alt <- "ACGTTGCAAGCTTGACCTGAAGTCCATGGGTCCGTACGATCGGATNCAAGTTCGACTGAT"
+  # RefMatch with one SNP at position 10 and the same N at position 46
+  ref_match <- "ACGTTGCAACCTTGACCTGAAGTCCATGGATCCGTACGATCGGATNCAAGTTCGACTGAT"
+  tag <- data.frame(AlleleID = paste0(clone, c("|Ref_0001", "|Alt_0002", "|RefMatch_0003")),
+                    Chromosome = NA, SNP_position_in_Genome = NA, Ref = NA, Alt = NA,
+                    CloneID = clone, AlleleSequence = c(ref, alt, ref_match),
+                    S1 = 10, S2 = 5, check.names = FALSE)
+  botloci <- data.frame(V1 = "Chr02_000000500")
+
+  res <- compare(tag, botloci)
+  # The tag is kept, with the target SNP and the RefMatch SNP only
+  expect_null(res$rm_N)
+  expect_null(res$rm_indels)
+  expect_equal(nrow(res$update_tag), 3)
+  expect_equal(res$update_tag$SNP_position_in_Genome, c("100", "100", "80"))
+  expect_false(any(res$update_tag$Ref == "N" | res$update_tag$Alt == "N"))
+})

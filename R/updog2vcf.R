@@ -226,6 +226,14 @@ updog2vcf <- function(multidog.object, output.file, updog_version = NULL, RefAlt
   #Add samples to vcf df
   vcf_df <- cbind(vcf_df,format_wide[,-1])
 
+  #Remove SNPs without a valid position in the SNP ID (POS must be a positive integer)
+  bad_pos <- is.na(vcf_df$POS) | !grepl("^[1-9][0-9]*$", vcf_df$POS)
+  if (any(bad_pos)) {
+    warning(sum(bad_pos), " SNPs removed because their position could not be read from the SNP ID. ",
+            "SNP IDs are expected in the CHR_POS format, with POS a positive integer.", call. = FALSE)
+    vcf_df <- vcf_df[!bad_pos, , drop = FALSE]
+  }
+
   # Add # to the CHROM column name
   colnames(vcf_df)[1] <- "#CHROM"
 

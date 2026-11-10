@@ -760,3 +760,33 @@ test_that("simu alfalfa",{
     expect_equal(sum(DP[,5]), 56547)
   })
 })
+
+test_that("markers missing from markers_info are reported before the POS correction", {
+  madc_file <- system.file("example_MADC_FixedAlleleID.csv", package="BIGr")
+  report <- read.csv(madc_file)
+
+  # markers_info with Chr and Pos for every marker except chr1.1_000194324
+  ids <- setdiff(unique(report$CloneID), "chr1.1_000194324")
+  mi <- data.frame(CloneID = ids,
+                   Chr = sub("_.*", "", ids),
+                   Pos = as.numeric(sub(".*_", "", ids)))
+  mi_file <- tempfile(fileext = ".csv")
+  write.csv(mi, mi_file, row.names = FALSE)
+
+  temp <- tempfile(fileext = ".vcf")
+  warns <- character(0)
+  withCallingHandlers(
+    madc2vcf_targets(madc_file = madc_file, output.file = temp, markers_info = mi_file,
+                     get_REF_ALT = FALSE, verbose = FALSE),
+    warning = function(w) {
+      warns <<- c(warns, conditionMessage(w))
+      invokeRestart("muffleWarning")
+    }
+  )
+
+  expect_true(any(grepl("1 markers removed: no matching entry found in markers_info.", warns, fixed = TRUE)))
+
+  vcf <- read.vcfR(temp, verbose = FALSE)
+  expect_equal(nrow(vcf), 19)
+  expect_false("chr1.1_000194324" %in% vcf@fix[, "ID"])
+})

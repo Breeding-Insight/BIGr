@@ -29,9 +29,9 @@
 #'   INFO column. Variants with a `BIAS` below this value are kept. Has no effect
 #'   unless `filter.BIAS.min` is also supplied.
 #' @param filter.DP Minimum read depth for a genotype call. Calls whose FORMAT/DP
-#'   is below this value are set to missing. This does not remove variants, though
-#'   the calls it sets to missing then count towards `filter.SNP.miss`,
-#'   `filter.SAMPLE.miss` and `filter.MAF`.
+#'   is below this value are set to missing. Calls without a DP value are left
+#'   unchanged. This does not remove variants, though the calls it sets to missing
+#'   then count towards `filter.SNP.miss`, `filter.SAMPLE.miss` and `filter.MAF`.
 #' @param filter.MPP Minimum posterior probability for a genotype call, as
 #'   reported by updog. Calls whose FORMAT/MPP is below this value are set to
 #'   missing, on the same terms as `filter.DP`.
@@ -43,10 +43,12 @@
 #'   it reflects only the samples that survive `filter.SAMPLE.miss`.
 #' @param filter.SAMPLE.miss Maximum proportion of missing genotype calls a sample
 #'   may have, between 0 and 1. Samples missing a smaller proportion than this are
-#'   kept. Note that this is a proportion and not a percentage.
+#'   kept. Note that this is a proportion and not a percentage; values outside 0
+#'   to 1 give an error.
 #' @param filter.SNP.miss Maximum proportion of missing genotype calls a variant
 #'   may have, between 0 and 1. Variants missing a smaller proportion than this are
-#'   kept. Note that this is a proportion and not a percentage.
+#'   kept. Note that this is a proportion and not a percentage; values outside 0
+#'   to 1 give an error.
 #' @param ploidy The ploidy of the species being analyzed. Required. Used to write
 #'   the missing genotype, so a diploid is recorded as `./.` and a tetraploid as
 #'   `./././.` when a call is filtered out.
@@ -97,7 +99,7 @@ filterVCF <- function(vcf.file,
   # A threshold that is not a single readable number turns the comparison it
   # feeds into an NA index, which silently corrupts or skips the filter rather
   # than erroring, so all thresholds are validated before anything else happens.
-  validate_filter_number <- function(x, name) {
+  validate_filter_number <- function(x, name, proportion = FALSE) {
     if (is.null(x)) return(NULL)
     if (!(is.numeric(x) || is.character(x)) || length(x) != 1L) {
       stop(name, " must be a single numeric value or NULL.", call. = FALSE)
@@ -106,6 +108,11 @@ filterVCF <- function(vcf.file,
     if (!is.finite(value)) {
       stop(name, " must be a single finite numeric value or NULL, not ",
            deparse(x), ".", call. = FALSE)
+    }
+    # A percentage such as 20 would otherwise keep every variant or sample
+    if (proportion && (value < 0 || value > 1)) {
+      stop(name, " is a proportion and must be between 0 and 1, not ",
+           value, ".", call. = FALSE)
     }
     value
   }
@@ -117,8 +124,8 @@ filterVCF <- function(vcf.file,
   filter.MPP         <- validate_filter_number(filter.MPP, "filter.MPP")
   filter.PMC         <- validate_filter_number(filter.PMC, "filter.PMC")
   filter.MAF         <- validate_filter_number(filter.MAF, "filter.MAF")
-  filter.SAMPLE.miss <- validate_filter_number(filter.SAMPLE.miss, "filter.SAMPLE.miss")
-  filter.SNP.miss    <- validate_filter_number(filter.SNP.miss, "filter.SNP.miss")
+  filter.SAMPLE.miss <- validate_filter_number(filter.SAMPLE.miss, "filter.SAMPLE.miss", proportion = TRUE)
+  filter.SNP.miss    <- validate_filter_number(filter.SNP.miss, "filter.SNP.miss", proportion = TRUE)
 
   # Import VCF (can be .vcf or .vcf.gz)
   if (!inherits(vcf.file, "vcfR")) {
@@ -153,43 +160,48 @@ filterVCF <- function(vcf.file,
   starting_snps <- nrow(vcf)
   starting_samples <- ncol(vcf@gt)-1 #subtract 1 to not include the FORMAT column
 
-  # Determine the number of items in the FORMAT field
-  format_string <- vcf@gt[1, "FORMAT"]
-  format_fields <- strsplit(format_string, ":")[[1]]
-  num_fields <- length(format_fields)
-  gt_pos <- which(format_fields == "GT")
-  # Create the NA format string, replacing only GT with "./."
+  # The FORMAT fields are read from every record rather than the first one only,
+  # because the fields present can differ between records
+  format_fields <- strsplit(vcf@gt[, "FORMAT"], ":", fixed = TRUE)
+  # Create the NA format string for each record, replacing only GT with "./."
   missing_gt <- paste(rep(".", ploidy), collapse = "/")
-  na_fields <- rep(".", num_fields)
-  na_fields[gt_pos] <- missing_gt
-  na_format <- paste(na_fields, collapse = ":")
+  na_format <- vapply(format_fields, function(fields) {
+    na_fields <- rep(".", length(fields))
+    na_fields[fields == "GT"] <- missing_gt
+    paste(na_fields, collapse = ":")
+  }, character(1))
+  format_has <- function(field) any(vapply(format_fields, function(fields) field %in% fields, logical(1)))
 
   # Extract the DP values
-  if ("DP" %in% format_fields && !is.null(filter.DP)) {
+  if (!is.null(filter.DP) && format_has("DP")) {
     message("Filtering by DP\n")
     dp <- extract.gt(vcf, element = "DP", as.numeric = TRUE)
-    # Identify cells to modify based on the DP threshold
+    # Identify cells to modify based on the DP threshold. Calls without a DP
+    # value are left unchanged
     threshold <- as.numeric(filter.DP)
-    to_modify <- dp < threshold
+    to_modify <- !is.na(dp) & dp < threshold
     # Replace cells in the vcf@gt matrix with NA format string where to_modify is TRUE
-    vcf@gt[, -1][to_modify] <- na_format
+    na_matrix <- matrix(na_format, nrow = nrow(dp), ncol = ncol(dp))
+    vcf@gt[, -1][to_modify] <- na_matrix[to_modify]
     # Remove extra matrices
-    rm(to_modify)
+    rm(to_modify, na_matrix)
     rm(dp)
   }
 
   #Filter if the MPP field is present
-  if ("MPP" %in% format_fields && !is.null(filter.MPP)) {
+  if (!is.null(filter.MPP) && format_has("MPP")) {
     message("Filtering by MPP\n")
     # Extract the MPP values
     mpp <- extract.gt(vcf, element = "MPP", as.numeric = TRUE)
-    # Identify cells to modify based on the DP threshold
-    threshold <- as.numeric(filter.MPP) #Need to make a variable for user to enter
-    to_modify <- mpp < threshold
+    # Identify cells to modify based on the MPP threshold. Calls without an MPP
+    # value are left unchanged
+    threshold <- as.numeric(filter.MPP)
+    to_modify <- !is.na(mpp) & mpp < threshold
     # Replace cells in the vcf@gt matrix with NA format string where to_modify is TRUE
-    vcf@gt[, -1][to_modify] <- na_format
+    na_matrix <- matrix(na_format, nrow = nrow(mpp), ncol = ncol(mpp))
+    vcf@gt[, -1][to_modify] <- na_matrix[to_modify]
     #remove extra matrices
-    rm(to_modify)
+    rm(to_modify, na_matrix)
     rm(mpp)
   }
 

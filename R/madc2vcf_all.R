@@ -215,7 +215,7 @@ madc2vcf_all <- function(madc,
     n_match <- sum(mi_df$CloneID %in% report$CloneID)
     n_total <- length(unique(report$CloneID))
     if(n_match < n_total)
-      vmsg("%s of %s MADC CloneIDs found in markers_info. Unmatched markers will be removed", verbose = verbose, level = 1, n_match, n_total)
+      vmsg("%s of %s MADC CloneIDs found in markers_info. Unmatched markers will be removed", verbose = verbose, level = 1, type = ">>", n_match, n_total)
   } else mi_df <- NULL
 
   if(any(!checks$checks[c("ChromPos")])){
@@ -244,7 +244,7 @@ madc2vcf_all <- function(madc,
         mi_df$Type <- ifelse(nchar(as.character(mi_df$Ref)) > 1 | nchar(as.character(mi_df$Alt)) > 1,
                              "Indel", "SNP")
         vmsg("markers_info: 'Type' column not found. Derived from Ref/Alt lengths (%s SNPs, %s Indels)",
-             verbose = verbose, level = 1,
+             verbose = verbose, level = 1, type = ">>",
              sum(mi_df$Type == "SNP"), sum(mi_df$Type == "Indel"))
       }
       vmsg("The MADC file contains indels and markers_info file was provided with all required columns",verbose = verbose, level = 1, type = ">>")

@@ -166,6 +166,22 @@ madc2vcf_multi <- function(madc_file,
   # ---- Corrections: only create a temp file if needed ----
   need_temp <- isTRUE(checks$checks["allNArow"]) || isTRUE(checks$checks["allNAcol"]) || cloneid_changed
 
+  # polyRAD requires integer read counts. Counts stored as e.g. "12.0" are read
+  # as double, so coerce whole-number count columns to integer and pass a temp file.
+  count_cols <- setdiff(colnames(report), c("AlleleID", "CloneID", "AlleleSequence", "readCountSum"))
+  non_int <- count_cols[!vapply(report[count_cols], is.integer, logical(1))]
+  if (length(non_int) > 0) {
+    vals <- unlist(report[non_int], use.names = FALSE)
+    if (!is.numeric(vals) || any(vals %% 1 != 0, na.rm = TRUE))
+      stop("MADC read count columns must contain whole numbers. Non-integer values found in: ",
+           paste(utils::head(non_int, 5), collapse = ", "),
+           if (length(non_int) > 5) ", ..." else "")
+    vmsg("Converting %s read count column(s) stored as decimals to integer",
+         verbose = verbose, level = 1, type = ">>", length(non_int))
+    report[non_int] <- lapply(report[non_int], as.integer)
+    need_temp <- TRUE
+  }
+
   if (need_temp) {
     if (checks$checks["LowerCase"]) {
       vmsg("MADC Allele Sequences contain lowercase characters. Converting to uppercase",
@@ -210,8 +226,70 @@ madc2vcf_multi <- function(madc_file,
     taxaPloidy        = as.integer(ploidy)
   )
 
-  overdispersionP <- polyRAD::TestOverdispersion(raddat)
-  my_ovdisp <- overdispersionP$optimal
+  # polyRAD derives Chr/Pos by splitting the CloneID at its last "_". When
+  # CloneIDs do not follow Chr_Pos (and were not remapped by check_botloci),
+  # take Chr/Pos from markers_info instead so RADdata2VCF gets valid positions.
+  loc_ids <- rownames(raddat$locTable)
+  if (!isTRUE(checks$checks["ChromPos"]) && !is.null(mi_df) &&
+      (anyNA(raddat$locTable$Pos) || !cloneid_changed)) {
+    use_col <- pick_markers_info_id_col(mi_df, loc_ids)
+    idx <- match(loc_ids, mi_df[[use_col]])
+    found <- !is.na(idx)
+    vmsg("Using Chr and Pos from markers_info (%s column) for %s of %s loci",
+         verbose = verbose, level = 1, type = ">>", use_col, sum(found), length(loc_ids))
+    raddat$locTable$Chr[found] <- as.character(mi_df$Chr[idx[found]])
+    raddat$locTable$Pos[found] <- as.integer(mi_df$Pos[idx[found]])
+  }
+  bad_pos <- loc_ids[is.na(raddat$locTable$Pos)]
+  if (length(bad_pos) > 0)
+    stop("Could not determine the position of ", length(bad_pos), " marker(s) (e.g. ",
+         paste(utils::head(bad_pos, 5), collapse = ", "),
+         "). Make sure they are in markers_info with valid 'Chr' and 'Pos' values.")
+
+  # polyRAD returns optimal = NA when the best value is at the edge of the
+  # tested range, so widen the range until an interior optimum is found.
+  # Note: polyRAD (<= 2.0.0) errors instead of returning NA when the best value
+  # is the minimum of to_test ("missing value where TRUE/FALSE needed"), so the
+  # call is wrapped in tryCatch and the best value is parsed from its printed
+  # "Optimal value is X." line.
+  run_test_od <- function(to_test) {
+    od <- NULL
+    printed <- utils::capture.output(
+      od <- tryCatch(polyRAD::TestOverdispersion(raddat, to_test = to_test),
+                     error = function(e) e)
+    )
+    if (verbose) cat(printed, sep = "\n")
+    hit <- regmatches(printed, regexpr("(?<=Optimal value is )[0-9.eE+-]+(?=\\.$)", printed, perl = TRUE))
+    best <- if (length(hit)) as.numeric(hit[length(hit)]) else NA_real_
+    if (inherits(od, "error")) {
+      if (is.na(best)) stop(od)
+      optimal <- NA_real_
+    } else {
+      optimal <- od$optimal
+    }
+    list(optimal = optimal, best = best)
+  }
+
+  to_test <- seq(6, 20, by = 2)  # polyRAD default
+  my_ovdisp <- NA
+  best <- NA
+  for (attempt in 1:4) {
+    res <- run_test_od(to_test)
+    my_ovdisp <- res$optimal
+    if (!is.na(my_ovdisp)) break
+    best <- res$best
+    if (is.na(best)) break
+    if (best == min(to_test) && min(to_test) > 0.5) {
+      to_test <- seq(0.5, min(to_test) + 1, by = 0.5)
+    } else if (best == max(to_test)) {
+      to_test <- seq(max(to_test) - 1, max(to_test) * 3, length.out = 20)
+    } else {
+      break
+    }
+  }
+  if (is.na(my_ovdisp)) my_ovdisp <- best
+  if (is.na(my_ovdisp))
+    stop("Could not estimate the overdispersion parameter with polyRAD::TestOverdispersion().")
 
   vmsg("Running HWE iteration (overdispersion = %s)", verbose = verbose, level = 0, type = ">>", my_ovdisp)
 

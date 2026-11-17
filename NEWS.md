@@ -1,3 +1,12 @@
+# BIGr 0.11.0
+
+-   `madc2vcf_multi()` fixes:
+    -   Fixed the error "missing value where TRUE/FALSE needed" when the best overdispersion value was the lowest value tested. This error comes from `polyRAD::TestOverdispersion()` (polyRAD 2.0.0). `madc2vcf_multi()` now catches it and tests lower values. When the best value is at the low or high end of the range tested, the range is moved and tested again. If no value inside the range is found, the best value found is used.
+    -   Fixed the error "alleleDepth must be in integer format" when the MADC read counts are written as decimals (e.g. `12.0`). Whole-number counts are now converted to integers before the MADC is loaded into polyRAD. An error is given if a count is not a whole number.
+    -   Fixed the error "'start' or 'width' cannot contain NAs" when writing the VCF with CloneIDs that do not follow the Chr_Pos format. The `Chr` and `Pos` columns of `markers_info` are now used for the marker positions, also when the botloci IDs match the MADC CloneIDs. An error naming the markers is given if a position still cannot be found.
+
+
+
 # BIGr 0.10.0
 
 -   New `madc_summary()`: read-only summary tables for a fixed allele ID MADC - a per-marker microhaplotype frequency distribution, per-sample and per-marker total read depth (`depth`) and on-target `|Ref`/`|Alt` depth (`target_depth`) alongside missing rate, number of mHaps, and off-target read fraction, a missingness threshold sweep, an overall summary, and optional aggregation by a sample-metadata category (e.g. species).

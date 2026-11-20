@@ -12,6 +12,8 @@ madc2vcf_multi(
   ploidy = 2L,
   vcf_header = NULL,
   reference = NULL,
+  align_indels = TRUE,
+  asSNPs = FALSE,
   verbose = TRUE
 )
 }
@@ -46,6 +48,18 @@ line of \code{vcf_header}. If neither \code{vcf_header} nor
 \code{reference} is given, a warning is given and the header has no
 \code{##reference} line and only the \code{##contig} lines written by polyRAD.}
 
+\item{align_indels}{logical. Whether to align the alleles of markers with
+indels before loading them into polyRAD (see "Markers with indels" below).
+If \code{FALSE}, polyRAD cuts the alleles of each marker to the length of
+its shortest allele, as in BIGr < 0.11.0. Default is \code{TRUE}.}
+
+\item{asSNPs}{logical. Passed to \code{polyRAD::RADdata2VCF}. If
+\code{FALSE} (default), each VCF record is a marker and its alleles are
+the full haplotype sequences. If \code{TRUE}, each record is a variable
+site (SNP or indel) of a marker, with the read counts and genotypes of the
+haplotypes summed per site allele. Sites with more than two alleles are
+kept as multiallelic records.}
+
 \item{verbose}{logical. Whether to print progress messages. Default is TRUE.}
 }
 \value{
@@ -65,14 +79,75 @@ The function performs the following steps:
 \code{check_botloci}, fixing any padding mismatches automatically.
 \item Converts lowercase bases in AlleleSequence to uppercase if detected.
 \item Removes all-NA rows and columns if detected.
+\item Aligns the alleles of markers with indels (see below), unless
+\code{align_indels = FALSE}.
 \item Writes the corrected data to a temporary file and passes it to
-\code{polyRAD::readDArTag}.
+\code{polyRAD::readDArTag}, with the bottom strand marker IDs from
+the botloci file. polyRAD reverse complements the sequences of these
+markers, so all VCF sequences are on the top strand of the reference.
+\item Sets the position of each marker to the start of its amplicon: the
+target SNP position (from the CloneID or \code{markers_info}) minus
+the position of the target SNP in the Ref sequence, plus 1.
 \item Estimates overdispersion with \code{polyRAD::TestOverdispersion} and
 calls \code{polyRAD::IterateHWE}, then exports the result with
-\code{polyRAD::RADdata2VCF}.
+\code{polyRAD::RADdata2VCF}, as haplotypes or, with
+\code{asSNPs = TRUE}, as SNPs.
+\item Adds back the MADC information that polyRAD does not keep (see below).
 \item Adds the reference genome lines from \code{vcf_header} and/or
 \code{reference} and a \code{##BIGrCommandLine} line to the VCF header.
 }
+
+\strong{Information added to the polyRAD VCF}
+
+\code{polyRAD::RADdata2VCF} writes the full amplicon sequences as alleles,
+sets the positions to the start of the amplicons and does not keep the MADC
+IDs. The marker of each record is taken from the INFO \code{LU} field written
+by polyRAD (index of the marker in the RADdata object), and its REF and ALT
+sequences (or their reverse complements) are matched to the MADC
+\code{AlleleSequence} of that marker only, to add:
+\itemize{
+\item ID column: the target SNP ID (marker CloneID).
+\item INFO \code{targetSNP}: the same target SNP ID.
+\item INFO \code{DArTstrand}: \code{-} for markers in the botloci file,
+\code{+} otherwise.
+\item INFO \code{hapID}: AlleleIDs of the REF and ALT alleles, in order,
+separated by commas (\code{.} if a sequence is not found).
+}
+With \code{asSNPs = TRUE}, a marker gives one record per variable site, so
+only the record at the target SNP position (or, if there is none, such as
+for an indel written from the base before it, the first record whose REF
+spans it) gets the target SNP ID in the ID column. The other records get a
+\code{Chr_Pos} ID, with the position zero-padded like the target SNP ID.
+\code{targetSNP} and \code{DArTstrand} are added to all records, and
+\code{hapID} is not added. The genotypes are called on the haplotypes as
+with \code{asSNPs = FALSE}; only for writing the SNP records, the bases
+missing at the start or end of a shorter allele are set to \code{N}, so they
+are not written as deletions. At a SNP that a shorter allele does not reach,
+that allele is written as an \code{N} ALT allele. An indel at the first
+base of an amplicon is written with \code{N} as the base before it, and
+\code{POS} 1 bp before the amplicon start.
+
+The \code{##SAMPLE} header lines written by polyRAD are removed. A warning
+is given if REF sequences are not found among the MADC alleles of their marker.
+
+\strong{Markers with indels}
+
+polyRAD needs all alleles of a marker to have the same length, and
+otherwise cuts them to the length of the shortest allele, losing the end of
+the longer alleles. For markers whose alleles differ in length, each allele
+is first aligned to the marker's Ref allele (global alignment with
+\code{pwalign::pairwiseAlignment}) and the gaps are filled with \code{-}, so
+all alleles have the same length and no bases are lost: \code{-} for a
+deletion, and \code{.} in the columns of an insertion for the alleles
+without it, including Ref. polyRAD removes them when writing the VCF, so the
+VCF has the full allele sequences, and does not count \code{.} in the SNP
+positions of \code{asSNPs = TRUE}. As polyRAD counts gaps as differences, a
+shorter allele whose bases all match a longer allele stays a separate allele.
+
+With \code{align_indels = FALSE}, polyRAD cuts the alleles instead. Alleles
+that differ only after the cut are merged, and if the target SNP is cut
+away, Ref and Alt become the same allele: a warning gives the number of
+these markers, which are still placed using the MADC Ref and Alt sequences.
 
 \strong{Sanity check behaviour and requirements}
 

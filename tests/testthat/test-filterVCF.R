@@ -247,6 +247,41 @@ test_that("DP and MPP filters run whatever the first record's FORMAT contains",{
 
 })
 
+test_that("keep.depth sets only GT to missing and keeps the other FORMAT fields",{
+
+  vcf <- read.vcfR(system.file("iris_DArT_VCF.vcf.gz", package = "BIGr"), verbose = FALSE)
+  vcf <- vcf[1:4, ]
+  dp <- extract.gt(vcf, element = "DP", as.numeric = TRUE)
+  masked <- !is.na(dp) & dp < 30
+
+  filtered <- suppressMessages(filterVCF(vcf, filter.DP = 30, ploidy = 2, keep.depth = TRUE))
+  # Masked calls: GT replaced, the rest of the call unchanged
+  expect_equal(filtered@gt[, -1][masked], sub("^[^:]*", "./.", vcf@gt[, -1][masked]))
+  expect_true(all(is.na(extract.gt(filtered, element = "GT")[masked])))
+  expect_equal(extract.gt(filtered, element = "DP"), extract.gt(vcf, element = "DP"))
+  # Other calls unchanged
+  expect_equal(filtered@gt[, -1][!masked], vcf@gt[, -1][!masked])
+  # Same calls masked as with the default, which blanks the whole call
+  default <- suppressMessages(filterVCF(vcf, filter.DP = 30, ploidy = 2))
+  expect_equal(is.na(extract.gt(filtered, element = "GT")), is.na(extract.gt(default, element = "GT")))
+  expect_true(all(grepl("^\\./\\.(:\\.)+$", default@gt[, -1][masked])))
+
+  # GT not in the first position, and a polyRAD-like tetraploid record
+  vcf2 <- vcf[1:2, 1:3]
+  vcf2@gt[, "FORMAT"] <- c("DP:GT:AD", "GT:AD:DP")
+  vcf2@gt[, 2:3] <- rbind(c("3:0/0/1/1:1,2", "20:0/1/1/1:5,15"),
+                          c("0/0/0/2:0,0,0:0", "1/1/2/2:4,0,6:10"))
+  filtered2 <- suppressMessages(filterVCF(vcf2, filter.DP = 5, ploidy = 4, keep.depth = TRUE))
+  expect_equal(unname(filtered2@gt[, 2:3]),
+               rbind(c("3:./././.:1,2", "20:0/1/1/1:5,15"),
+                     c("./././.:0,0,0:0", "1/1/2/2:4,0,6:10")))
+  # Masked calls count as missing for filter.SNP.miss
+  filtered3 <- suppressMessages(filterVCF(vcf2, filter.DP = 5, filter.SNP.miss = 0.4, ploidy = 4, keep.depth = TRUE))
+  expect_equal(nrow(filtered3), 0L)
+
+  expect_error(filterVCF(vcf, filter.DP = 30, ploidy = 2, keep.depth = NA), "keep.depth")
+})
+
 test_that("Reference genome lines of the header can be updated",{
 
   vcf <- read.vcfR(system.file("iris_DArT_VCF.vcf.gz", package = "BIGr"), verbose = FALSE)

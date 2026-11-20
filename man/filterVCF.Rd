@@ -16,6 +16,7 @@ filterVCF(
   filter.SAMPLE.miss = NULL,
   filter.SNP.miss = NULL,
   ploidy,
+  keep.depth = FALSE,
   output.file = NULL,
   vcf_header = NULL,
   reference = NULL
@@ -65,6 +66,12 @@ to 1 give an error.}
 \item{ploidy}{The ploidy of the species being analyzed. Required. Used to write
 the missing genotype, so a diploid is recorded as \code{./.} and a tetraploid as
 \code{./././.} when a call is filtered out.}
+
+\item{keep.depth}{Logical. What happens to the other FORMAT fields of a call
+set to missing by \code{filter.DP} or \code{filter.MPP}. If \code{FALSE} (default), all of
+them are set to missing, e.g. \verb{0/1:3,2:5} becomes \code{./.:.:.}. If \code{TRUE},
+only GT is set to missing and the read counts and other fields are kept,
+e.g. \verb{./.:3,2:5}.}
 
 \item{output.file}{Output file name, without an extension (optional). When
 supplied, the filtered VCF is written as a gzipped file and nothing is

@@ -28,6 +28,9 @@
 #' - `FORMAT` fields (per sample):
 #'   * `DP`   - total reads (ref + alt)
 #'   * `RA`   - reads supporting the reference allele
+#' - Header: the `##reference` and `##contig` lines come from `vcf_header` and/or
+#'   `reference`. A `##BIGrCommandLine` line with the function call is always
+#'   added.
 #'   * `AD`   - `"ref,alt"` counts
 #'
 #' **Strand handling**
@@ -90,6 +93,18 @@
 #'   `|AltMatch` and `|RefMatch` rows are summed into their corresponding `|Ref`
 #'   and `|Alt` rows before building the matrices. Useful when the MADC contains
 #'   multiple allele rows per target that should be aggregated.
+#' @param vcf_header character or `NULL` (default `NULL`). Path or URL to a VCF
+#'   header file with the `##reference` and `##contig` lines of the reference
+#'   genome, such as the VCF header files provided with the microhaplotype
+#'   databases. Only the `##reference` and `##contig` lines are used; the
+#'   `##fileformat`, `##INFO` and `##FORMAT` lines are written by the function.
+#'   A warning is given if a `CHROM` in the output is not listed in the
+#'   `##contig` lines.
+#' @param reference character or `NULL` (default `NULL`). Reference genome ID
+#'   written to the `##reference` line (e.g. `"GCF_020283565.1"`). Use it when no
+#'   `vcf_header` file is available, or to replace the `##reference` line of
+#'   `vcf_header`. If neither `vcf_header` nor `reference` is given, the
+#'   `##reference` and `##contig` lines are left out of the header with a warning.
 #' @param verbose logical (default `TRUE`). If `TRUE`, prints detailed progress
 #'   messages about each processing step.
 #'
@@ -115,7 +130,8 @@
 #'   madc_file    = madc_file,
 #'   output.file  = out_vcf,
 #'   botloci_file = bot_file,
-#'   get_REF_ALT  = TRUE
+#'   get_REF_ALT  = TRUE,
+#'   reference    = "example_genome_v1"
 #' )
 #' }
 #'
@@ -140,6 +156,8 @@ madc2vcf_targets <- function(madc_file,
                              markers_info = NULL,
                              get_REF_ALT = FALSE,
                              collapse_matches_counts = FALSE,
+                             vcf_header = NULL,
+                             reference = NULL,
                              verbose = TRUE) {
 
   vmsg("Running BIGr madc2vcf_targets", verbose = verbose, level = 0, type = ">>")
@@ -149,6 +167,8 @@ madc2vcf_targets <- function(madc_file,
   vmsg("markers_info            : %s", verbose = verbose, level = 1, type = ">>", if (is.null(markers_info)) "NULL" else markers_info)
   vmsg("get_REF_ALT             : %s", verbose = verbose, level = 1, type = ">>", get_REF_ALT)
   vmsg("collapse_matches_counts : %s", verbose = verbose, level = 1, type = ">>", collapse_matches_counts)
+  vmsg("vcf_header              : %s", verbose = verbose, level = 1, type = ">>", if (is.null(vcf_header)) "NULL" else vcf_header)
+  vmsg("reference               : %s", verbose = verbose, level = 1, type = ">>", if (is.null(reference)) "NULL" else reference)
 
   vmsg("Checking inputs", verbose = verbose, level = 0, type = ">>")
 
@@ -163,12 +183,17 @@ madc2vcf_targets <- function(madc_file,
   # Create a VCF header line with metadata about the command and its parameters
   bigr_meta <- paste0('##BIGrCommandLine.madc2vcf_targets=<ID=madc2vcf_targets,Version="',
                       packageVersion("BIGr"), '",Data="',
-                      Sys.time(),'", CommandLine="> madc2vcf_targets(',deparse(substitute(madc_file)),', ',
+                      Sys.time(),'",CommandLine="', vcf_quote_escape(paste0('> madc2vcf_targets(',deparse1(substitute(madc_file)),', ',
                       "output.file= ", output.file, ', ',
                       "botloci_file= ", botloci_file, ', ',
                       "markers_info= ", markers_info, ', ',
                       "get_REF_ALT= ", get_REF_ALT, ', ',
-                      "verbose= ", verbose,')">')
+                      "vcf_header= ", vcf_header, ', ',
+                      "reference= ", reference, ', ',
+                      "verbose= ", verbose,')')), '">')
+
+  # Reference genome lines for the VCF header
+  ref_lines <- vcf_reference_lines(vcf_header, reference)
 
   # MADC checks
   report <- read.csv(madc_file, check.names = FALSE)
@@ -469,8 +494,7 @@ madc2vcf_targets <- function(madc_file,
   vcf_header <- c(
     "##fileformat=VCFv4.3",
     paste0("##BIGr_madc2vcf=",packageVersion("BIGr")),
-    "##reference=NA",
-    "##contig=<ID=NA,length=NA>",
+    ref_lines$lines,
     '##INFO=<ID=DP,Number=1,Type=Integer,Description="Total Depth">',
     '##INFO=<ID=ADS,Number=R,Type=Integer,Description="Depths for the ref and each alt allele in the order listed">',
     '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read depth">',
@@ -522,9 +546,7 @@ madc2vcf_targets <- function(madc_file,
   # Add # to the CHROM column name
   colnames(vcf_df)[1] <- "#CHROM"
 
-  # Remove markers with NA CHROM/POS (unmatched in markers_info, Case 3)
-  # This runs before the POS correction below, which would otherwise remove these
-  # markers as invalid POS values without the markers_info warning
+  # Remove markers with NA CHROM/POS (unmatched in markers_info, Case 3), before the POS correction below
   na_coord <- is.na(vcf_df[, 1]) | is.na(vcf_df$POS)
   if(any(na_coord)) {
     vmsg(paste(sum(na_coord), "markers removed: no matching entry found in markers_info."), verbose = verbose, level = 1, type = ">>")
@@ -564,6 +586,8 @@ madc2vcf_targets <- function(madc_file,
     )
     vcf_df <- vcf_df[-which(is.na(vcf_df$REF)),]
   }
+
+  check_vcf_contigs(vcf_df[[1]], ref_lines$contigs)
 
   # Write the header to the file
   writeLines(vcf_header, con = output.file)

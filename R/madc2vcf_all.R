@@ -255,6 +255,8 @@ madc2vcf_all <- function(madc,
 
   vmsg("Initial filters and inputs adjustments...", verbose = verbose, level = 0, type = ">>")
 
+  if(isTRUE(checks$checks["SpecialChar"])) report <- clean_sample_names(report, verbose = verbose)
+
   if(checks$checks["LowerCase"]){
     vmsg("MADC Allele Sequences presented lower case characters. They were converted to upper case", verbose = verbose, level = 1)
     report$AlleleSequence <- toupper(report$AlleleSequence)

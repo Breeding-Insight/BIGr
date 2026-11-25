@@ -239,6 +239,12 @@ madc2vcf_multi <- function(madc_file,
   # ---- Corrections: only create a temp file if needed ----
   need_temp <- isTRUE(checks$checks["allNArow"]) || isTRUE(checks$checks["allNAcol"]) || cloneid_changed
 
+  # Sample names with special characters: cleaned and passed to polyRAD in a temp file
+  if (isTRUE(checks$checks["SpecialChar"])) {
+    report <- clean_sample_names(report, verbose = verbose)
+    need_temp <- TRUE
+  }
+
   # polyRAD requires integer read counts. Counts stored as e.g. "12.0" are read
   # as double, so coerce whole-number count columns to integer and pass a temp file.
   count_cols <- setdiff(colnames(report), c("AlleleID", "CloneID", "AlleleSequence", "readCountSum"))

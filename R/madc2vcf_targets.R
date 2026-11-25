@@ -253,6 +253,8 @@ madc2vcf_targets <- function(madc_file,
     }
   }
 
+  if(isTRUE(checks$checks["SpecialChar"])) report <- clean_sample_names(report, verbose = verbose)
+
   if(checks$checks["allNArow"]){
     idx <- apply(report, 1, function(x) all(is.na(x) | x == ""))
     report <- report[!idx, ]

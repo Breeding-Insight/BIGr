@@ -1,7 +1,7 @@
 #' Run basic sanity checks on a MADC-style allele report
 #'
 #' @description
-#' Performs twelve quick validations on an allele report:
+#' Performs thirteen quick validations on an allele report:
 #' 1) **Columns** - required columns are present (`CloneID`, `AlleleID`, `AlleleSequence`);
 #' 2) **FixAlleleIDs** - first column's first up-to-6 rows are not all blank or `"*"`
 #'    *and* both `_0001` and `_0002` appear in `AlleleID`;
@@ -18,7 +18,9 @@
 #' 9) **allNArow** - at least one row contains only `NA` or empty values;
 #' 10) **RefAltSeqs** - every `CloneID` has at least one `Ref` and one `Alt` allele row;
 #' 11) **OtherAlleles** - presence of alleles where the target locus differs from both the Ref and Alt in `AlleleSequence`;
-#' 12) **IUPACcodes_MatchAlleles** - presence of non-ATCG characters in `AlleleSequence` for RefMatch_/AltMatch_/Other alleles.
+#' 12) **IUPACcodes_MatchAlleles** - presence of non-ATCG characters in `AlleleSequence` for RefMatch_/AltMatch_/Other alleles;
+#' 13) **SpecialChar** - presence of special characters (including spaces) in the
+#'    sample names (column 4 onward).
 #'
 #' @param report A `data.frame` with at least the columns
 #'   `CloneID`, `AlleleID`, and `AlleleSequence`. The first column is also
@@ -58,16 +60,23 @@
 #'   one row with an `Alt` (`|Alt_` / `|Alt$`) allele exist. `CloneID`s that
 #'   lack a `Ref` row are stored in `missRef`; those lacking an `Alt` row in
 #'   `missAlt`. The check is `TRUE` when both sets are empty.
-#' - If required columns are missing (`Columns = FALSE`), only `Columns` and
-#'   `FixAlleleIDs` are evaluated; all other checks remain `NA` and
+#' - **SpecialChar:** Column names from the 4th column onward are treated as
+#'   sample names. A name is flagged when it contains any character other than
+#'   letters, digits, `"_"`, `"."` or `"-"` (e.g. spaces, `/`, `#`, `(`, `|`).
+#'   Flagged names are stored in `special_char_samples`. Note that
+#'   `read.csv()` with the default `check.names = TRUE` already replaces such
+#'   characters with `"."`, so read files with `check.names = FALSE` to
+#'   detect them.
+#' - If required columns are missing (`Columns = FALSE`), only `Columns`,
+#'   `FixAlleleIDs` and `SpecialChar` are evaluated; all other checks remain `NA` and
 #'   `indel_clone_ids`, `missRef`, and `missAlt` are returned as `NULL`.
 #'
-#' @return A named list with six elements:
+#' @return A named list with seven elements:
 #' \describe{
-#'   \item{checks}{Named logical vector with twelve entries:
+#'   \item{checks}{Named logical vector with thirteen entries:
 #'     `Columns`, `FixAlleleIDs`, `IUPACcodes`, `IUPACcodes_IdenticalRefAlt`,
 #'     `LowerCase`, `Indels`, `ChromPos`, `allNAcol`, `allNArow`, `RefAltSeqs`,
-#'     `OtherAlleles`, `IUPACcodes_MatchAlleles`.
+#'     `OtherAlleles`, `IUPACcodes_MatchAlleles`, `SpecialChar`.
 #'     `TRUE` means the condition was detected (or passed for `Columns`,
 #'     `FixAlleleIDs`, `ChromPos`, and `RefAltSeqs`); `NA` means the check
 #'     was skipped.}
@@ -88,6 +97,9 @@
 #'   \item{missAlt}{Character vector of `CloneID`s that have no `Alt` allele
 #'     row. Returns `character(0)` if all `CloneID`s have an `Alt` row, or
 #'     `NULL` when required columns are missing.}
+#'   \item{special_char_samples}{Character vector of sample names (column 4
+#'     onward) containing special characters. Returns `character(0)` if none
+#'     are found.}
 #' }
 #'
 #' @export
@@ -97,11 +109,11 @@ check_madc_sanity <- function(report) {
   checks <- c(Columns = NA, FixAlleleIDs = NA, IUPACcodes = NA, IUPACcodes_IdenticalRefAlt = NA,
               LowerCase = NA, Indels = NA,
               ChromPos = NA, allNAcol = NA, allNArow = NA, RefAltSeqs = NA, OtherAlleles = NA,
-              IUPACcodes_MatchAlleles = NA)
+              IUPACcodes_MatchAlleles = NA, SpecialChar = NA)
   messages <-  list(Columns = NA, FixAlleleIDs = NA, IUPACcodes = NA, IUPACcodes_IdenticalRefAlt = NA,
                     LowerCase = NA, Indels = NA,
                     ChromPos = NA, allNAcol = NA, allNArow = NA, RefAltSeqs = NA, OtherAlleles = NA,
-                    IUPACcodes_MatchAlleles = NA)
+                    IUPACcodes_MatchAlleles = NA, SpecialChar = NA)
 
   # ---- FixAlleleIDs ----
   # Check if first up-to-6 entries in the *first column* are all "" or "*"
@@ -122,6 +134,13 @@ check_madc_sanity <- function(report) {
   required <- c("CloneID", "AlleleID", "AlleleSequence")
   missing_cols <- setdiff(required, names(report))
   checks["Columns"] <- length(missing_cols) == 0
+
+  # ---- SpecialChar ----
+  # Sample names (column 4 onward) should only contain letters, digits, "_", "." or "-"
+  sample_names <- as.character(colnames(report)[-(1:3)])
+  bad_names <- grepl("[^A-Za-z0-9_.-]", sample_names)
+  special_char_samples <- sample_names[bad_names]
+  checks["SpecialChar"] <- any(bad_names)
 
   if(checks[["Columns"]]){
     # ---- IUPACcodes ----
@@ -284,10 +303,45 @@ check_madc_sanity <- function(report) {
                                   "No alleles other than Ref and Alt found in AlleleID")
   messages[["IUPACcodes_MatchAlleles"]] <- c("IUPAC (non-ATCG) codes found in RefMatch/AltMatch/Other AlleleSequence. These codes are not currently supported by BIGr/BIGapp they will be ignored in the conversion to VCF",
                                               "No IUPAC (non-ATCG) codes found in RefMatch/AltMatch/Other AlleleSequence")
+  messages[["SpecialChar"]] <- c(paste0("Special characters (including spaces) found in sample names. Only letters, digits, '_', '.' and '-' are recommended. Samples: ",
+                                        paste0("'", special_char_samples, "'", collapse = " ")),
+                                 "No special characters found in sample names")
 
   list(checks = checks, messages = messages, indel_clone_ids = indels,
        iupac_identical_clone_ids = iupac_identical_clone_ids,
-       missRef = missRef, missAlt = missAlt)
+       missRef = missRef, missAlt = missAlt,
+       special_char_samples = special_char_samples)
+}
+
+#' Remove special characters from MADC sample names
+#'
+#' Removes every character other than letters, digits, `"_"`, `"."` and `"-"`
+#' (including spaces) from the sample names (column 4 onward). Names that end
+#' up empty become `"Sample"`, and duplicated names are made unique with
+#' [make.unique()].
+#'
+#' @param report MADC `data.frame` whose first three columns are `AlleleID`,
+#'   `CloneID` and `AlleleSequence`.
+#' @param verbose Logical. Print the renamed samples.
+#'
+#' @return `report` with cleaned sample names.
+#'
+#' @keywords internal
+#' @noRd
+clean_sample_names <- function(report, verbose = TRUE) {
+  if (ncol(report) < 4) return(report)
+  old <- as.character(colnames(report)[-(1:3)])
+  new <- gsub("[^A-Za-z0-9_.-]", "", old)
+  new[is.na(new) | new == ""] <- "Sample"
+  new <- make.unique(c(colnames(report)[1:3], new), sep = "_")[-(1:3)]
+  changed <- which(old != new | is.na(old))
+  if (length(changed) > 0) {
+    vmsg("Special characters removed from %s sample name(s): %s", verbose = verbose, level = 1, type = ">>",
+         length(changed),
+         paste0("'", old[changed], "' -> '", new[changed], "'", collapse = ", "))
+    colnames(report)[-(1:3)] <- new
+  }
+  report
 }
 
 #' Check and Adjust Botloci and MADC Marker Compatibility

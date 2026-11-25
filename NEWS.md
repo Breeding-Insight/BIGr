@@ -1,3 +1,8 @@
+# BIGr 0.11.1
+
+-   New `SpecialChar` check in `check_madc_sanity()`. It is `TRUE` when a sample name (column 4 onward) has a character other than letters, digits, `_`, `.` or `-`, such as a space, `/`, `#` or `(`. The names found are returned in the new `special_char_samples` element. `read.csv()` with the default `check.names = TRUE` replaces these characters with `.` before the check can find them, so read the MADC with `check.names = FALSE`.
+-   `madc2vcf_targets()`, `madc2vcf_all()` and `madc2vcf_multi()` now remove the special characters from the sample names before writing the VCF (e.g. `sample 2` becomes `sample2`). If two names become the same, `_1`, `_2`, ... is added to the later ones, and a name with no valid characters becomes `Sample`. Each renamed sample is reported as `'old' -> 'new'` when `verbose = TRUE`. Sample names with special characters are no longer kept unchanged in the VCF.
+
 # BIGr 0.11.0
 
 -   `madc2vcf_multi()` now adds back the MADC information that polyRAD does not keep in the VCF: the target SNP ID in the ID column and the `targetSNP`, `DArTstrand` (`+`/`-`, from the botloci file) and `hapID` (MADC AlleleIDs of the REF and ALT alleles) INFO fields. The marker of each record is taken from the `LU` field written by polyRAD, and the REF and ALT amplicon sequences (or their reverse complements) are matched to the MADC `AlleleSequence` of that marker only, so a sequence shared by two markers does not give a record the wrong ID or strand. The `##SAMPLE` header lines written by polyRAD are removed.

@@ -88,7 +88,7 @@ test_that("bottom strand markers have correct REF/ALT", {
   rm(vcf_targets, temp_targets)
 })
 
-test_that("madc2vcf_targets preserves original sample names", {
+test_that("madc2vcf_targets keeps valid sample names and removes special characters", {
   madc_file <- system.file("example_MADC_FixedAlleleID.csv", package="BIGr")
   temp_madc <- tempfile(fileext = ".csv")
   temp_vcf <- tempfile(fileext = ".vcf")
@@ -103,7 +103,7 @@ test_that("madc2vcf_targets preserves original sample names", {
 
   vcf <- read.vcfR(temp_vcf, verbose = FALSE)
 
-  expect_equal(colnames(vcf@gt)[2:4], c("1A", "Sample-1", "sample 2"))
+  expect_equal(colnames(vcf@gt)[2:4], c("1A", "Sample-1", "sample2"))
 })
 
 test_that("madc2vcf_targets surfaces missing-column validation error without crashing", {

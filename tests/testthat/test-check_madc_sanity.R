@@ -4,13 +4,13 @@ test_that("check madc",{
   github_path <- "https://raw.githubusercontent.com/Breeding-Insight/BIGapp-PanelHub/refs/heads/long_seq/test_madcs/"
   names <- c("Columns", "FixAlleleIDs", "IUPACcodes", "IUPACcodes_IdenticalRefAlt",
              "LowerCase", "Indels", "ChromPos", "allNAcol", "allNArow",
-             "RefAltSeqs", "OtherAlleles", "IUPACcodes_MatchAlleles")
+             "RefAltSeqs", "OtherAlleles", "IUPACcodes_MatchAlleles", "SpecialChar")
 
   # raw madc
   report <- read.csv(paste0(github_path,"/alfalfa_madc_raw.csv"))
 
   res <- check_madc_sanity(report)
-  exp <- c(TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, TRUE, FALSE, TRUE, FALSE, FALSE)
+  exp <- c(TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, TRUE, TRUE, FALSE, TRUE, FALSE, FALSE, FALSE)
   names(exp) <- names
   expect_equal(res$checks, exp)
 
@@ -18,7 +18,7 @@ test_that("check madc",{
   report <- read.csv(paste0(github_path,"/alfalfa_lowercase.csv"))
 
   res <- check_madc_sanity(report)
-  exp <- c(TRUE, TRUE, FALSE, FALSE, TRUE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE)
+  exp <- c(TRUE, TRUE, FALSE, FALSE, TRUE, FALSE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE)
   names(exp) <- names
   expect_equal(res$checks, exp)
 
@@ -26,7 +26,7 @@ test_that("check madc",{
   report <- read.csv(paste0(github_path,"/alfalfa_IUPAC.csv"))
 
   res <- check_madc_sanity(report)
-  exp <- c(TRUE, TRUE, TRUE, FALSE,FALSE, FALSE, TRUE, FALSE, FALSE,TRUE, FALSE,TRUE)
+  exp <- c(TRUE, TRUE, TRUE, FALSE,FALSE, FALSE, TRUE, FALSE, FALSE,TRUE, FALSE,TRUE, FALSE)
   names(exp) <- names
   expect_equal(res$checks, exp)
 
@@ -34,7 +34,7 @@ test_that("check madc",{
   report <- read.csv(paste0(github_path,"/alfalfa_madc.csv"))
 
   res <- check_madc_sanity(report)
-  exp <- c(TRUE, TRUE, FALSE, FALSE,FALSE, FALSE, TRUE, FALSE, FALSE,TRUE, FALSE, FALSE)
+  exp <- c(TRUE, TRUE, FALSE, FALSE,FALSE, FALSE, TRUE, FALSE, FALSE,TRUE, FALSE, FALSE, FALSE)
   names(exp) <- names
   expect_equal(res$checks, exp)
 
@@ -42,7 +42,7 @@ test_that("check madc",{
   report <- read.csv(paste0(github_path,"/potato_indel_madc.csv"))
 
   res <- check_madc_sanity(report)
-  exp <- c(TRUE, TRUE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE,TRUE, FALSE, FALSE)
+  exp <- c(TRUE, TRUE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE,TRUE, FALSE, FALSE, FALSE)
   names(exp) <- names
   expect_equal(res$checks, exp)
 
@@ -50,7 +50,7 @@ test_that("check madc",{
   report <- read.csv(paste0(github_path,"/potato_indel_IUPAC.csv"))
 
   res <- check_madc_sanity(report)
-  exp <- c(TRUE, TRUE, TRUE, FALSE,FALSE, TRUE, FALSE, FALSE, FALSE,TRUE, FALSE,TRUE)
+  exp <- c(TRUE, TRUE, TRUE, FALSE,FALSE, TRUE, FALSE, FALSE, FALSE,TRUE, FALSE,TRUE, FALSE)
   names(exp) <- names
   expect_equal(res$checks, exp)
 
@@ -58,7 +58,7 @@ test_that("check madc",{
   report <- read.csv(paste0(github_path,"/potato_indel_lowercase.csv"))
 
   res <- check_madc_sanity(report)
-  exp <- c(TRUE, TRUE, FALSE, FALSE, TRUE, TRUE, FALSE, FALSE, FALSE,TRUE, FALSE, FALSE)
+  exp <- c(TRUE, TRUE, FALSE, FALSE, TRUE, TRUE, FALSE, FALSE, FALSE,TRUE, FALSE, FALSE, FALSE)
   names(exp) <- names
   expect_equal(res$checks, exp)
 
@@ -66,7 +66,7 @@ test_that("check madc",{
   report <- read.csv(paste0(github_path,"/potato_more_indels_madc_ChromPosFALSE.csv"))
 
   res <- check_madc_sanity(report)
-  exp <- c(TRUE, TRUE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE,TRUE, FALSE, FALSE)
+  exp <- c(TRUE, TRUE, FALSE, FALSE, FALSE, TRUE, FALSE, FALSE, FALSE,TRUE, FALSE, FALSE, FALSE)
   names(exp) <- names
   expect_equal(res$checks, exp)
 })
@@ -168,6 +168,35 @@ test_that("check_botloci keeps AlleleID synchronized after CloneID remap", {
 
   expect_equal(res[[2]]$CloneID, "1_0001")
   expect_equal(res[[2]]$AlleleID, "1_0001|Ref_0001")
+})
+
+test_that("special characters in sample names are detected", {
+  report <- data.frame(AlleleID = c("Chr1_100|Ref_0001", "Chr1_100|Alt_0002"),
+                       CloneID = "Chr1_100",
+                       AlleleSequence = c("A", "T"),
+                       S_LR_1__1_A1 = c(1, 2), `S-2.b` = c(3, 4),
+                       check.names = FALSE)
+
+  res <- check_madc_sanity(report)
+  expect_false(res$checks[["SpecialChar"]])
+  expect_equal(res$special_char_samples, character(0))
+
+  report$`Sample 3` <- c(5, 6)
+  report$`S#4/x` <- c(7, 8)
+  res <- check_madc_sanity(report)
+  expect_true(res$checks[["SpecialChar"]])
+  expect_equal(res$special_char_samples, c("Sample 3", "S#4/x"))
+})
+
+test_that("clean_sample_names removes special characters", {
+  report <- data.frame(AlleleID = "a", CloneID = "b", AlleleSequence = "A",
+                       `S_LR_1__1_A1` = 1, `Sample 3` = 2, `S#4/x` = 3,
+                       `Sample3` = 4, `#` = 5, check.names = FALSE)
+  res <- clean_sample_names(report, verbose = FALSE)
+  expect_equal(colnames(res),
+               c("AlleleID", "CloneID", "AlleleSequence",
+                 "S_LR_1__1_A1", "Sample3", "S4x", "Sample3_1", "Sample"))
+  expect_false(check_madc_sanity(res)$checks[["SpecialChar"]])
 })
 
 test_that("identical IUPAC codes in Ref and Alt are reported separately", {

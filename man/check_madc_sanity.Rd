@@ -14,12 +14,12 @@ If \code{FixAlleleIDs} is \code{FALSE} (raw DArT format), the first 7 rows are
 treated as header filler and skipped before further checks are run.}
 }
 \value{
-A named list with six elements:
+A named list with seven elements:
 \describe{
-\item{checks}{Named logical vector with twelve entries:
+\item{checks}{Named logical vector with thirteen entries:
 \code{Columns}, \code{FixAlleleIDs}, \code{IUPACcodes}, \code{IUPACcodes_IdenticalRefAlt},
 \code{LowerCase}, \code{Indels}, \code{ChromPos}, \code{allNAcol}, \code{allNArow}, \code{RefAltSeqs},
-\code{OtherAlleles}, \code{IUPACcodes_MatchAlleles}.
+\code{OtherAlleles}, \code{IUPACcodes_MatchAlleles}, \code{SpecialChar}.
 \code{TRUE} means the condition was detected (or passed for \code{Columns},
 \code{FixAlleleIDs}, \code{ChromPos}, and \code{RefAltSeqs}); \code{NA} means the check
 was skipped.}
@@ -40,10 +40,13 @@ row. Returns \code{character(0)} if all \code{CloneID}s have a \code{Ref} row, o
 \item{missAlt}{Character vector of \code{CloneID}s that have no \code{Alt} allele
 row. Returns \code{character(0)} if all \code{CloneID}s have an \code{Alt} row, or
 \code{NULL} when required columns are missing.}
+\item{special_char_samples}{Character vector of sample names (column 4
+onward) containing special characters. Returns \code{character(0)} if none
+are found.}
 }
 }
 \description{
-Performs twelve quick validations on an allele report:
+Performs thirteen quick validations on an allele report:
 \enumerate{
 \item \strong{Columns} - required columns are present (\code{CloneID}, \code{AlleleID}, \code{AlleleSequence});
 \item \strong{FixAlleleIDs} - first column's first up-to-6 rows are not all blank or \code{"*"}
@@ -61,7 +64,9 @@ or a \code{"-"} character is present in \code{AlleleSequence};
 \item \strong{allNArow} - at least one row contains only \code{NA} or empty values;
 \item \strong{RefAltSeqs} - every \code{CloneID} has at least one \code{Ref} and one \code{Alt} allele row;
 \item \strong{OtherAlleles} - presence of alleles where the target locus differs from both the Ref and Alt in \code{AlleleSequence};
-\item \strong{IUPACcodes_MatchAlleles} - presence of non-ATCG characters in \code{AlleleSequence} for RefMatch_/AltMatch_/Other alleles.
+\item \strong{IUPACcodes_MatchAlleles} - presence of non-ATCG characters in \code{AlleleSequence} for RefMatch_/AltMatch_/Other alleles;
+\item \strong{SpecialChar} - presence of special characters (including spaces) in the
+sample names (column 4 onward).
 }
 }
 \details{
@@ -97,8 +102,15 @@ with a \code{Ref} (\verb{|Ref_} when \code{FixAlleleIDs = TRUE}, \verb{|Ref$} ot
 one row with an \code{Alt} (\verb{|Alt_} / \verb{|Alt$}) allele exist. \code{CloneID}s that
 lack a \code{Ref} row are stored in \code{missRef}; those lacking an \code{Alt} row in
 \code{missAlt}. The check is \code{TRUE} when both sets are empty.
-\item If required columns are missing (\code{Columns = FALSE}), only \code{Columns} and
-\code{FixAlleleIDs} are evaluated; all other checks remain \code{NA} and
+\item \strong{SpecialChar:} Column names from the 4th column onward are treated as
+sample names. A name is flagged when it contains any character other than
+letters, digits, \code{"_"}, \code{"."} or \code{"-"} (e.g. spaces, \code{/}, \verb{#}, \code{(}, \code{|}).
+Flagged names are stored in \code{special_char_samples}. Note that
+\code{read.csv()} with the default \code{check.names = TRUE} already replaces such
+characters with \code{"."}, so read files with \code{check.names = FALSE} to
+detect them.
+\item If required columns are missing (\code{Columns = FALSE}), only \code{Columns},
+\code{FixAlleleIDs} and \code{SpecialChar} are evaluated; all other checks remain \code{NA} and
 \code{indel_clone_ids}, \code{missRef}, and \code{missAlt} are returned as \code{NULL}.
 }
 }

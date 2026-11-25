@@ -52,11 +52,28 @@
 #' @param ploidy The ploidy of the species being analyzed. Required. Used to write
 #'   the missing genotype, so a diploid is recorded as `./.` and a tetraploid as
 #'   `./././.` when a call is filtered out.
+#' @param keep.depth Logical. What happens to the other FORMAT fields of a call
+#'   set to missing by `filter.DP` or `filter.MPP`. If `FALSE` (default), all of
+#'   them are set to missing, e.g. `0/1:3,2:5` becomes `./.:.:.`. If `TRUE`,
+#'   only GT is set to missing and the read counts and other fields are kept,
+#'   e.g. `./.:3,2:5`.
 #' @param output.file Output file name, without an extension (optional). When
 #'   supplied, the filtered VCF is written as a gzipped file and nothing is
 #'   returned. `.vcf.gz` is appended when `vcf.file` is a path, and
 #'   `_filtered.vcf.gz` when `vcf.file` is a vcfR object. When not supplied, a
 #'   vcfR object is returned instead and no file is written.
+#' @param vcf_header Path or URL to a VCF header file with the `##reference` and
+#'   `##contig` lines of the reference genome (optional), such as the VCF header
+#'   files provided with the microhaplotype databases. Its `##contig` lines
+#'   replace those of the input VCF, and so does its `##reference` line unless
+#'   `reference` is given. The other lines of the file are not used. A warning is
+#'   given if a `CHROM` in the output is not listed in the `##contig` lines.
+#' @param reference Reference genome ID written to the `##reference` line,
+#'   replacing the one of the input VCF (optional), e.g. `"GCF_020283565.1"`.
+#'   When neither `vcf_header` nor `reference` is given, the reference genome lines
+#'   of the input VCF are kept, except the `##reference=NA` and
+#'   `##contig=<ID=NA,length=NA>` lines written by earlier versions of BIGr, which
+#'   are removed.
 #' @return A vcfR object when `output.file` is not supplied. Otherwise the
 #'   filtered VCF is written to disk and nothing is returned.
 #' @importFrom vcfR read.vcfR
@@ -92,7 +109,10 @@ filterVCF <- function(vcf.file,
                        filter.SAMPLE.miss = NULL,
                        filter.SNP.miss = NULL,
                        ploidy,
-                       output.file = NULL) {
+                       keep.depth = FALSE,
+                       output.file = NULL,
+                       vcf_header = NULL,
+                       reference = NULL) {
 
   #Should allow for any INFO field to be entered to be filtered
 
@@ -126,6 +146,12 @@ filterVCF <- function(vcf.file,
   filter.MAF         <- validate_filter_number(filter.MAF, "filter.MAF")
   filter.SAMPLE.miss <- validate_filter_number(filter.SAMPLE.miss, "filter.SAMPLE.miss", proportion = TRUE)
   filter.SNP.miss    <- validate_filter_number(filter.SNP.miss, "filter.SNP.miss", proportion = TRUE)
+  if (!is.logical(keep.depth) || length(keep.depth) != 1L || is.na(keep.depth)) {
+    stop("keep.depth must be TRUE or FALSE.", call. = FALSE)
+  }
+
+  #Reference genome lines for the header (checked before reading the VCF)
+  ref_lines <- vcf_reference_lines(vcf_header, reference, warn = FALSE)
 
   # Import VCF (can be .vcf or .vcf.gz)
   if (!inherits(vcf.file, "vcfR")) {
@@ -146,7 +172,10 @@ filterVCF <- function(vcf.file,
     filter.MAF = filter.MAF,
     filter.SAMPLE.miss = filter.SAMPLE.miss,
     filter.SNP.miss = filter.SNP.miss,
-    ploidy = ploidy
+    ploidy = ploidy,
+    keep.depth = if (keep.depth) "TRUE" else NULL,
+    vcf_header = vcf_header,
+    reference = reference
   )
 
   # Filter out NULL values
@@ -171,6 +200,31 @@ filterVCF <- function(vcf.file,
     paste(na_fields, collapse = ":")
   }, character(1))
   format_has <- function(field) any(vapply(format_fields, function(fields) field %in% fields, logical(1)))
+  gt_pos <- vapply(format_fields, function(fields) match("GT", fields), integer(1))
+
+  # Set the calls in to_modify (logical matrix, records x samples) to missing:
+  # the whole call, or only its GT when keep.depth is TRUE
+  mask_calls <- function(vcf, to_modify) {
+    if (!any(to_modify)) return(vcf)
+    rows <- which(to_modify, arr.ind = TRUE)[, 1]
+    if (keep.depth) {
+      calls <- vcf@gt[, -1, drop = FALSE][to_modify]
+      pos <- gt_pos[rows]
+      new_calls <- calls
+      first <- !is.na(pos) & pos == 1L  # usual case: GT is the first field
+      new_calls[first] <- paste0(missing_gt, sub("^[^:]*", "", calls[first]))
+      other <- which(!is.na(pos) & pos > 1L)
+      new_calls[other] <- vapply(other, function(k) {
+        parts <- strsplit(calls[k], ":", fixed = TRUE)[[1]]
+        if (pos[k] <= length(parts)) parts[pos[k]] <- missing_gt
+        paste(parts, collapse = ":")
+      }, character(1))
+    } else {
+      new_calls <- na_format[rows]
+    }
+    vcf@gt[, -1][to_modify] <- new_calls
+    vcf
+  }
 
   # Extract the DP values
   if (!is.null(filter.DP) && format_has("DP")) {
@@ -180,12 +234,8 @@ filterVCF <- function(vcf.file,
     # value are left unchanged
     threshold <- as.numeric(filter.DP)
     to_modify <- !is.na(dp) & dp < threshold
-    # Replace cells in the vcf@gt matrix with NA format string where to_modify is TRUE
-    na_matrix <- matrix(na_format, nrow = nrow(dp), ncol = ncol(dp))
-    vcf@gt[, -1][to_modify] <- na_matrix[to_modify]
-    # Remove extra matrices
-    rm(to_modify, na_matrix)
-    rm(dp)
+    vcf <- mask_calls(vcf, to_modify)
+    rm(to_modify, dp)
   }
 
   #Filter if the MPP field is present
@@ -197,12 +247,8 @@ filterVCF <- function(vcf.file,
     # value are left unchanged
     threshold <- as.numeric(filter.MPP)
     to_modify <- !is.na(mpp) & mpp < threshold
-    # Replace cells in the vcf@gt matrix with NA format string where to_modify is TRUE
-    na_matrix <- matrix(na_format, nrow = nrow(mpp), ncol = ncol(mpp))
-    vcf@gt[, -1][to_modify] <- na_matrix[to_modify]
-    #remove extra matrices
-    rm(to_modify, na_matrix)
-    rm(mpp)
+    vcf <- mask_calls(vcf, to_modify)
+    rm(to_modify, mpp)
   }
 
   ## Filter based on INFO column (example: DP > 10)
@@ -325,6 +371,15 @@ filterVCF <- function(vcf.file,
                                "This happens when no variant has any called genotypes, which the filter.DP and filter.MPP masking can cause."), ]
   }
   ### Export the modified VCF file (this exports as a .vcf.gz, so make sure to have the name end in .vcf.gz)
+  #Update the reference genome lines of the header. Placeholder lines from earlier
+  #versions of BIGr are removed, since they break tools that read the header (e.g., GIGWA)
+  placeholder <- vcf@meta == "##reference=NA" | grepl("^##contig=<ID=NA[,>]", vcf@meta)
+  if (any(placeholder)) {
+    message("Removing ##reference=NA and ##contig=<ID=NA,length=NA> lines from the header\n")
+  }
+  vcf@meta <- update_vcf_reference_lines(vcf@meta[!placeholder], ref_lines)
+  check_vcf_contigs(vcf@fix[, "CHROM"], ref_lines$contigs)
+
   message("Exporting VCF\n")
   if (!inherits(vcf.file, "vcfR")) {
     if (!is.null(output.file)) {

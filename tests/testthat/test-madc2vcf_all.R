@@ -22,7 +22,8 @@ test_that("test madc offtargets",{
                multiallelic_SNP_sample_thr = 0,
                alignment_score_thr = 40,
                out_vcf = temp,
-               verbose = FALSE)
+               verbose = FALSE,
+               reference = "test")
 
   set.seed(456)
   madc2vcf_all(madc = madc_file,
@@ -34,7 +35,8 @@ test_that("test madc offtargets",{
                multiallelic_SNP_sample_thr = 0,
                alignment_score_thr = 40,
                out_vcf = temp_multi,
-               verbose = FALSE)
+               verbose = FALSE,
+               reference = "test")
 
   vcf <- read.vcfR(temp)
   vcf_multi <- read.vcfR(temp_multi)
@@ -56,7 +58,8 @@ test_that("test madc offtargets",{
                               multiallelic_SNP_dp_thr = 0,
                               multiallelic_SNP_sample_thr = 0,
                               out_vcf = temp,
-                              verbose = FALSE))
+                              verbose = FALSE,
+                              reference = "test"))
 
   vcf <- read.vcfR(temp)
 
@@ -77,7 +80,8 @@ test_that("madc2vcf_all preserves comma-separated AD for biallelic targets", {
                hap_seq_file = db_file,
                n.cores = 1,
                out_vcf = temp,
-               verbose = FALSE)
+               verbose = FALSE,
+               reference = "test")
 
   vcf <- read.vcfR(temp, verbose = FALSE)
   ad <- extract.gt(vcf, "AD")
@@ -108,7 +112,8 @@ test_that("madc2vcf_all accepts BI_markerID matches when CloneID does not match"
                  markers_info = temp_markers,
                  n.cores = 1,
                  out_vcf = temp,
-                 verbose = FALSE)
+                 verbose = FALSE,
+                 reference = "test")
   )
 })
 
@@ -125,7 +130,8 @@ test_that("madc2vcf_all surfaces missing-column validation error without crashin
     madc2vcf_all(madc = temp_madc,
                  botloci_file = bot_file,
                  out_vcf = tempfile(fileext = ".vcf"),
-                 verbose = FALSE),
+                 verbose = FALSE,
+                 reference = "test"),
     "One or more required columns missing"
   )
 })
@@ -176,7 +182,8 @@ test_that("simu alfalfa",{
                    multiallelic_SNP_dp_thr = 0,
                    alignment_score_thr = 40,
                    out_vcf = out,
-                   verbose = FALSE)
+                   verbose = FALSE,
+                   reference = "test")
     )
     vcf <- read.vcfR(out, verbose = FALSE)
     expect_s4_class(vcf, "vcfR")
@@ -196,7 +203,8 @@ test_that("simu alfalfa",{
                    hap_seq_file = NULL,
                    n.cores = 1,
                    out_vcf = out,
-                   verbose = FALSE)
+                   verbose = FALSE,
+                   reference = "test")
     )
     vcf <- read.vcfR(out, verbose = FALSE)
     expect_s4_class(vcf, "vcfR")
@@ -216,7 +224,8 @@ test_that("simu alfalfa",{
                    hap_seq_file = alfalfa_microhapDB,
                    n.cores = 1,
                    out_vcf = out,
-                   verbose = FALSE)
+                   verbose = FALSE,
+                   reference = "test")
     )
 
     # Test that it also works when markers_info is provided together with botloci
@@ -228,7 +237,8 @@ test_that("simu alfalfa",{
                  n.cores = 1,
                  markers_info = alfalfa_markers_info,
                  out_vcf = out,
-                 verbose = FALSE)
+                 verbose = FALSE,
+                 reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     expect_s4_class(vcf, "vcfR")
@@ -249,7 +259,8 @@ test_that("simu alfalfa",{
                  n.cores = 1,
                  markers_info = alfalfa_markers_info,
                  out_vcf = out,
-                 verbose = FALSE)
+                 verbose = FALSE,
+                 reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     expect_s4_class(vcf, "vcfR")
@@ -272,7 +283,8 @@ test_that("simu alfalfa",{
                    hap_seq_file = alfalfa_microhapDB,
                    n.cores = 1,
                    out_vcf = out,
-                   verbose = FALSE),
+                   verbose = FALSE,
+                   reference = "test"),
       regexp = "Check marker IDs in both MADC and botloci files. They should be the same."
     )
 
@@ -284,7 +296,8 @@ test_that("simu alfalfa",{
                    n.cores = 1,
                    markers_info = alfalfa_markers_info,
                    out_vcf = out,
-                   verbose = FALSE),
+                   verbose = FALSE,
+                   reference = "test"),
       regexp = "None of the markers_info CloneID, Marker_ID, or BI_markerID values match the MADC CloneID column. Please make sure they use the same marker IDs."
     )
 
@@ -295,7 +308,8 @@ test_that("simu alfalfa",{
                  n.cores = 1,
                  markers_info = alfalfa_markers_info_ChromPos,
                  out_vcf = out,
-                 verbose = FALSE)
+                 verbose = FALSE,
+                 reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     expect_s4_class(vcf, "vcfR")
@@ -321,7 +335,8 @@ test_that("simu alfalfa",{
                  hap_seq_file = alfalfa_microhapDB,
                  n.cores = 1,
                  out_vcf = out,
-                 verbose = FALSE)
+                 verbose = FALSE,
+                 reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(alfalfa_markers_info)
@@ -341,7 +356,8 @@ test_that("simu alfalfa",{
                                 hap_seq_file = NULL,
                                 n.cores = 1,
                                 out_vcf = out,
-                                verbose = FALSE))
+                                verbose = FALSE,
+                                reference = "test"))
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(alfalfa_markers_info)
@@ -362,7 +378,8 @@ test_that("simu alfalfa",{
                                 n.cores = 1,
                                 markers_info = alfalfa_markers_info,
                                 out_vcf = out,
-                                verbose = FALSE))
+                                verbose = FALSE,
+                                reference = "test"))
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(alfalfa_markers_info)
@@ -388,7 +405,8 @@ test_that("simu alfalfa",{
                    hap_seq_file = alfalfa_microhapDB,
                    n.cores = 1,
                    out_vcf = out,
-                   verbose = FALSE),
+                   verbose = FALSE,
+                   reference = "test"),
       regexp = "IUPAC \\(non-ATCG\\) codes found in Ref_/Alt_ AlleleSequence that differ between alleles or are present in only one. These codes are not currently supported by BIGr/BIGapp"
     )
   })
@@ -402,7 +420,8 @@ test_that("simu alfalfa",{
                    hap_seq_file = potato_microhapDB,
                    n.cores = 1,
                    out_vcf = out,
-                   verbose = FALSE),
+                   verbose = FALSE,
+                   reference = "test"),
       regexp = "CloneID does not have the expected Chromosome_Position format. Please check your CloneIDs or provide a file with this information"
 
     )
@@ -413,7 +432,8 @@ test_that("simu alfalfa",{
                  n.cores = 1,
                  markers_info = potato_markers_info,
                  out_vcf = out,
-                 verbose = FALSE)
+                 verbose = FALSE,
+                 reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(potato_markers_info)
@@ -434,7 +454,8 @@ test_that("simu alfalfa",{
                  n.cores = 1,
                  markers_info = potato_markers_info,
                  out_vcf = out,
-                 verbose = FALSE)
+                 verbose = FALSE,
+                 reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(potato_markers_info)
@@ -456,7 +477,8 @@ test_that("simu alfalfa",{
                    hap_seq_file = NULL,
                    n.cores = 1,
                    out_vcf = out,
-                   verbose = FALSE),
+                   verbose = FALSE,
+                   reference = "test"),
       regexp = "CloneID does not have the expected Chromosome_Position format. Please check your CloneIDs or provide a file with this information"
     )
 
@@ -471,7 +493,8 @@ test_that("simu alfalfa",{
                    hap_seq_file = potato_microhapDB,
                    n.cores = 1,
                    out_vcf = out,
-                   verbose = FALSE),
+                   verbose = FALSE,
+                   reference = "test"),
       regexp = "CloneID does not have the expected Chromosome_Position format. Please check your CloneIDs or provide a file with this information"
     )
 
@@ -481,7 +504,8 @@ test_that("simu alfalfa",{
                  n.cores = 1,
                  markers_info = potato_markers_info,
                  out_vcf = out,
-                 verbose = FALSE)
+                 verbose = FALSE,
+                 reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(potato_markers_info)
@@ -502,7 +526,8 @@ test_that("simu alfalfa",{
                  n.cores = 1,
                  markers_info = potato_markers_info,
                  out_vcf = out,
-                 verbose = FALSE)
+                 verbose = FALSE,
+                 reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(potato_markers_info)
@@ -524,7 +549,8 @@ test_that("simu alfalfa",{
                    hap_seq_file = NULL,
                    n.cores = 1,
                    out_vcf = out,
-                   verbose = FALSE),
+                   verbose = FALSE,
+                   reference = "test"),
       regexp = "CloneID does not have the expected Chromosome_Position format. Please check your CloneIDs or provide a file with this information"
     )
   })
@@ -537,7 +563,8 @@ test_that("simu alfalfa",{
                  n.cores = 1,
                  markers_info = potato_markers_info,
                  out_vcf = out,
-                 verbose = FALSE)
+                 verbose = FALSE,
+                 reference = "test")
 
     vcf <- read.vcfR(out, verbose = FALSE)
     lut <- read.csv(potato_markers_info)
@@ -560,7 +587,8 @@ test_that("simu alfalfa",{
                    n.cores = 1,
                    markers_info = potato_markers_info_ChromPos,
                    out_vcf = out,
-                   verbose = FALSE),
+                   verbose = FALSE,
+                   reference = "test"),
       regexp = "Indels detected in MADC file. The markers_info file must contain 'Ref', 'Alt', and 'Indel_pos' columns."
     )
   })
@@ -575,7 +603,8 @@ test_that("simu alfalfa",{
                    n.cores = 1,
                    markers_info = potato_markers_info,
                    out_vcf = out,
-                   verbose = FALSE),
+                   verbose = FALSE,
+                   reference = "test"),
       regexp = "IUPAC \\(non-ATCG\\) codes found in Ref_/Alt_ AlleleSequence that differ between alleles or are present in only one. These codes are not currently supported by BIGr/BIGapp"
     )
   })
@@ -589,7 +618,8 @@ test_that("simu alfalfa",{
                    hap_seq_file = alfalfa_microhapDB,
                    n.cores = 1,
                    out_vcf = out,
-                   verbose = FALSE), regexp = "MADC not processed by HapApp"
+                   verbose = FALSE,
+                   reference = "test"), regexp = "MADC not processed by HapApp"
     )
   })
 })
